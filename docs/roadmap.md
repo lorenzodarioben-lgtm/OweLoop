@@ -7,6 +7,7 @@
 - Riverpod root scope and GoRouter application shell.
 - Initial test coverage and continuous integration.
 - Documentation and migration directory.
+- Secure Supabase/PostgreSQL core schema, Row-Level Security, database tests, and decision records.
 
 ## Version 0.1 — shared expenses
 

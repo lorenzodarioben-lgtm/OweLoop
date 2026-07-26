@@ -63,6 +63,19 @@ flutter test
 flutter run
 ```
 
+For the local database from the repository root (Docker Desktop must be running):
+
+```sh
+npm ci
+npm run db:start
+npm run db:reset
+npm run db:test
+npm run db:lint
+npm run db:stop
+```
+
+The Supabase CLI is project-local. Do not install it globally, link routine checks to a hosted project, or use production credentials for local validation.
+
 ## Architecture boundaries
 
 - UI code must not contain financial calculation logic.

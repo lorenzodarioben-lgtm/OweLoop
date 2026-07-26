@@ -6,7 +6,20 @@ The initial implementation lives in [`mobile/`](mobile/). It uses Flutter, Supab
 
 ## Current project status
 
-The repository currently contains the application and collaboration foundations only. Authentication, groups, expenses, settlements, database tables, and migrations have not been implemented yet. The planned Version 0.1 scope is documented in the [product requirements](docs/product-requirements.md) and [roadmap](docs/roadmap.md).
+The repository contains the application and collaboration foundations plus a secure Version 0.1 database foundation. Authentication flows and mobile screens are still to be implemented. The planned Version 0.1 scope is documented in the [product requirements](docs/product-requirements.md) and [roadmap](docs/roadmap.md).
+
+## Local database development
+
+The Supabase CLI is a project-local development dependency. Install Node.js 20 or newer and start Docker Desktop before running local database checks:
+
+```sh
+npm ci
+npm run db:start
+npm run check:db
+npm run db:stop
+```
+
+`db:reset` applies the ordered migrations, `db:test` runs pgTAP tests, and `db:lint` checks the schema. These commands use the local Supabase stack only; do not link them to a hosted or production project.
 
 ## Getting started
 
@@ -25,7 +38,7 @@ The repository currently contains the application and collaboration foundations 
 ## Repository layout
 
 - `mobile/` — Flutter Android and iOS application.
-- `supabase/migrations/` — future version-controlled database migrations.
+- `supabase/migrations/` — version-controlled database migrations.
 - `docs/` — product, architecture, and delivery planning.
 - `.github/workflows/` — continuous integration.
 
@@ -50,6 +63,8 @@ On Windows PowerShell:
 ```
 
 The scripts install Flutter dependencies, verify formatting, run static analysis, and execute tests. You can also run the same commands directly from `mobile/`.
+
+Run the local database check separately from the repository root with `npm run check:db`; Docker Desktop must be running.
 
 ## Contribution workflow
 

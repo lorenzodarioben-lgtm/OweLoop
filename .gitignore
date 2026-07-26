@@ -22,6 +22,9 @@
 supabase/.temp/
 supabase/.branches/
 
+# Node.js dependencies
+node_modules/
+
 # Android signing
 **/*.jks
 **/*.keystore
