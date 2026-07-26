@@ -6,6 +6,8 @@ Thanks for helping build OweLoop. The repository is intentionally at an early st
 
 - Git.
 - The current stable Flutter SDK.
+- Node.js 20 or newer and npm for the project-local Supabase CLI.
+- Docker Desktop with its Linux engine running for local Supabase development.
 - An Android SDK and emulator or physical Android device for Android development.
 - Xcode for iOS development on macOS only.
 
@@ -51,6 +53,19 @@ flutter test
 ```
 
 Or run all checks from the repository root with `./scripts/check.sh` on macOS/Linux or `.\scripts\check.ps1` in Windows PowerShell.
+
+## Local database workflow
+
+The repository pins the Supabase CLI in its root npm lockfile; do not install it globally. With Docker Desktop running, run from the repository root:
+
+```sh
+npm ci
+npm run db:start
+npm run check:db
+npm run db:stop
+```
+
+`npm run db:reset` applies local migrations, `npm run db:test` runs pgTAP, and `npm run db:lint` runs the schema linter. Keep this workflow local: do not run `supabase link`, target a hosted project, or use production credentials for routine development checks.
 
 ## Branches and commits
 

@@ -848,16 +848,26 @@ begin
     raise exception 'Use ownership transfer to assign the owner role';
   end if;
 
-  update public.group_members
-  set role = p_role
-  where id = p_member_id
-    and group_id = p_group_id
-    and removed_at is null
-  returning * into v_member;
+  select member.*
+  into v_member
+  from public.group_members as member
+  where member.id = p_member_id
+    and member.group_id = p_group_id
+    and member.removed_at is null
+  for update;
 
   if not found then
     raise exception 'Active group member not found';
   end if;
+
+  if p_role = 'admin'::public.group_member_role and v_member.user_id is null then
+    raise exception 'Only registered active group members can be promoted to administrator';
+  end if;
+
+  update public.group_members
+  set role = p_role
+  where id = v_member.id
+  returning * into v_member;
 
   return v_member;
 end;
@@ -874,6 +884,7 @@ set search_path = pg_catalog
 as $$
 declare
   v_current_owner_id uuid;
+  v_successor_is_registered boolean;
 begin
   select member.id
   into v_current_owner_id
@@ -892,15 +903,16 @@ begin
     raise exception 'Transfer ownership to a different active member';
   end if;
 
-  perform 1
+  select member.user_id is not null
+  into v_successor_is_registered
   from public.group_members as member
   where member.id = p_successor_member_id
     and member.group_id = p_group_id
     and member.removed_at is null
   for update;
 
-  if not found then
-    raise exception 'Ownership successor must be an active group member';
+  if not found or not coalesce(v_successor_is_registered, false) then
+    raise exception 'Ownership successor must be an active registered group member';
   end if;
 
   update public.group_members

@@ -1,6 +1,6 @@
 begin;
 
-select plan(17);
+select plan(30);
 
 insert into auth.users (
   id,
@@ -66,6 +66,19 @@ insert into auth.users (
     '{}'::jsonb,
     now(),
     now()
+  ),
+  (
+    '55555555-5555-5555-5555-555555555555',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated',
+    'authenticated',
+    'successor-a@example.test',
+    '$2a$10$testhash',
+    now(),
+    '{}'::jsonb,
+    '{}'::jsonb,
+    now(),
+    now()
   );
 
 select is(
@@ -91,6 +104,16 @@ values (
   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
   '22222222-2222-2222-2222-222222222222',
   'Member A'
+), (
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  '55555555-5555-5555-5555-555555555555',
+  'Successor A'
+), (
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  null,
+  'Guest A'
 );
 
 reset role;
@@ -105,11 +128,17 @@ values (
   '44444444-4444-4444-4444-444444444444'
 );
 
-insert into public.group_members (id, group_id, display_name)
+insert into public.group_members (id, group_id, user_id, display_name)
 values (
   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1',
   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+  null,
   'Guest B'
+), (
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2',
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+  '33333333-3333-3333-3333-333333333333',
+  'Member B'
 );
 
 reset role;
@@ -172,6 +201,27 @@ select throws_ok(
   'an ordinary member cannot promote themselves'
 );
 
+select throws_ok(
+  $$select public.set_group_member_role(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
+    'admin'
+  )$$,
+  'P0001',
+  'Only an active group owner can change member roles',
+  'a normal member cannot use role management'
+);
+
+select throws_ok(
+  $$select public.transfer_group_ownership(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2'
+  )$$,
+  'P0001',
+  'Only an active group owner can transfer ownership',
+  'a normal member cannot transfer ownership'
+);
+
 reset role;
 select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
 set local role authenticated;
@@ -189,15 +239,109 @@ select is(
 );
 
 reset role;
-select hasnt_table_privilege(
-  'anon',
-  'public.groups',
-  'select',
+select ok(
+  not pg_catalog.has_table_privilege(
+    'anon'::name,
+    'public.groups'::text,
+    'select'::text
+  ),
   'a guest record grants no unauthenticated group access'
 );
 
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
 set local role authenticated;
+
+select throws_ok(
+  $$select public.set_group_member_role(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3',
+    'admin'
+  )$$,
+  'P0001',
+  'Only registered active group members can be promoted to administrator',
+  'an owner cannot promote a guest to administrator'
+);
+
+select throws_ok(
+  $$select public.transfer_group_ownership(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3'
+  )$$,
+  'P0001',
+  'Ownership successor must be an active registered group member',
+  'ownership cannot transfer to a guest'
+);
+
+select is(
+  (
+    select role
+    from public.group_members
+    where group_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+      and user_id = '11111111-1111-1111-1111-111111111111'
+  ),
+  'owner'::public.group_member_role,
+  'a failed guest ownership transfer leaves the existing owner unchanged'
+);
+
+select lives_ok(
+  $$select public.set_group_member_role(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2',
+    'admin'
+  )$$,
+  'an owner can promote an active registered member to administrator'
+);
+
+select is(
+  (
+    select role
+    from public.group_members
+    where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2'
+  ),
+  'admin'::public.group_member_role,
+  'the promoted registered member has the administrator role'
+);
+
+select lives_ok(
+  $$select public.transfer_group_ownership(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2'
+  )$$,
+  'ownership transfers to a different active registered member'
+);
+
+select is(
+  (
+    select role
+    from public.group_members
+    where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2'
+  ),
+  'owner'::public.group_member_role,
+  'the registered successor becomes the owner'
+);
+
+select is(
+  (
+    select role
+    from public.group_members
+    where user_id = '11111111-1111-1111-1111-111111111111'
+      and group_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+  ),
+  'admin'::public.group_member_role,
+  'the previous owner becomes an administrator'
+);
+
+select is(
+  (
+    select count(*)
+    from public.group_members
+    where group_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+      and role = 'owner'::public.group_member_role
+      and removed_at is null
+  ),
+  1::bigint,
+  'a successful transfer leaves exactly one active owner'
+);
 
 insert into public.expenses (
   id,
@@ -338,6 +482,34 @@ select lives_ok(
 );
 
 reset role;
+select set_config('request.jwt.claim.sub', '55555555-5555-5555-5555-555555555555', true);
+set local role authenticated;
+
+update public.group_members
+set removed_at = now()
+where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1';
+
+select throws_ok(
+  $$select public.transfer_group_ownership(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1'
+  )$$,
+  'P0001',
+  'Ownership successor must be an active registered group member',
+  'a removed registered member cannot receive ownership'
+);
+
+select throws_ok(
+  $$select public.transfer_group_ownership(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2'
+  )$$,
+  'P0001',
+  'Ownership successor must be an active registered group member',
+  'a member from another group cannot receive ownership'
+);
+
+reset role;
 
 select is_empty(
   $$select 1
@@ -353,18 +525,19 @@ select is_empty(
   'financial tables do not use floating-point money columns'
 );
 
-select hasnt_table_privilege(
-  'authenticated',
-  'public.expense_events',
-  'update',
+select ok(
+  not pg_catalog.has_table_privilege(
+    'authenticated'::name,
+    'public.expense_events'::text,
+    'update'::text
+  ),
   'normal clients cannot edit expense audit events'
 );
 
 select throws_ok(
   $$update public.group_members
     set removed_at = now()
-    where group_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-      and user_id = '11111111-1111-1111-1111-111111111111'$$,
+    where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2'$$,
   'P0001',
   'A group must retain an active owner',
   'the final group owner cannot be removed without a replacement'

@@ -18,8 +18,8 @@ Use `group_members` as the durable participant identity. It has its own UUID, a 
 
 ## Consequences
 
-Guests cannot access the database directly. A future guest-claim workflow must link an authenticated user to the existing group-member row rather than create a replacement. Account deletion preserves financial history by setting the user link to null.
+Guests cannot access the database directly. A future guest-claim workflow must link an authenticated user to the existing group-member row rather than create a replacement. Account deletion preserves financial history by setting the user link to null. Elevated authority is deliberately restricted to active registered members: a guest cannot become an administrator or ownership successor, so an account must be linked before a durable membership can receive those roles.
 
 ## Follow-up actions
 
-Design controlled guest-claim, invitation, and account-deletion workflows before exposing them in the application.
+Design controlled guest-claim, invitation, and account-deletion workflows before exposing them in the application, including a required ownership transfer before an owner account is deleted.

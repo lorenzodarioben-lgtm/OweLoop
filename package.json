@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db",
+    "db:lint": "supabase db lint --level warning --fail-on error",
+    "check:db": "npm run db:reset && npm run db:test && npm run db:lint"
+  },
+  "devDependencies": {
+    "supabase": "^2.109.1"
+  }
+}

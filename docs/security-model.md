@@ -28,7 +28,7 @@ Database grants are deliberately narrower than table-level RLS: callers cannot u
 
 ## Owners, administrators, and guests
 
-An owner or administrator is an active `group_members` row associated with the authenticated caller. Owners can promote or demote administrators through a guarded function and transfer ownership through a separate guarded function. Direct client writes cannot assign `owner` or `admin`, and the last active owner cannot be removed or demoted.
+An owner or administrator is an active `group_members` row associated with the authenticated caller. Owners can promote only active, registered members through the guarded role function; guests may remain ordinary members but cannot become administrators. Ownership transfer likewise requires a different active, registered member of the same group and promotes that successor before demoting the prior owner. Direct client writes cannot assign `owner` or `admin`, and the last active owner cannot be removed or demoted.
 
 Guests have no authentication identity. They can appear as payers, split participants, and settlement participants only through writes performed by authorised authenticated group members. They cannot query the API or grant themselves access.
 

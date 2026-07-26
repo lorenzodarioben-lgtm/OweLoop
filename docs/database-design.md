@@ -49,9 +49,9 @@ Exact, percentage, and share-based split interfaces can be added later by calcul
 
 ## Membership, roles, and ownership
 
-Every group is created with an owner membership automatically. Direct client membership inserts can only create active `member` records; only a group owner can use the guarded role function to make someone an administrator. Ownership changes use `public.transfer_group_ownership(uuid, uuid)`, which assigns the successor before demoting the current owner. The final active owner cannot be removed or demoted without a replacement.
+Every group is created with an owner membership automatically. Direct client membership inserts can only create active `member` records. Only a group owner can use the guarded role function to make an active, registered member (`user_id is not null`) an administrator; a guest may remain a member but can never be promoted to administrator. Ownership changes use `public.transfer_group_ownership(uuid, uuid)`, which accepts only a different active, registered member of the same group, assigns that successor first, and then demotes the current owner. The final active owner cannot be removed or demoted without a replacement.
 
-Guests have a null `user_id` and no database credentials. Linking a guest to an account is a future controlled operation; it must retain the same `group_members.id` to preserve history. Before deleting an owner account, ownership should be transferred to an active registered member. An owner record remains historically valid if its linked account is deleted, but that group should receive human support review if no active registered owner remains.
+Guests have a null `user_id` and no database credentials. Linking a guest to an account is a future controlled operation; it must retain the same `group_members.id` to preserve history. Before deleting an owner account, ownership must be transferred to an active registered member. An owner record remains historically valid if its linked account is deleted, but that group should receive human support review if no active registered owner remains.
 
 ## Historical preservation
 

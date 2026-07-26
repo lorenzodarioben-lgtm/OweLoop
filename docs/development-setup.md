@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Install the current stable Flutter SDK and verify it from a terminal:
+Install the current stable Flutter SDK, Node.js 20 or newer, and Docker Desktop. Start Docker Desktop's Linux engine before running local Supabase commands. Verify Flutter from a terminal:
 
 ```sh
 flutter --version
@@ -47,6 +47,19 @@ Copy-Item mobile/.env.example mobile/.env
 
 Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` to development-project values. The mobile app must never contain a Supabase service-role key. Keep `mobile/.env` local; it is ignored by Git.
 
+## Local database
+
+The root npm lockfile provides the Supabase CLI; do not install the CLI globally. With Docker Desktop running, run the local-only workflow from the repository root:
+
+```sh
+npm ci
+npm run db:start
+npm run check:db
+npm run db:stop
+```
+
+`npm run db:reset` applies migrations, `npm run db:test` runs pgTAP, and `npm run db:lint` checks the database schema. Do not link this local workflow to a hosted or production Supabase project.
+
 ## Run the app and checks
 
 From `mobile/`:
@@ -68,6 +81,7 @@ From the repository root, use `./scripts/check.sh` on macOS/Linux or `.\scripts\
 - **No device is detected:** start an emulator, connect a physical device, and run `flutter devices`.
 - **Environment configuration screen appears:** ensure `mobile/.env` exists and both required values are non-empty.
 - **iOS build cannot start:** iOS builds require macOS with Xcode installed and configured.
+- **Supabase commands cannot connect:** start Docker Desktop and wait for its Linux engine to be ready, then rerun `npm run db:start`.
 
 ## Current validation limitation
 
