@@ -1,0 +1,38 @@
+# Flutter and Dart generated files
+**/.dart_tool/
+**/.packages
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/build/
+**/coverage/
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# Local environment configuration
+.env
+**/.env
+!.env.example
+!**/.env.example
+
+# Supabase local CLI files
+supabase/.temp/
+supabase/.branches/
+
+# Android signing
+**/*.jks
+**/*.keystore
+**/key.properties
+
+# iOS signing and provisioning
+**/*.mobileprovision
+**/*.p12
+**/*.cer
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Runner.xcworkspace/xcuserdata/

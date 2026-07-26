@@ -1,0 +1,30 @@
+name: Mobile CI
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Restore local test environment file
+        run: cp .env.example .env
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Verify formatting
+        run: dart format --set-exit-if-changed .
+      - name: Analyse
+        run: flutter analyze
+      - name: Test
+        run: flutter test
