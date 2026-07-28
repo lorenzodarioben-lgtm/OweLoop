@@ -3,8 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'app/app.dart';
-import 'app/router.dart';
+import 'app/app_bootstrap.dart';
 import 'core/config/app_environment.dart';
 import 'core/errors/app_configuration_exception.dart';
 import 'core/errors/development_error_app.dart';
@@ -21,7 +20,7 @@ Future<void> main() async {
       publishableKey: environment.supabaseAnonKey,
     );
 
-    runApp(ProviderScope(child: OweLoopApp(router: createAppRouter())));
+    runApp(const ProviderScope(child: OweLoopBootstrap()));
   } on AppConfigurationException catch (error) {
     runApp(ProviderScope(child: DevelopmentErrorApp(message: error.message)));
   } catch (error) {

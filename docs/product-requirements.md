@@ -19,7 +19,9 @@ Version 0.1 is the first usable shared-expense workflow. It will support:
 - Settlements.
 - Basic expense audit history.
 
-This repository task delivers only the technical foundation for that version: application startup, routing, configuration, dependency boundaries, documentation, and CI. It does not implement the Version 0.1 workflows.
+The repository now implements the first prerequisite journey: email-and-password registration and sign-in, email-verification guidance where Supabase requires confirmation, session restoration, and required profile onboarding. A user must explicitly choose a display name before reaching the authenticated home screen.
+
+Groups, guest membership management, expenses, splits, balances, settlements, and audit-history screens are not yet implemented. The authenticated home deliberately communicates that those workflows are still to come.
 
 ## Deliberately postponed
 
