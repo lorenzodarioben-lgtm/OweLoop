@@ -23,7 +23,9 @@ The repository now implements the first prerequisite journey: email-and-password
 
 The repository now implements group creation, group list and detail views, and adding account-free guest members. The initial mobile currency selection supports AUD, CAD, EUR, GBP, JPY, NZD, SGD, and USD, while the database remains compatible with any valid uppercase three-letter ISO code.
 
-Registered-user invitations, guest claiming, member removal or role changes, group archiving, expenses, splits, balances, settlements, and audit-history screens are not yet implemented.
+The repository now implements equal-split expense entry and posted expense history. An active group member selects one payer and one or more active participants. The total is entered and stored as exact integer minor units, split equally, and posted atomically. Any remainder is assigned deterministically by ascending durable group-member ID. The mobile client supports JPY as a zero-decimal currency and AUD, CAD, EUR, GBP, NZD, SGD, and USD with two decimals.
+
+Registered-user invitations, guest claiming, member removal or role changes, group archiving UI, balances, settlements, expense editing or voiding, and audit-history screens are not yet implemented.
 
 ## Deliberately postponed
 

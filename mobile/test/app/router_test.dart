@@ -40,6 +40,16 @@ void main() {
       );
     });
 
+    test('protects expense routes from signed-out users', () {
+      expect(
+        authenticationRedirect(
+          authenticationState: const AuthenticationState.signedOut(),
+          location: AppRoutes.expenseDetailPath('private-group', 'expense-id'),
+        ),
+        AppRoutes.signIn,
+      );
+    });
+
     test('sends incomplete profiles to profile setup', () {
       expect(
         authenticationRedirect(
@@ -66,6 +76,19 @@ void main() {
       );
     });
 
+    test('protects expense routes from incomplete profiles', () {
+      expect(
+        authenticationRedirect(
+          authenticationState: AuthenticationState(
+            status: AuthenticationStatus.profileSetup,
+            user: user,
+          ),
+          location: AppRoutes.newExpensePath('group-id'),
+        ),
+        AppRoutes.profileSetup,
+      );
+    });
+
     test('sends completed profiles away from auth screens', () {
       expect(
         authenticationRedirect(
@@ -87,6 +110,19 @@ void main() {
             user: user,
           ),
           location: AppRoutes.groupDetailPath('group-id'),
+        ),
+        isNull,
+      );
+    });
+
+    test('allows authenticated users onto protected expense routes', () {
+      expect(
+        authenticationRedirect(
+          authenticationState: AuthenticationState(
+            status: AuthenticationStatus.authenticated,
+            user: user,
+          ),
+          location: AppRoutes.expenseDetailPath('group-id', 'expense-id'),
         ),
         isNull,
       );

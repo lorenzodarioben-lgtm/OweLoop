@@ -47,13 +47,15 @@ Clients no longer have direct insert access to `group_members`. `public.add_gues
 
 ## Money and currency
 
-All money is stored as `bigint` minor units. For example, USD 10.00 is `1000` and USD 10.25 is `1025`. No floating-point money columns are used. Each group stores one uppercase ISO 4217 currency code; cross-currency calculations and conversion are intentionally out of scope.
+All money is stored as `bigint` minor units. For example, USD 10.00 is `1000` and USD 10.25 is `1025`. No floating-point money columns are used. The mobile client explicitly supports JPY with zero fraction digits, and AUD, CAD, EUR, GBP, NZD, SGD, and USD with two fraction digits. Unknown currency codes are not given an invented display scale. Each group stores one uppercase ISO 4217 currency code; cross-currency calculations and conversion are intentionally out of scope.
 
 ## Expense lifecycle and financial invariants
 
 An expense is created as a `draft`. Its authorised creator or a group administrator can add, change, or remove payer and split rows while it remains a draft. The `public.finalize_expense(uuid)` transaction function locks the draft and its child rows, verifies that payer totals and split totals each equal `total_amount_minor`, and only then changes the status to `posted`.
 
 The posted-status trigger repeats the total checks at the database boundary. Payers and splits cannot change after posting, so a posted expense cannot become financially inconsistent through ordinary client writes. `public.void_expense(uuid)` preserves a posted expense and its audit history while removing it from future balance calculations. A draft can be voided when it should not be finalized.
+
+The mobile equal-expense path uses `public.create_equal_expense(uuid, text, bigint, timestamptz, uuid, uuid[])` instead of coordinating draft inserts from the client. It checks the authenticated, onboarded caller's active group membership; validates the non-archived group, description, positive amount, payer, and unique active participants; inserts the expense, one payer row, and split rows; then invokes the existing finalization guard in the same transaction. Split rows receive `total / participant_count` minor units, with the first `total % participant_count` rows in ascending `group_members.id` order receiving one additional minor unit. Existing audit triggers record every resulting parent, payer, split, and posted transition.
 
 Exact, percentage, and share-based split interfaces can be added later by calculating the final minor-unit split rows before finalization. The persisted source of truth remains the exact amount owed by each member.
 

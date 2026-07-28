@@ -1,0 +1,229 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:oweloop/app/app_bootstrap.dart';
+import 'package:oweloop/features/authentication/state/authentication_providers.dart';
+import 'package:oweloop/features/expenses/domain/expense_models.dart';
+import 'package:oweloop/features/expenses/state/expenses_providers.dart';
+import 'package:oweloop/features/groups/state/groups_providers.dart';
+
+import '../../fakes/authentication_fakes.dart';
+import '../../fakes/expenses_fakes.dart';
+import '../../fakes/groups_fakes.dart';
+
+void main() {
+  FakeGroupsRepository groupRepository() {
+    return FakeGroupsRepository(groups: const [testGroup])
+      ..groupsById[testGroup.id] = testGroup
+      ..membersByGroupId[testGroup.id] = const [
+        testOwnerMember,
+        testGuestMember,
+      ];
+  }
+
+  Widget buildApp({
+    required FakeGroupsRepository groupsRepository,
+    required FakeExpensesRepository expensesRepository,
+  }) {
+    return ProviderScope(
+      overrides: [
+        authRepositoryProvider.overrideWithValue(
+          FakeAuthRepository(restoredUser: testUser),
+        ),
+        profileRepositoryProvider.overrideWithValue(
+          FakeProfileRepository(currentProfile: completedTestProfile),
+        ),
+        groupsRepositoryProvider.overrideWithValue(groupsRepository),
+        expensesRepositoryProvider.overrideWithValue(expensesRepository),
+      ],
+      child: const OweLoopBootstrap(),
+    );
+  }
+
+  Future<void> openGroup(
+    WidgetTester tester, {
+    required FakeGroupsRepository groupsRepository,
+    required FakeExpensesRepository expensesRepository,
+  }) async {
+    await tester.pumpWidget(
+      buildApp(
+        groupsRepository: groupsRepository,
+        expensesRepository: expensesRepository,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Weekend trip'));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> openExpenseForm(
+    WidgetTester tester, {
+    required FakeGroupsRepository groupsRepository,
+    required FakeExpensesRepository expensesRepository,
+  }) async {
+    await openGroup(
+      tester,
+      groupsRepository: groupsRepository,
+      expensesRepository: expensesRepository,
+    );
+    await tester.tap(find.text('Add expense').first);
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> enterValidExpense(WidgetTester tester) async {
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), 'Dinner');
+    await tester.enterText(fields.at(1), '10.00');
+    await tester.pump();
+  }
+
+  Future<void> tapPostExpense(WidgetTester tester) async {
+    final postExpense = find.widgetWithText(FilledButton, 'Post expense');
+    await tester.ensureVisible(postExpense);
+    await tester.tap(postExpense);
+  }
+
+  Future<void> deselectGuestParticipant(WidgetTester tester) async {
+    final guestParticipant = find.byType(CheckboxListTile).last;
+    await tester.ensureVisible(guestParticipant);
+    await tester.tap(guestParticipant);
+  }
+
+  testWidgets('shows an empty expense history and add action', (tester) async {
+    await openGroup(
+      tester,
+      groupsRepository: groupRepository(),
+      expensesRepository: FakeExpensesRepository(),
+    );
+
+    expect(find.text('Expense history'), findsOneWidget);
+    expect(find.text('No posted expenses yet.'), findsOneWidget);
+    expect(find.text('Add expense'), findsWidgets);
+  });
+
+  testWidgets('renders expense history and accessible expense details', (
+    tester,
+  ) async {
+    final expensesRepository = FakeExpensesRepository(
+      expenses: [testExpense],
+      expensesById: <String, ExpenseRecord>{testExpense.id: testExpense},
+    );
+    await openGroup(
+      tester,
+      groupsRepository: groupRepository(),
+      expensesRepository: expensesRepository,
+    );
+
+    expect(find.text('Dinner'), findsOneWidget);
+    expect(find.text('AUD 10.00'), findsOneWidget);
+    await tester.tap(find.text('Dinner'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Expense details'), findsOneWidget);
+    expect(find.text('Taylor paid AUD 10.00'), findsOneWidget);
+    expect(find.text('Morgan'), findsOneWidget);
+    expect(find.text('Posted'), findsOneWidget);
+  });
+
+  testWidgets('validates the expense form and previews equal splits', (
+    tester,
+  ) async {
+    await openExpenseForm(
+      tester,
+      groupsRepository: groupRepository(),
+      expensesRepository: FakeExpensesRepository(),
+    );
+
+    await tapPostExpense(tester);
+    await tester.pump();
+    expect(find.text('Enter an expense description.'), findsOneWidget);
+    expect(
+      find.text('Enter an amount with up to 2 decimal places.'),
+      findsOneWidget,
+    );
+
+    await enterValidExpense(tester);
+    expect(find.text('Equal split preview'), findsOneWidget);
+    expect(find.text('AUD 5.00'), findsNWidgets(2));
+
+    await deselectGuestParticipant(tester);
+    await tester.pump();
+    expect(find.text('AUD 10.00'), findsOneWidget);
+  });
+
+  testWidgets('creates an expense, refreshes history, and opens details', (
+    tester,
+  ) async {
+    final expensesRepository = FakeExpensesRepository(
+      expensesById: <String, ExpenseRecord>{testExpense.id: testExpense},
+    );
+    expensesRepository.createHandler = (input) async {
+      expensesRepository.expenses = [testExpense];
+      return testExpense;
+    };
+    await openExpenseForm(
+      tester,
+      groupsRepository: groupRepository(),
+      expensesRepository: expensesRepository,
+    );
+    await enterValidExpense(tester);
+    await deselectGuestParticipant(tester);
+    await tester.pump();
+    await tapPostExpense(tester);
+    await tester.pumpAndSettle();
+
+    expect(expensesRepository.lastCreationInput?.total.minorUnits, 1000);
+    expect(expensesRepository.lastCreationInput?.participantMemberIds, const [
+      'owner-member',
+    ]);
+    expect(expensesRepository.loadExpensesCalls, greaterThanOrEqualTo(2));
+    expect(find.text('Expense details'), findsOneWidget);
+  });
+
+  testWidgets('shows safe creation errors and disables repeated submission', (
+    tester,
+  ) async {
+    final creationCompleter = Completer<ExpenseRecord>();
+    final expensesRepository = FakeExpensesRepository()
+      ..createHandler = (_) => creationCompleter.future;
+    await openExpenseForm(
+      tester,
+      groupsRepository: groupRepository(),
+      expensesRepository: expensesRepository,
+    );
+    await enterValidExpense(tester);
+    await tapPostExpense(tester);
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNull,
+    );
+
+    creationCompleter.complete(testExpense);
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('shows a safe failed creation message', (tester) async {
+    final expensesRepository = FakeExpensesRepository()
+      ..createExpenseError = Exception('network failure');
+    await openExpenseForm(
+      tester,
+      groupsRepository: groupRepository(),
+      expensesRepository: expensesRepository,
+    );
+    await enterValidExpense(tester);
+    await tapPostExpense(tester);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'We could not reach OweLoop. Check your connection and try again.',
+      ),
+      findsOneWidget,
+    );
+  });
+}

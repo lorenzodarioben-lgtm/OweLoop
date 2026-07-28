@@ -13,7 +13,7 @@
 
 1. Authentication and account lifecycle - complete for email/password access and required profile onboarding.
 2. Groups with registered and guest members - group creation, group viewing, and adding account-free guests are complete; invitations, guest claiming, removal, and role-management UI remain pending.
-3. Equal-split expenses, including multiple payers.
+3. Equal-split expenses - one-payer entry, exact deterministic equal splits, posted history, and expense detail are complete; multiple-payer UI, flexible splits, editing, voiding, balances, and settlements remain pending.
 4. Transparent per-group balances and settlements.
 5. Basic audit history for expense changes.
 
