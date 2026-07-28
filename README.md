@@ -23,7 +23,7 @@ npm run db:stop
 
 ## Getting started
 
-1. First Install the current stable Flutter SDK.
+1. Install the current stable Flutter SDK.
 2. Copy `mobile/.env.example` to `mobile/.env`.
 3. Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` with development-project values. Do not use a Supabase service-role key in the app.
 4. Run the commands from `mobile/`:
