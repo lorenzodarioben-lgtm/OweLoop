@@ -11,8 +11,8 @@
 
 ## Version 0.1 — shared expenses
 
-1. Authentication and account lifecycle.
-2. Groups with registered and guest members.
+1. Authentication and account lifecycle - complete for email/password access and required profile onboarding.
+2. Groups with registered and guest members - group creation, group viewing, and adding account-free guests are complete; invitations, guest claiming, removal, and role-management UI remain pending.
 3. Equal-split expenses, including multiple payers.
 4. Transparent per-group balances and settlements.
 5. Basic audit history for expense changes.

@@ -30,6 +30,16 @@ void main() {
       );
     });
 
+    test('protects group routes from signed-out users', () {
+      expect(
+        authenticationRedirect(
+          authenticationState: const AuthenticationState.signedOut(),
+          location: AppRoutes.groupDetailPath('private-group'),
+        ),
+        AppRoutes.signIn,
+      );
+    });
+
     test('sends incomplete profiles to profile setup', () {
       expect(
         authenticationRedirect(
@@ -38,6 +48,19 @@ void main() {
             user: user,
           ),
           location: AppRoutes.home,
+        ),
+        AppRoutes.profileSetup,
+      );
+    });
+
+    test('protects group routes from incomplete profiles', () {
+      expect(
+        authenticationRedirect(
+          authenticationState: AuthenticationState(
+            status: AuthenticationStatus.profileSetup,
+            user: user,
+          ),
+          location: AppRoutes.newGroup,
         ),
         AppRoutes.profileSetup,
       );
@@ -53,6 +76,19 @@ void main() {
           location: AppRoutes.signIn,
         ),
         AppRoutes.home,
+      );
+    });
+
+    test('allows authenticated users onto protected group routes', () {
+      expect(
+        authenticationRedirect(
+          authenticationState: AuthenticationState(
+            status: AuthenticationStatus.authenticated,
+            user: user,
+          ),
+          location: AppRoutes.groupDetailPath('group-id'),
+        ),
+        isNull,
       );
     });
   });
