@@ -8,7 +8,7 @@ Authenticated clients access application tables through PostgreSQL grants and RL
 
 ## Authentication assumptions
 
-Supabase Auth provides `auth.users` and makes the current authenticated UUID available through `auth.uid()`. A trusted trigger creates a minimal `profiles` record with the safe fallback name `Member`; it does not trust arbitrary user metadata. Client-visible profiles are private to their owner, while group-member display-name snapshots supply group-facing names.
+Supabase Auth provides `auth.users` and makes the current authenticated UUID available through `auth.uid()`. A trusted trigger creates a minimal `profiles` record with the safe fallback name `Member`; it does not trust arbitrary user metadata. `onboarding_completed_at` is initially null, so the fallback does not imply that setup was completed. Client-visible profiles are private to their owner, while group-member display-name snapshots supply group-facing names.
 
 ## Row-Level Security strategy
 
@@ -16,7 +16,7 @@ RLS is enabled on every client-accessible application table.
 
 | Table | Permitted authenticated access |
 | --- | --- |
-| `profiles` | Read and update only the caller's profile display name. |
+| `profiles` | Read only the caller's profile. Completion occurs only through the guarded `public.complete_profile(text)` function. |
 | `groups` | Active members read; active users create their own groups; owners and admins update settings. |
 | `group_members` | Active members read their group; owners/admins add or deactivate ordinary members. |
 | `expenses` | Active members read; active members create drafts; creators and administrators manage drafts. |
@@ -36,7 +36,7 @@ Guests have no authentication identity. They can appear as payers, split partici
 
 The `app_private` schema contains RLS helper and trigger functions. `SECURITY DEFINER` is used only for helpers that must bypass client grants or RLS, such as membership checks, trusted audit insertion, and guarded transactions; timestamp and immutability-only triggers remain ordinary invoker functions. All functions set `search_path` to `pg_catalog`, use fully qualified application objects where they access application data, and do not use dynamic SQL. The schema is not available to ordinary client API calls. Function execution is granted only where RLS policy evaluation requires it.
 
-The public `finalize_expense`, `void_expense`, membership-role, and ownership-transfer functions perform explicit caller and state checks before acting. They are the only ordinary-client path for posting, voiding, role elevation, or ownership changes.
+The public `complete_profile`, `finalize_expense`, `void_expense`, membership-role, and ownership-transfer functions perform explicit caller and state checks before acting. `complete_profile` is `SECURITY DEFINER` because direct profile updates are not granted to clients; it uses the fixed `pg_catalog` search path, fully qualified application objects, no dynamic SQL, and is executable only by `authenticated`. It trims and validates the name, updates only the caller's profile, and records completion atomically. These functions are the only ordinary-client path for profile completion, posting, voiding, role elevation, or ownership changes.
 
 ## Audit history
 

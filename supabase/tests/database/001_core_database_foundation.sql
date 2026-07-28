@@ -1,6 +1,6 @@
 begin;
 
-select plan(30);
+select plan(40);
 
 insert into auth.users (
   id,
@@ -87,8 +87,61 @@ select is(
   'new authenticated users receive a safe fallback profile name'
 );
 
+select is(
+  (select onboarding_completed_at from public.profiles where id = '11111111-1111-1111-1111-111111111111'),
+  null::timestamptz,
+  'new profiles start with incomplete onboarding'
+);
+
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
 set local role authenticated;
+
+select lives_ok(
+  $$select public.complete_profile('  Owner A  ')$$,
+  'an authenticated user can complete their own profile'
+);
+
+select is(
+  (select display_name from public.profiles where id = '11111111-1111-1111-1111-111111111111'),
+  'Owner A'::text,
+  'profile completion trims the display name'
+);
+
+select isnt(
+  (select onboarding_completed_at from public.profiles where id = '11111111-1111-1111-1111-111111111111'),
+  null::timestamptz,
+  'profile completion records onboarding completion'
+);
+
+select throws_ok(
+  $$select public.complete_profile('')$$,
+  'P0001',
+  'Display name cannot be blank',
+  'blank display names cannot complete onboarding'
+);
+
+select throws_ok(
+  $$select public.complete_profile('   ')$$,
+  'P0001',
+  'Display name cannot be blank',
+  'whitespace-only display names cannot complete onboarding'
+);
+
+select throws_ok(
+  $$select public.complete_profile(repeat('x', 81))$$,
+  'P0001',
+  'Display name must be 80 characters or fewer',
+  'overly long display names cannot complete onboarding'
+);
+
+select throws_ok(
+  $$update public.profiles
+    set display_name = 'Changed by another user'
+    where id = '22222222-2222-2222-2222-222222222222'$$,
+  '42501',
+  'permission denied for table profiles',
+  'users cannot modify another user profile directly'
+);
 
 insert into public.groups (id, name, currency_code, created_by)
 values (
@@ -149,6 +202,12 @@ select is(
   (select count(*) from public.groups where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
   1::bigint,
   'an active member can read their group'
+);
+
+select is(
+  (select count(*) from public.profiles where id = '11111111-1111-1111-1111-111111111111'),
+  0::bigint,
+  'profile reads remain isolated to the authenticated user'
 );
 
 insert into public.expenses (
@@ -236,6 +295,17 @@ select is(
   (select count(*) from public.expenses where id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1'),
   0::bigint,
   'users cannot read unrelated expenses'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '', true);
+set local role authenticated;
+
+select throws_ok(
+  $$select public.complete_profile('Unauthenticated')$$,
+  'P0001',
+  'Authentication is required to complete a profile',
+  'unauthenticated callers cannot complete a profile'
 );
 
 reset role;

@@ -1,46 +1,93 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-GoRouter createAppRouter() {
+import '../features/authentication/presentation/authenticated_home_screen.dart';
+import '../features/authentication/presentation/loading_screen.dart';
+import '../features/authentication/presentation/profile_setup_screen.dart';
+import '../features/authentication/presentation/sign_in_screen.dart';
+import '../features/authentication/presentation/sign_up_screen.dart';
+import '../features/authentication/presentation/verification_pending_screen.dart';
+import '../features/authentication/state/authentication_controller.dart';
+import '../features/authentication/state/authentication_providers.dart';
+import '../features/authentication/state/authentication_state.dart';
+
+abstract final class AppRoutes {
+  static const loading = '/loading';
+  static const signIn = '/sign-in';
+  static const signUp = '/sign-up';
+  static const verifyEmail = '/verify-email';
+  static const profileSetup = '/profile-setup';
+  static const home = '/home';
+}
+
+final appRouterProvider = Provider<GoRouter>((ref) {
+  final controller = ref.read(authenticationControllerProvider);
+  final router = createAppRouter(controller);
+  ref.onDispose(router.dispose);
+  return router;
+});
+
+GoRouter createAppRouter(AuthenticationController controller) {
   return GoRouter(
+    initialLocation: AppRoutes.loading,
+    refreshListenable: controller,
+    redirect: (context, state) => authenticationRedirect(
+      authenticationState: controller.state,
+      location: state.uri.path,
+    ),
     routes: [
       GoRoute(
-        path: '/',
-        builder: (context, state) => const FoundationHomeScreen(),
+        path: AppRoutes.loading,
+        builder: (context, state) => const AuthenticationLoadingScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.signIn,
+        builder: (context, state) => const SignInScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.signUp,
+        builder: (context, state) => const SignUpScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.verifyEmail,
+        builder: (context, state) => const VerificationPendingScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.profileSetup,
+        builder: (context, state) => const ProfileSetupScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.home,
+        builder: (context, state) => const AuthenticatedHomeScreen(),
       ),
     ],
   );
 }
 
-class FoundationHomeScreen extends StatelessWidget {
-  const FoundationHomeScreen({super.key});
+String? authenticationRedirect({
+  required AuthenticationState authenticationState,
+  required String location,
+}) {
+  final status = authenticationState.status;
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('OweLoop')),
-      body: const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.account_balance_wallet_outlined, size: 56),
-              SizedBox(height: 16),
-              Text(
-                'OweLoop foundation is running',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Shared expenses without the friction.',
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  if (status == AuthenticationStatus.loading) {
+    return location == AppRoutes.loading ? null : AppRoutes.loading;
   }
+
+  if (status == AuthenticationStatus.signedOut) {
+    return switch (location) {
+      AppRoutes.signIn || AppRoutes.signUp => null,
+      _ => AppRoutes.signIn,
+    };
+  }
+
+  if (status == AuthenticationStatus.verificationPending) {
+    return location == AppRoutes.verifyEmail ? null : AppRoutes.verifyEmail;
+  }
+
+  if (status == AuthenticationStatus.profileSetup) {
+    return location == AppRoutes.profileSetup ? null : AppRoutes.profileSetup;
+  }
+
+  return location == AppRoutes.home ? null : AppRoutes.home;
 }

@@ -6,7 +6,7 @@ The initial implementation lives in [`mobile/`](mobile/). It uses Flutter, Supab
 
 ## Current project status
 
-The repository contains the application and collaboration foundations plus a secure Version 0.1 database foundation. Authentication flows and mobile screens are still to be implemented. The planned Version 0.1 scope is documented in the [product requirements](docs/product-requirements.md) and [roadmap](docs/roadmap.md).
+The repository contains the application and collaboration foundations, a secure Version 0.1 database foundation, and the first complete mobile feature: email-and-password authentication with profile onboarding. After authentication, each user chooses a display name before reaching the authenticated home screen. Groups, expenses, settlements, and other Version 0.1 workflows remain planned work; see the [product requirements](docs/product-requirements.md) and [roadmap](docs/roadmap.md).
 
 ## Local database development
 
@@ -34,6 +34,8 @@ npm run db:stop
    ```
 
 `mobile/.env` is intentionally ignored by Git. Missing or blank values produce a clear development configuration screen.
+
+For sign-up testing, configure email confirmation in the development Supabase project according to the desired behaviour. If confirmation is enabled, Supabase may return no session after sign-up; OweLoop then shows a verification-pending screen and does not grant access until a valid session is restored.
 
 ## Repository layout
 
