@@ -70,6 +70,6 @@ Run the local database check separately from the repository root with `npm run c
 
 ## Contribution workflow
 
-Read [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md) before changing code. Keep work focused, use one task per branch where practical, run the checks, review the diff, and describe scope, testing, and risks in pull requests.
+MUST Read [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md) before changing code. Keep work focused, use one task per branch where practical, run the checks, review the diff, and describe scope, testing, and risks in pull requests.
 
 For a reusable task handoff, use the [agent handoff template](docs/agent-handoff-template.md). Significant architecture decisions should use the [ADR process](docs/decisions/README.md).
