@@ -7,18 +7,24 @@ import 'package:oweloop/app/app_bootstrap.dart';
 import 'package:oweloop/features/authentication/data/supabase_auth_repository.dart';
 import 'package:oweloop/features/authentication/domain/auth_models.dart';
 import 'package:oweloop/features/authentication/state/authentication_providers.dart';
+import 'package:oweloop/features/groups/state/groups_providers.dart';
 
 import 'fakes/authentication_fakes.dart';
+import 'fakes/groups_fakes.dart';
 
 void main() {
   Widget buildApp({
     required FakeAuthRepository authRepository,
     required FakeProfileRepository profileRepository,
+    FakeGroupsRepository? groupsRepository,
   }) {
     return ProviderScope(
       overrides: [
         authRepositoryProvider.overrideWithValue(authRepository),
         profileRepositoryProvider.overrideWithValue(profileRepository),
+        groupsRepositoryProvider.overrideWithValue(
+          groupsRepository ?? FakeGroupsRepository(),
+        ),
       ],
       child: const OweLoopBootstrap(),
     );
@@ -28,12 +34,14 @@ void main() {
     WidgetTester tester, {
     required FakeAuthRepository authRepository,
     required FakeProfileRepository profileRepository,
+    FakeGroupsRepository? groupsRepository,
   }) async {
     addTearDown(authRepository.dispose);
     await tester.pumpWidget(
       buildApp(
         authRepository: authRepository,
         profileRepository: profileRepository,
+        groupsRepository: groupsRepository,
       ),
     );
     await tester.pumpAndSettle();
@@ -155,7 +163,7 @@ void main() {
     );
   });
 
-  testWidgets('completes profile setup and shows the authenticated welcome', (
+  testWidgets('completes profile setup and shows the group home', (
     tester,
   ) async {
     final authRepository = FakeAuthRepository(restoredUser: testUser);
@@ -175,10 +183,10 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Welcome, Taylor'), findsOneWidget);
+    expect(find.text('Hi, Taylor'), findsOneWidget);
   });
 
-  testWidgets('shows the authenticated home and signs out', (tester) async {
+  testWidgets('shows the group home and signs out', (tester) async {
     final authRepository = FakeAuthRepository(restoredUser: testUser);
     final profileRepository = FakeProfileRepository(
       currentProfile: completedTestProfile,
@@ -190,7 +198,8 @@ void main() {
       profileRepository: profileRepository,
     );
 
-    expect(find.text('Welcome, Taylor'), findsOneWidget);
+    expect(find.text('Hi, Taylor'), findsOneWidget);
+    expect(find.text('Create your first group'), findsOneWidget);
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
 

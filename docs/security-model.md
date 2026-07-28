@@ -17,8 +17,8 @@ RLS is enabled on every client-accessible application table.
 | Table | Permitted authenticated access |
 | --- | --- |
 | `profiles` | Read only the caller's profile. Completion occurs only through the guarded `public.complete_profile(text)` function. |
-| `groups` | Active members read; active users create their own groups; owners and admins update settings. |
-| `group_members` | Active members read their group; owners/admins add or deactivate ordinary members. |
+| `groups` | Active members read; authenticated users with completed onboarding create their own normalized groups; owners and admins update settings. |
+| `group_members` | Active members read their group; guest creation uses the guarded `public.add_guest_member(uuid, text)` function. |
 | `expenses` | Active members read; active members create drafts; creators and administrators manage drafts. |
 | `expense_payers` / `expense_splits` | Read through the parent expense; modify only while managing its draft. |
 | `settlements` | Active members read and create; creators and administrators may void their records. |
@@ -36,7 +36,9 @@ Guests have no authentication identity. They can appear as payers, split partici
 
 The `app_private` schema contains RLS helper and trigger functions. `SECURITY DEFINER` is used only for helpers that must bypass client grants or RLS, such as membership checks, trusted audit insertion, and guarded transactions; timestamp and immutability-only triggers remain ordinary invoker functions. All functions set `search_path` to `pg_catalog`, use fully qualified application objects where they access application data, and do not use dynamic SQL. The schema is not available to ordinary client API calls. Function execution is granted only where RLS policy evaluation requires it.
 
-The public `complete_profile`, `finalize_expense`, `void_expense`, membership-role, and ownership-transfer functions perform explicit caller and state checks before acting. `complete_profile` is `SECURITY DEFINER` because direct profile updates are not granted to clients; it uses the fixed `pg_catalog` search path, fully qualified application objects, no dynamic SQL, and is executable only by `authenticated`. It trims and validates the name, updates only the caller's profile, and records completion atomically. These functions are the only ordinary-client path for profile completion, posting, voiding, role elevation, or ownership changes.
+The public `complete_profile`, `add_guest_member`, `finalize_expense`, `void_expense`, membership-role, and ownership-transfer functions perform explicit caller and state checks before acting. `complete_profile` is `SECURITY DEFINER` because direct profile updates are not granted to clients; it uses the fixed `pg_catalog` search path, fully qualified application objects, no dynamic SQL, and is executable only by `authenticated`. It trims and validates the name, updates only the caller's profile, and records completion atomically.
+
+`app_private.prepare_group_creation()` runs before every group insert. It requires an authenticated, onboarded caller, overwrites `created_by` with `auth.uid()`, validates the normalized input, and lets the existing trusted owner trigger establish the single owner membership. Direct `group_members` inserts are not granted to authenticated clients. `add_guest_member` has the same fixed search path and fully qualified access pattern; it takes no role or auth-user input, requires an active owner or administrator, rejects archived groups, and can create only an account-free ordinary membership. These are the only ordinary-client paths for profile completion, guest creation, posting, voiding, role elevation, or ownership changes.
 
 ## Audit history
 

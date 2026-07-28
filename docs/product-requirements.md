@@ -21,7 +21,9 @@ Version 0.1 is the first usable shared-expense workflow. It will support:
 
 The repository now implements the first prerequisite journey: email-and-password registration and sign-in, email-verification guidance where Supabase requires confirmation, session restoration, and required profile onboarding. A user must explicitly choose a display name before reaching the authenticated home screen.
 
-Groups, guest membership management, expenses, splits, balances, settlements, and audit-history screens are not yet implemented. The authenticated home deliberately communicates that those workflows are still to come.
+The repository now implements group creation, group list and detail views, and adding account-free guest members. The initial mobile currency selection supports AUD, CAD, EUR, GBP, JPY, NZD, SGD, and USD, while the database remains compatible with any valid uppercase three-letter ISO code.
+
+Registered-user invitations, guest claiming, member removal or role changes, group archiving, expenses, splits, balances, settlements, and audit-history screens are not yet implemented.
 
 ## Deliberately postponed
 

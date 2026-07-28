@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../features/authentication/presentation/authenticated_home_screen.dart';
 import '../features/authentication/presentation/loading_screen.dart';
 import '../features/authentication/presentation/profile_setup_screen.dart';
 import '../features/authentication/presentation/sign_in_screen.dart';
@@ -10,6 +9,9 @@ import '../features/authentication/presentation/verification_pending_screen.dart
 import '../features/authentication/state/authentication_controller.dart';
 import '../features/authentication/state/authentication_providers.dart';
 import '../features/authentication/state/authentication_state.dart';
+import '../features/groups/presentation/create_group_screen.dart';
+import '../features/groups/presentation/group_detail_screen.dart';
+import '../features/groups/presentation/group_list_screen.dart';
 
 abstract final class AppRoutes {
   static const loading = '/loading';
@@ -18,6 +20,10 @@ abstract final class AppRoutes {
   static const verifyEmail = '/verify-email';
   static const profileSetup = '/profile-setup';
   static const home = '/home';
+  static const newGroup = '/groups/new';
+  static const groupDetail = '/groups/:groupId';
+
+  static String groupDetailPath(String groupId) => '/groups/$groupId';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -58,7 +64,16 @@ GoRouter createAppRouter(AuthenticationController controller) {
       ),
       GoRoute(
         path: AppRoutes.home,
-        builder: (context, state) => const AuthenticatedHomeScreen(),
+        builder: (context, state) => const GroupListScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.newGroup,
+        builder: (context, state) => const CreateGroupScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.groupDetail,
+        builder: (context, state) =>
+            GroupDetailScreen(groupId: state.pathParameters['groupId']!),
       ),
     ],
   );
@@ -89,5 +104,11 @@ String? authenticationRedirect({
     return location == AppRoutes.profileSetup ? null : AppRoutes.profileSetup;
   }
 
-  return location == AppRoutes.home ? null : AppRoutes.home;
+  if (location == AppRoutes.home ||
+      location == AppRoutes.newGroup ||
+      location.startsWith('/groups/')) {
+    return null;
+  }
+
+  return AppRoutes.home;
 }

@@ -39,6 +39,12 @@ Composite foreign keys on the payer, split, and settlement tables ensure that re
 
 The profile trigger continues to create a minimal private record with the fallback name `Member`, but that value does not mean onboarding is complete. `profiles.onboarding_completed_at` is null until the user explicitly completes setup. The authenticated client invokes `public.complete_profile(text)` rather than directly updating the table. The function trims the supplied name, rejects blank or whitespace-only input, enforces the 80-character profile limit, updates only `auth.uid()`'s profile, and records the completion timestamp in the same statement. This keeps the onboarding boundary explicit and atomic.
 
+## Group creation and guests
+
+An authenticated user with completed profile onboarding creates a group through the existing `groups` insert path. The `app_private.prepare_group_creation()` trigger requires `auth.uid()`, assigns that UUID as `created_by`, trims and validates the 120-character name, validates the uppercase three-letter currency code, and disallows creating an already archived group. The existing after-insert trigger then creates exactly one active owner membership with the user's profile display name, in the same transaction.
+
+Clients no longer have direct insert access to `group_members`. `public.add_guest_member(uuid, text)` is the narrow ordinary-client operation for this feature: it accepts only a group ID and display name, requires an active owner or administrator, refuses archived groups, trims and validates the 80-character name, and always inserts a null `user_id` with the ordinary `member` role. Once a group is archived, its group and membership transition triggers reject subsequent writes. Registered-member invitations, guest claiming, removal, and role-management interfaces remain separate future operations.
+
 ## Money and currency
 
 All money is stored as `bigint` minor units. For example, USD 10.00 is `1000` and USD 10.25 is `1025`. No floating-point money columns are used. Each group stores one uppercase ISO 4217 currency code; cross-currency calculations and conversion are intentionally out of scope.

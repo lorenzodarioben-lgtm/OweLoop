@@ -1,6 +1,6 @@
 begin;
 
-select plan(40);
+select plan(65);
 
 insert into auth.users (
   id,
@@ -143,6 +143,106 @@ select throws_ok(
   'users cannot modify another user profile directly'
 );
 
+select lives_ok(
+  $$insert into public.groups (id, name, currency_code, created_by)
+    values (
+      'cccccccc-cccc-cccc-cccc-cccccccccccc',
+      '  Weekend trip  ',
+      'AUD',
+      '22222222-2222-2222-2222-222222222222'
+    )$$,
+  'an authenticated onboarded user can create a group'
+);
+
+select is(
+  (select name from public.groups where id = 'cccccccc-cccc-cccc-cccc-cccccccccccc'),
+  'Weekend trip'::text,
+  'group creation trims the group name'
+);
+
+select is(
+  (select created_by from public.groups where id = 'cccccccc-cccc-cccc-cccc-cccccccccccc'),
+  '11111111-1111-1111-1111-111111111111'::uuid,
+  'group creation always records the authenticated creator'
+);
+
+select is(
+  (
+    select count(*)
+    from public.group_members
+    where group_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
+      and role = 'owner'::public.group_member_role
+      and removed_at is null
+  ),
+  1::bigint,
+  'group creation produces exactly one active owner'
+);
+
+select is(
+  (
+    select role
+    from public.group_members
+    where group_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
+      and user_id = '11111111-1111-1111-1111-111111111111'
+  ),
+  'owner'::public.group_member_role,
+  'the authenticated creator receives the owner role'
+);
+
+select throws_ok(
+  $$insert into public.groups (name, currency_code)
+    values ('', 'USD')$$,
+  'P0001',
+  'Group name cannot be blank',
+  'blank group names are rejected'
+);
+
+select throws_ok(
+  $$insert into public.groups (name, currency_code)
+    values ('   ', 'USD')$$,
+  'P0001',
+  'Group name cannot be blank',
+  'whitespace-only group names are rejected'
+);
+
+select throws_ok(
+  $$insert into public.groups (name, currency_code)
+    values ('Invalid currency', 'usd')$$,
+  'P0001',
+  'Currency code must be a three-letter uppercase ISO code',
+  'invalid currency codes are rejected'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '44444444-4444-4444-4444-444444444444', true);
+set local role authenticated;
+
+select throws_ok(
+  $$insert into public.groups (name, currency_code)
+    values ('Incomplete profile', 'USD')$$,
+  'P0001',
+  'Complete your profile before creating a group',
+  'an incomplete profile cannot create a group'
+);
+
+select public.complete_profile('Owner B');
+
+reset role;
+select set_config('request.jwt.claim.sub', '', true);
+set local role authenticated;
+
+select throws_ok(
+  $$insert into public.groups (name, currency_code)
+    values ('Unauthenticated group', 'USD')$$,
+  'P0001',
+  'Authentication is required to create a group',
+  'unauthenticated callers cannot create groups'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
 insert into public.groups (id, name, currency_code, created_by)
 values (
   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
@@ -151,6 +251,7 @@ values (
   '11111111-1111-1111-1111-111111111111'
 );
 
+reset role;
 insert into public.group_members (id, group_id, user_id, display_name)
 values (
   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1',
@@ -169,6 +270,122 @@ values (
   'Guest A'
 );
 
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+select lives_ok(
+  $$select public.add_guest_member(
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    '  Guest from owner  '
+  )$$,
+  'an active owner can add a guest member'
+);
+
+select is(
+  (
+    select user_id
+    from public.group_members
+    where group_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+      and display_name = 'Guest from owner'
+  ),
+  null::uuid,
+  'guest memberships have no authenticated user id'
+);
+
+select is(
+  (
+    select role
+    from public.group_members
+    where group_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+      and display_name = 'Guest from owner'
+  ),
+  'member'::public.group_member_role,
+  'guest memberships always receive the ordinary member role'
+);
+
+select is(
+  (
+    select display_name
+    from public.group_members
+    where group_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+      and display_name = 'Guest from owner'
+  ),
+  'Guest from owner'::text,
+  'guest creation trims the display name'
+);
+
+select throws_ok(
+  $$select public.add_guest_member('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '')$$,
+  'P0001',
+  'Guest display name cannot be blank',
+  'blank guest names are rejected'
+);
+
+select throws_ok(
+  $$select public.add_guest_member('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '   ')$$,
+  'P0001',
+  'Guest display name cannot be blank',
+  'whitespace-only guest names are rejected'
+);
+
+select throws_ok(
+  $$select public.add_guest_member('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', repeat('x', 81))$$,
+  'P0001',
+  'Guest display name must be 80 characters or fewer',
+  'overly long guest names are rejected'
+);
+
+select throws_ok(
+  $$insert into public.group_members (group_id, user_id, display_name)
+    values (
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      '33333333-3333-3333-3333-333333333333',
+      'Attached account'
+    )$$,
+  '42501',
+  'permission denied for table group_members',
+  'clients cannot attach arbitrary authenticated users as members'
+);
+
+insert into public.groups (id, name, currency_code)
+values (
+  'dddddddd-dddd-dddd-dddd-dddddddddddd',
+  'Archived group',
+  'USD'
+);
+
+update public.groups
+set archived_at = now()
+where id = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+
+select throws_ok(
+  $$update public.groups
+    set name = 'Changed archived group'
+    where id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'$$,
+  'P0001',
+  'Archived groups cannot be changed',
+  'archived groups reject subsequent writes'
+);
+
+select throws_ok(
+  $$select public.add_guest_member('dddddddd-dddd-dddd-dddd-dddddddddddd', 'Late guest')$$,
+  'P0001',
+  'Guests cannot be added to an archived group',
+  'guests cannot be added to archived groups'
+);
+
+select is(
+  pg_catalog.to_regprocedure('public.add_guest_member(uuid,text,public.group_member_role)'),
+  null::regprocedure,
+  'the guest operation accepts no role parameter'
+);
+
+select is(
+  pg_catalog.to_regprocedure('public.add_guest_member(uuid,text,uuid)'),
+  null::regprocedure,
+  'the guest operation accepts no registered-user parameter'
+);
+
 reset role;
 select set_config('request.jwt.claim.sub', '44444444-4444-4444-4444-444444444444', true);
 set local role authenticated;
@@ -181,6 +398,7 @@ values (
   '44444444-4444-4444-4444-444444444444'
 );
 
+reset role;
 insert into public.group_members (id, group_id, user_id, display_name)
 values (
   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1',
@@ -192,6 +410,16 @@ values (
   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
   '33333333-3333-3333-3333-333333333333',
   'Member B'
+);
+
+select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', true);
+set local role authenticated;
+
+select throws_ok(
+  $$select public.add_guest_member('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Member guest')$$,
+  'P0001',
+  'Only an active group owner or administrator can add guests',
+  'an ordinary member cannot add a guest'
 );
 
 reset role;
@@ -295,6 +523,19 @@ select is(
   (select count(*) from public.expenses where id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeee1'),
   0::bigint,
   'users cannot read unrelated expenses'
+);
+
+select is(
+  (select count(*) from public.group_members where group_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'),
+  0::bigint,
+  'group member reads remain isolated to active group members'
+);
+
+select throws_ok(
+  $$select public.add_guest_member('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Outside guest')$$,
+  'P0001',
+  'Only an active group owner or administrator can add guests',
+  'a user outside the group cannot add a guest'
 );
 
 reset role;
