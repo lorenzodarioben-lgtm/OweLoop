@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
+import '../../balances/presentation/group_balance_section.dart';
+import '../../balances/state/balances_providers.dart';
 import '../../expenses/presentation/expense_history_section.dart';
 import '../../expenses/state/expenses_providers.dart';
 import '../domain/group_models.dart';
@@ -70,13 +72,21 @@ class _GroupDetailContent extends ConsumerWidget {
       onRefresh: () async {
         await Future.wait([
           controller.load(),
+          ref
+              .read(
+                groupBalancesControllerProvider((
+                  groupId: groupId,
+                  currencyCode: group.currencyCode,
+                )),
+              )
+              .refresh(),
           ref.read(expenseHistoryControllerProvider(groupId)).refresh(),
         ]);
       },
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
-        itemCount: members.length + 3,
+        itemCount: members.length + 4,
         separatorBuilder: (_, index) =>
             index == 0 ? const SizedBox(height: 24) : const Divider(height: 1),
         itemBuilder: (context, index) {
@@ -97,14 +107,21 @@ class _GroupDetailContent extends ConsumerWidget {
           }
 
           if (index == 1) {
+            return GroupBalanceSection(
+              groupId: groupId,
+              currencyCode: group.currencyCode,
+            );
+          }
+
+          if (index == 2) {
             return const Padding(
               padding: EdgeInsets.only(bottom: 8),
               child: Text('Members'),
             );
           }
 
-          if (index <= members.length + 1) {
-            return _MemberListItem(member: members[index - 2]);
+          if (index <= members.length + 2) {
+            return _MemberListItem(member: members[index - 3]);
           }
 
           return ExpenseHistorySection(groupId: groupId);

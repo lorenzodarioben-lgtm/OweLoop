@@ -1,6 +1,6 @@
 begin;
 
-select plan(94);
+select plan(123);
 
 insert into auth.users (
   id,
@@ -1308,6 +1308,638 @@ select is(
   ),
   6::bigint,
   'equal-expense creation records the existing audit events'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+insert into public.groups (id, name, currency_code)
+values (
+  '77777777-7777-7777-7777-777777777777',
+  'Balance test group',
+  'USD'
+);
+
+reset role;
+insert into public.group_members (
+  id,
+  group_id,
+  user_id,
+  display_name,
+  removed_at
+) values (
+  '77777777-7777-7777-7777-777777777701',
+  '77777777-7777-7777-7777-777777777777',
+  '22222222-2222-2222-2222-222222222222',
+  'Alex Member',
+  null
+), (
+  '77777777-7777-7777-7777-777777777702',
+  '77777777-7777-7777-7777-777777777777',
+  null,
+  'Guest Ledger',
+  null
+), (
+  '77777777-7777-7777-7777-777777777703',
+  '77777777-7777-7777-7777-777777777777',
+  '55555555-5555-5555-5555-555555555555',
+  'Zero Member',
+  null
+), (
+  '77777777-7777-7777-7777-777777777704',
+  '77777777-7777-7777-7777-777777777777',
+  null,
+  'Removed Guest',
+  null
+);
+
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+insert into public.expenses (
+  id,
+  group_id,
+  description,
+  total_amount_minor,
+  created_by
+) values (
+  '77777777-7777-7777-7777-777777777e01',
+  '77777777-7777-7777-7777-777777777777',
+  'Shared dinner',
+  6000,
+  '11111111-1111-1111-1111-111111111111'
+);
+
+insert into public.expense_payers (expense_id, group_id, group_member_id, amount_minor)
+values (
+  '77777777-7777-7777-7777-777777777e01',
+  '77777777-7777-7777-7777-777777777777',
+  (
+    select id
+    from public.group_members
+    where group_id = '77777777-7777-7777-7777-777777777777'
+      and user_id = '11111111-1111-1111-1111-111111111111'
+  ),
+  6000
+);
+
+insert into public.expense_splits (expense_id, group_id, group_member_id, amount_minor)
+values (
+  '77777777-7777-7777-7777-777777777e01',
+  '77777777-7777-7777-7777-777777777777',
+  (
+    select id
+    from public.group_members
+    where group_id = '77777777-7777-7777-7777-777777777777'
+      and user_id = '11111111-1111-1111-1111-111111111111'
+  ),
+  3000
+), (
+  '77777777-7777-7777-7777-777777777e01',
+  '77777777-7777-7777-7777-777777777777',
+  '77777777-7777-7777-7777-777777777701',
+  3000
+);
+
+select public.finalize_expense('77777777-7777-7777-7777-777777777e01');
+
+insert into public.expenses (
+  id,
+  group_id,
+  description,
+  total_amount_minor,
+  created_by
+) values (
+  '77777777-7777-7777-7777-777777777e02',
+  '77777777-7777-7777-7777-777777777777',
+  'Alex paid for the guest',
+  300,
+  '11111111-1111-1111-1111-111111111111'
+);
+
+insert into public.expense_payers (expense_id, group_id, group_member_id, amount_minor)
+values (
+  '77777777-7777-7777-7777-777777777e02',
+  '77777777-7777-7777-7777-777777777777',
+  '77777777-7777-7777-7777-777777777701',
+  300
+);
+
+insert into public.expense_splits (expense_id, group_id, group_member_id, amount_minor)
+values (
+  '77777777-7777-7777-7777-777777777e02',
+  '77777777-7777-7777-7777-777777777777',
+  '77777777-7777-7777-7777-777777777702',
+  300
+);
+
+select public.finalize_expense('77777777-7777-7777-7777-777777777e02');
+
+insert into public.expenses (
+  id,
+  group_id,
+  description,
+  total_amount_minor,
+  created_by
+) values (
+  '77777777-7777-7777-7777-777777777e03',
+  '77777777-7777-7777-7777-777777777777',
+  'Guest paid the snacks',
+  1000,
+  '11111111-1111-1111-1111-111111111111'
+);
+
+insert into public.expense_payers (expense_id, group_id, group_member_id, amount_minor)
+values (
+  '77777777-7777-7777-7777-777777777e03',
+  '77777777-7777-7777-7777-777777777777',
+  '77777777-7777-7777-7777-777777777702',
+  1000
+);
+
+insert into public.expense_splits (expense_id, group_id, group_member_id, amount_minor)
+values (
+  '77777777-7777-7777-7777-777777777e03',
+  '77777777-7777-7777-7777-777777777777',
+  (
+    select id
+    from public.group_members
+    where group_id = '77777777-7777-7777-7777-777777777777'
+      and user_id = '11111111-1111-1111-1111-111111111111'
+  ),
+  500
+), (
+  '77777777-7777-7777-7777-777777777e03',
+  '77777777-7777-7777-7777-777777777777',
+  '77777777-7777-7777-7777-777777777702',
+  500
+);
+
+select public.finalize_expense('77777777-7777-7777-7777-777777777e03');
+
+insert into public.expenses (
+  id,
+  group_id,
+  description,
+  total_amount_minor,
+  created_by
+) values (
+  '77777777-7777-7777-7777-777777777e04',
+  '77777777-7777-7777-7777-777777777777',
+  'Removed guest share',
+  200,
+  '11111111-1111-1111-1111-111111111111'
+);
+
+insert into public.expense_payers (expense_id, group_id, group_member_id, amount_minor)
+values (
+  '77777777-7777-7777-7777-777777777e04',
+  '77777777-7777-7777-7777-777777777777',
+  (
+    select id
+    from public.group_members
+    where group_id = '77777777-7777-7777-7777-777777777777'
+      and user_id = '11111111-1111-1111-1111-111111111111'
+  ),
+  200
+);
+
+insert into public.expense_splits (expense_id, group_id, group_member_id, amount_minor)
+values (
+  '77777777-7777-7777-7777-777777777e04',
+  '77777777-7777-7777-7777-777777777777',
+  '77777777-7777-7777-7777-777777777704',
+  200
+);
+
+select public.finalize_expense('77777777-7777-7777-7777-777777777e04');
+
+insert into public.expenses (
+  id,
+  group_id,
+  description,
+  total_amount_minor,
+  created_by
+) values (
+  '77777777-7777-7777-7777-777777777e05',
+  '77777777-7777-7777-7777-777777777777',
+  'Voided balance expense',
+  400,
+  '11111111-1111-1111-1111-111111111111'
+);
+
+insert into public.expense_payers (expense_id, group_id, group_member_id, amount_minor)
+values (
+  '77777777-7777-7777-7777-777777777e05',
+  '77777777-7777-7777-7777-777777777777',
+  (
+    select id
+    from public.group_members
+    where group_id = '77777777-7777-7777-7777-777777777777'
+      and user_id = '11111111-1111-1111-1111-111111111111'
+  ),
+  400
+);
+
+insert into public.expense_splits (expense_id, group_id, group_member_id, amount_minor)
+values (
+  '77777777-7777-7777-7777-777777777e05',
+  '77777777-7777-7777-7777-777777777777',
+  '77777777-7777-7777-7777-777777777701',
+  400
+);
+
+select public.finalize_expense('77777777-7777-7777-7777-777777777e05');
+select public.void_expense('77777777-7777-7777-7777-777777777e05');
+
+insert into public.expenses (
+  id,
+  group_id,
+  description,
+  total_amount_minor,
+  created_by
+) values (
+  '77777777-7777-7777-7777-777777777e06',
+  '77777777-7777-7777-7777-777777777777',
+  'Unfinished balance draft',
+  999,
+  '11111111-1111-1111-1111-111111111111'
+);
+
+insert into public.settlements (
+  group_id,
+  paying_member_id,
+  receiving_member_id,
+  amount_minor,
+  created_by
+) values (
+  '77777777-7777-7777-7777-777777777777',
+  '77777777-7777-7777-7777-777777777701',
+  (
+    select id
+    from public.group_members
+    where group_id = '77777777-7777-7777-7777-777777777777'
+      and user_id = '11111111-1111-1111-1111-111111111111'
+  ),
+  500,
+  '11111111-1111-1111-1111-111111111111'
+), (
+  '77777777-7777-7777-7777-777777777777',
+  '77777777-7777-7777-7777-777777777702',
+  '77777777-7777-7777-7777-777777777701',
+  777,
+  '11111111-1111-1111-1111-111111111111'
+);
+
+update public.settlements
+set voided_at = now()
+where group_id = '77777777-7777-7777-7777-777777777777'
+  and amount_minor = 777;
+
+update public.group_members
+set removed_at = now()
+where id = '77777777-7777-7777-7777-777777777704';
+
+select lives_ok(
+  $$select * from public.get_group_balances('77777777-7777-7777-7777-777777777777')$$,
+  'an active registered member can load balances for their group'
+);
+
+select is(
+  (select count(*) from public.get_group_balances('77777777-7777-7777-7777-777777777777')),
+  5::bigint,
+  'active members and a removed member with history are returned'
+);
+
+select is(
+  (
+    select net_balance_minor
+    from public.get_group_balances('77777777-7777-7777-7777-777777777777')
+    where is_current_user
+  ),
+  2200::bigint,
+  'a payer who also participates has the exact positive USD balance'
+);
+
+select is(
+  (
+    select net_balance_minor
+    from public.get_group_balances('77777777-7777-7777-7777-777777777777')
+    where group_member_id = '77777777-7777-7777-7777-777777777701'
+  ),
+  (-2200)::bigint,
+  'a payer who is not a participant aggregates to the exact negative balance'
+);
+
+select is(
+  (
+    select net_balance_minor
+    from public.get_group_balances('77777777-7777-7777-7777-777777777777')
+    where group_member_id = '77777777-7777-7777-7777-777777777702'
+  ),
+  200::bigint,
+  'a guest payer and participant has the correct balance'
+);
+
+select is(
+  (
+    select net_balance_minor
+    from public.get_group_balances('77777777-7777-7777-7777-777777777777')
+    where group_member_id = '77777777-7777-7777-7777-777777777704'
+  ),
+  (-200)::bigint,
+  'a removed member with historical debt remains visible'
+);
+
+select is(
+  (
+    select net_balance_minor
+    from public.get_group_balances('77777777-7777-7777-7777-777777777777')
+    where group_member_id = '77777777-7777-7777-7777-777777777703'
+  ),
+  0::bigint,
+  'an active zero-balance member remains visible'
+);
+
+select is(
+  (select sum(net_balance_minor)::bigint from public.get_group_balances('77777777-7777-7777-7777-777777777777')),
+  0::bigint,
+  'valid USD group balances sum exactly to zero'
+);
+
+select is(
+  array(select display_name from public.get_group_balances('77777777-7777-7777-7777-777777777777')),
+  array['Owner A', 'Alex Member', 'Guest Ledger', 'Zero Member', 'Removed Guest']::text[],
+  'balances order the current member, active members, then removed members deterministically'
+);
+
+select is(
+  (
+    select net_balance_minor
+    from public.get_group_balances('77777777-7777-7777-7777-777777777777')
+    where is_current_user
+  ),
+  2200::bigint,
+  'draft expenses do not contribute to balances'
+);
+
+select is(
+  (
+    select net_balance_minor
+    from public.get_group_balances('77777777-7777-7777-7777-777777777777')
+    where group_member_id = '77777777-7777-7777-7777-777777777701'
+  ),
+  (-2200)::bigint,
+  'voided expenses do not contribute to balances'
+);
+
+select is(
+  (
+    select net_balance_minor
+    from public.get_group_balances('77777777-7777-7777-7777-777777777777')
+    where group_member_id = '77777777-7777-7777-7777-777777777701'
+  ),
+  (-2200)::bigint,
+  'a non-voided settlement increases the paying member balance by its amount'
+);
+
+select is(
+  (
+    select net_balance_minor
+    from public.get_group_balances('77777777-7777-7777-7777-777777777777')
+    where is_current_user
+  ),
+  2200::bigint,
+  'a non-voided settlement decreases the receiving member balance by its amount'
+);
+
+select is(
+  (
+    select net_balance_minor
+    from public.get_group_balances('77777777-7777-7777-7777-777777777777')
+    where group_member_id = '77777777-7777-7777-7777-777777777702'
+  ),
+  200::bigint,
+  'a voided settlement does not contribute to balances'
+);
+
+insert into public.groups (id, name, currency_code)
+values (
+  '55555555-5555-5555-5555-555555555556',
+  'Zero balance group',
+  'USD'
+);
+
+reset role;
+insert into public.group_members (id, group_id, user_id, display_name)
+values (
+  '55555555-5555-5555-5555-555555555501',
+  '55555555-5555-5555-5555-555555555556',
+  null,
+  'Zero guest'
+);
+
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+select is(
+  (select count(*) from public.get_group_balances('55555555-5555-5555-5555-555555555556')),
+  2::bigint,
+  'a group with no expenses returns all active members'
+);
+
+select is(
+  (select sum(net_balance_minor)::bigint from public.get_group_balances('55555555-5555-5555-5555-555555555556')),
+  0::bigint,
+  'a group with no expenses returns exact zero balances'
+);
+
+insert into public.groups (id, name, currency_code)
+values (
+  '66666666-6666-6666-6666-666666666666',
+  'JPY balance group',
+  'JPY'
+);
+
+reset role;
+insert into public.group_members (id, group_id, user_id, display_name)
+values (
+  '66666666-6666-6666-6666-666666666601',
+  '66666666-6666-6666-6666-666666666666',
+  null,
+  'JPY one'
+), (
+  '66666666-6666-6666-6666-666666666602',
+  '66666666-6666-6666-6666-666666666666',
+  null,
+  'JPY two'
+), (
+  '66666666-6666-6666-6666-666666666603',
+  '66666666-6666-6666-6666-666666666666',
+  null,
+  'JPY three'
+);
+
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+select lives_ok(
+  $$select public.create_equal_expense(
+    '66666666-6666-6666-6666-666666666666',
+    'JPY remainder',
+    1000,
+    '2026-07-31T12:00:00Z'::timestamptz,
+    (
+      select id
+      from public.group_members
+      where group_id = '66666666-6666-6666-6666-666666666666'
+        and user_id = '11111111-1111-1111-1111-111111111111'
+    ),
+    array[
+      '66666666-6666-6666-6666-666666666601'::uuid,
+      '66666666-6666-6666-6666-666666666602'::uuid,
+      '66666666-6666-6666-6666-666666666603'::uuid
+    ]
+  )$$,
+  'a JPY equal expense records exact integer remainder balances'
+);
+
+select is(
+  (
+    select net_balance_minor
+    from public.get_group_balances('66666666-6666-6666-6666-666666666666')
+    where group_member_id = '66666666-6666-6666-6666-666666666601'
+  ),
+  (-334)::bigint,
+  'the deterministic JPY remainder split contributes exact minor units'
+);
+
+select is(
+  (
+    select net_balance_minor
+    from public.get_group_balances('66666666-6666-6666-6666-666666666666')
+    where is_current_user
+  ),
+  1000::bigint,
+  'JPY balance totals remain bigint integer units'
+);
+
+select is(
+  (select sum(net_balance_minor)::bigint from public.get_group_balances('66666666-6666-6666-6666-666666666666')),
+  0::bigint,
+  'JPY group balances sum exactly to zero'
+);
+
+insert into public.groups (id, name, currency_code)
+values (
+  '44444444-4444-4444-4444-444444444446',
+  'Other balance group',
+  'USD'
+);
+
+reset role;
+insert into public.group_members (id, group_id, user_id, display_name)
+values (
+  '44444444-4444-4444-4444-444444444401',
+  '44444444-4444-4444-4444-444444444446',
+  null,
+  'Other group guest'
+);
+
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+select is_empty(
+  $$select 1
+    from public.get_group_balances('77777777-7777-7777-7777-777777777777')
+    where group_member_id = '44444444-4444-4444-4444-444444444401'$$,
+  'cross-group members cannot leak into a group balance result'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '', true);
+set local role authenticated;
+
+select throws_ok(
+  $$select * from public.get_group_balances('77777777-7777-7777-7777-777777777777')$$,
+  'P0001',
+  'Authentication is required to load group balances',
+  'unauthenticated callers cannot load balances'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
+set local role authenticated;
+
+select throws_ok(
+  $$select * from public.get_group_balances('77777777-7777-7777-7777-777777777777')$$,
+  'P0001',
+  'Group is unavailable',
+  'an unrelated authenticated user cannot access group balances'
+);
+
+reset role;
+
+select ok(
+  not pg_catalog.has_function_privilege(
+    'anon'::name,
+    'public.get_group_balances(uuid)'::regprocedure,
+    'execute'::text
+  ),
+  'unauthenticated roles cannot execute the balance operation'
+);
+
+select is(
+  pg_catalog.to_regprocedure('public.get_group_balances(uuid,uuid)'),
+  null::regprocedure,
+  'the balance operation never accepts a caller user or member id'
+);
+
+select is(
+  pg_catalog.to_regclass('public.group_balances'),
+  null::regclass,
+  'no mutable group-balance table exists'
+);
+
+select is_empty(
+  $$select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and column_name = 'net_balance_minor'$$,
+  'no mutable net-balance column exists'
+);
+
+set local session_replication_role = replica;
+update public.expense_payers
+set amount_minor = 5999
+where expense_id = '77777777-7777-7777-7777-777777777e01';
+set local session_replication_role = origin;
+
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+select throws_ok(
+  $$select * from public.get_group_balances('77777777-7777-7777-7777-777777777777')$$,
+  'P0001',
+  'Financial records are inconsistent',
+  'the balance operation fails safely when posted financial records are inconsistent'
+);
+
+reset role;
+set local session_replication_role = replica;
+update public.expense_payers
+set amount_minor = 6000
+where expense_id = '77777777-7777-7777-7777-777777777e01';
+set local session_replication_role = origin;
+
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+select is(
+  (select sum(net_balance_minor)::bigint from public.get_group_balances('77777777-7777-7777-7777-777777777777')),
+  0::bigint,
+  'balance loading recovers after consistent financial records are restored'
 );
 
 select * from finish();

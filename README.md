@@ -6,7 +6,7 @@ The initial implementation lives in [`mobile/`](mobile/). It uses Flutter, Supab
 
 ## Current project status
 
-The repository contains the application and collaboration foundations, a secure Version 0.1 database foundation, email-and-password authentication with profile onboarding, group creation with guest membership, and equal-split expense entry. An onboarded group member can record one payer and selected active participants; the database posts the expense atomically with exact minor-unit splits. Balances, settlements, invitations, guest claiming, and expense editing remain planned work; see the [product requirements](docs/product-requirements.md) and [roadmap](docs/roadmap.md).
+The repository contains the application and collaboration foundations, a secure Version 0.1 database foundation, email-and-password authentication with profile onboarding, group creation with guest membership, equal-split expense entry, and transparent per-group balances. An onboarded group member can record one payer and selected active participants; the database posts the expense atomically with exact minor-unit splits. Balances are derived on demand from posted, non-voided expenses and recorded, non-voided settlements using exact minor units. Settlement entry, invitations, guest claiming, and expense editing remain planned work; see the [product requirements](docs/product-requirements.md) and [roadmap](docs/roadmap.md).
 
 ## Local database development
 

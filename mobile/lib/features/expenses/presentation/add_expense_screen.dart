@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
+import '../../balances/state/balances_providers.dart';
 import '../../groups/domain/group_models.dart';
 import '../../groups/state/groups_providers.dart';
 import '../../groups/state/groups_state.dart';
@@ -126,7 +127,17 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         );
 
     if (expense != null && mounted) {
-      await ref.read(expenseHistoryControllerProvider(group.id)).refresh();
+      await Future.wait([
+        ref.read(expenseHistoryControllerProvider(group.id)).refresh(),
+        ref
+            .read(
+              groupBalancesControllerProvider((
+                groupId: group.id,
+                currencyCode: group.currencyCode,
+              )),
+            )
+            .refresh(),
+      ]);
       if (mounted) {
         context.go(AppRoutes.expenseDetailPath(group.id, expense.id));
       }
