@@ -5,15 +5,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oweloop/app/app_bootstrap.dart';
 import 'package:oweloop/features/authentication/state/authentication_providers.dart';
+import 'package:oweloop/features/expenses/state/expenses_providers.dart';
 import 'package:oweloop/features/groups/domain/group_models.dart';
 import 'package:oweloop/features/groups/presentation/group_feedback.dart';
 import 'package:oweloop/features/groups/state/groups_providers.dart';
 
 import '../../fakes/authentication_fakes.dart';
+import '../../fakes/expenses_fakes.dart';
 import '../../fakes/groups_fakes.dart';
 
 void main() {
-  Widget buildApp(FakeGroupsRepository groupsRepository) {
+  Widget buildApp(
+    FakeGroupsRepository groupsRepository, {
+    FakeExpensesRepository? expensesRepository,
+  }) {
     return ProviderScope(
       overrides: [
         authRepositoryProvider.overrideWithValue(
@@ -23,6 +28,9 @@ void main() {
           FakeProfileRepository(currentProfile: completedTestProfile),
         ),
         groupsRepositoryProvider.overrideWithValue(groupsRepository),
+        expensesRepositoryProvider.overrideWithValue(
+          expensesRepository ?? FakeExpensesRepository(),
+        ),
       ],
       child: const OweLoopBootstrap(),
     );
@@ -30,9 +38,12 @@ void main() {
 
   Future<void> pumpApp(
     WidgetTester tester,
-    FakeGroupsRepository groupsRepository,
-  ) async {
-    await tester.pumpWidget(buildApp(groupsRepository));
+    FakeGroupsRepository groupsRepository, {
+    FakeExpensesRepository? expensesRepository,
+  }) async {
+    await tester.pumpWidget(
+      buildApp(groupsRepository, expensesRepository: expensesRepository),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -89,6 +100,7 @@ void main() {
     expect(find.text('Taylor'), findsOneWidget);
     expect(find.text('Morgan'), findsOneWidget);
     expect(find.text('Guest'), findsOneWidget);
+    expect(find.text('Expense history'), findsOneWidget);
   });
 
   testWidgets('shows an error and retries the group list', (tester) async {
@@ -163,12 +175,18 @@ void main() {
     await tester.tap(find.text('Add guest'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Add guest').last);
+    final addGuestButton = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.widgetWithText(FilledButton, 'Add guest'),
+    );
+    await tester.ensureVisible(addGuestButton);
+    await tester.tap(addGuestButton);
     await tester.pump();
     expect(find.text('Enter a guest name.'), findsOneWidget);
 
     await tester.enterText(find.byType(TextFormField), 'Morgan');
-    await tester.tap(find.widgetWithText(FilledButton, 'Add guest').last);
+    await tester.ensureVisible(addGuestButton);
+    await tester.tap(addGuestButton);
     await tester.pumpAndSettle();
 
     expect(

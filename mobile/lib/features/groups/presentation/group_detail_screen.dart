@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../app/router.dart';
+import '../../expenses/presentation/expense_history_section.dart';
+import '../../expenses/state/expenses_providers.dart';
 import '../domain/group_models.dart';
 import '../state/groups_providers.dart';
 import '../state/groups_state.dart';
@@ -63,11 +67,16 @@ class _GroupDetailContent extends ConsumerWidget {
     final controller = ref.read(groupDetailControllerProvider(groupId));
 
     return RefreshIndicator(
-      onRefresh: controller.load,
+      onRefresh: () async {
+        await Future.wait([
+          controller.load(),
+          ref.read(expenseHistoryControllerProvider(groupId)).refresh(),
+        ]);
+      },
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
-        itemCount: members.length + 2,
+        itemCount: members.length + 3,
         separatorBuilder: (_, index) =>
             index == 0 ? const SizedBox(height: 24) : const Divider(height: 1),
         itemBuilder: (context, index) {
@@ -83,6 +92,7 @@ class _GroupDetailContent extends ConsumerWidget {
                       );
                     }
                   : null,
+              onAddExpense: () => context.go(AppRoutes.newExpensePath(groupId)),
             );
           }
 
@@ -93,7 +103,11 @@ class _GroupDetailContent extends ConsumerWidget {
             );
           }
 
-          return _MemberListItem(member: members[index - 2]);
+          if (index <= members.length + 1) {
+            return _MemberListItem(member: members[index - 2]);
+          }
+
+          return ExpenseHistorySection(groupId: groupId);
         },
       ),
     );
@@ -101,10 +115,15 @@ class _GroupDetailContent extends ConsumerWidget {
 }
 
 class _GroupSummary extends StatelessWidget {
-  const _GroupSummary({required this.group, required this.onAddGuest});
+  const _GroupSummary({
+    required this.group,
+    required this.onAddGuest,
+    required this.onAddExpense,
+  });
 
   final AppGroup group;
   final VoidCallback? onAddGuest;
+  final VoidCallback onAddExpense;
 
   @override
   Widget build(BuildContext context) {
@@ -121,14 +140,24 @@ class _GroupSummary extends StatelessWidget {
             Chip(label: Text('Your role: ${group.currentUserRole.label}')),
           ],
         ),
-        if (onAddGuest != null) ...[
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: onAddGuest,
-            icon: const Icon(Icons.person_add_alt_1_outlined),
-            label: const Text('Add guest'),
-          ),
-        ],
+        const SizedBox(height: 20),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            FilledButton.icon(
+              onPressed: onAddExpense,
+              icon: const Icon(Icons.add),
+              label: const Text('Add expense'),
+            ),
+            if (onAddGuest != null)
+              OutlinedButton.icon(
+                onPressed: onAddGuest,
+                icon: const Icon(Icons.person_add_alt_1_outlined),
+                label: const Text('Add guest'),
+              ),
+          ],
+        ),
       ],
     );
   }

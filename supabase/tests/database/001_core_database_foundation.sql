@@ -1,6 +1,6 @@
 begin;
 
-select plan(65);
+select plan(94);
 
 insert into auth.users (
   id,
@@ -852,6 +852,462 @@ select throws_ok(
   'P0001',
   'A group must retain an active owner',
   'the final group owner cannot be removed without a replacement'
+);
+
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+insert into public.groups (id, name, currency_code)
+values (
+  '99999999-9999-9999-9999-999999999999',
+  'Expense test group',
+  'USD'
+);
+
+reset role;
+insert into public.group_members (
+  id,
+  group_id,
+  user_id,
+  display_name,
+  removed_at
+) values (
+  '99999999-9999-9999-9999-999999999901',
+  '99999999-9999-9999-9999-999999999999',
+  '22222222-2222-2222-2222-222222222222',
+  'Expense member',
+  null
+), (
+  '99999999-9999-9999-9999-999999999902',
+  '99999999-9999-9999-9999-999999999999',
+  null,
+  'Expense guest',
+  null
+), (
+  '99999999-9999-9999-9999-999999999903',
+  '99999999-9999-9999-9999-999999999999',
+  '55555555-5555-5555-5555-555555555555',
+  'Expense successor',
+  null
+), (
+  '99999999-9999-9999-9999-999999999904',
+  '99999999-9999-9999-9999-999999999999',
+  null,
+  'Removed expense guest',
+  now()
+);
+
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+select lives_ok(
+  $$select public.create_equal_expense(
+    '99999999-9999-9999-9999-999999999999',
+    '  Dinner with everyone  ',
+    1000,
+    '2026-07-29T12:00:00Z'::timestamptz,
+    '99999999-9999-9999-9999-999999999901',
+    array[
+      '99999999-9999-9999-9999-999999999903'::uuid,
+      '99999999-9999-9999-9999-999999999901'::uuid,
+      '99999999-9999-9999-9999-999999999902'::uuid
+    ]
+  )$$,
+  'an active member can create and post an equal expense atomically'
+);
+
+select is(
+  (
+    select status
+    from public.expenses
+    where description = 'Dinner with everyone'
+  ),
+  'posted'::public.expense_status,
+  'the equal expense is posted before the function returns'
+);
+
+select is(
+  (
+    select description
+    from public.expenses
+    where description = 'Dinner with everyone'
+  ),
+  'Dinner with everyone'::text,
+  'equal expense creation trims the description'
+);
+
+select is(
+  (
+    select sum(payer.amount_minor)::bigint
+    from public.expense_payers as payer
+    where payer.expense_id = (
+      select id from public.expenses where description = 'Dinner with everyone'
+    )
+  ),
+  1000::bigint,
+  'the equal expense payer total exactly matches the expense total'
+);
+
+select is(
+  (
+    select sum(split.amount_minor)::bigint
+    from public.expense_splits as split
+    where split.expense_id = (
+      select id from public.expenses where description = 'Dinner with everyone'
+    )
+  ),
+  1000::bigint,
+  'the equal expense split total exactly matches the expense total'
+);
+
+select is(
+  (
+    select amount_minor
+    from public.expense_splits
+    where expense_id = (
+      select id from public.expenses where description = 'Dinner with everyone'
+    )
+      and group_member_id = '99999999-9999-9999-9999-999999999901'
+  ),
+  334::bigint,
+  'the first member UUID receives the deterministic remainder unit'
+);
+
+select is(
+  (
+    select amount_minor
+    from public.expense_splits
+    where expense_id = (
+      select id from public.expenses where description = 'Dinner with everyone'
+    )
+      and group_member_id = '99999999-9999-9999-9999-999999999902'
+  ),
+  333::bigint,
+  'the second member UUID receives the base equal share'
+);
+
+select is(
+  (
+    select amount_minor
+    from public.expense_splits
+    where expense_id = (
+      select id from public.expenses where description = 'Dinner with everyone'
+    )
+      and group_member_id = '99999999-9999-9999-9999-999999999903'
+  ),
+  333::bigint,
+  'the third member UUID receives the base equal share'
+);
+
+select lives_ok(
+  $$select public.create_equal_expense(
+    '99999999-9999-9999-9999-999999999999',
+    'Solo expense',
+    333,
+    '2026-07-29T12:00:00Z'::timestamptz,
+    '99999999-9999-9999-9999-999999999901',
+    array['99999999-9999-9999-9999-999999999901'::uuid]
+  )$$,
+  'an equal expense permits one participant'
+);
+
+select lives_ok(
+  $$select public.create_equal_expense(
+    '99999999-9999-9999-9999-999999999999',
+    'Guest paid',
+    500,
+    '2026-07-29T12:00:00Z'::timestamptz,
+    '99999999-9999-9999-9999-999999999902',
+    array['99999999-9999-9999-9999-999999999901'::uuid]
+  )$$,
+  'an active guest can be recorded as the payer'
+);
+
+select lives_ok(
+  $$select public.create_equal_expense(
+    '99999999-9999-9999-9999-999999999999',
+    'Guest participated',
+    500,
+    '2026-07-29T12:00:00Z'::timestamptz,
+    '99999999-9999-9999-9999-999999999901',
+    array['99999999-9999-9999-9999-999999999902'::uuid]
+  )$$,
+  'an active guest can be recorded as a participant'
+);
+
+select throws_ok(
+  $$select public.create_equal_expense(
+    '99999999-9999-9999-9999-999999999999',
+    '   ',
+    100,
+    '2026-07-29T12:00:00Z'::timestamptz,
+    '99999999-9999-9999-9999-999999999901',
+    array['99999999-9999-9999-9999-999999999901'::uuid]
+  )$$,
+  'P0001',
+  'Expense description cannot be blank',
+  'blank equal-expense descriptions are rejected'
+);
+
+select throws_ok(
+  $$select public.create_equal_expense(
+    '99999999-9999-9999-9999-999999999999',
+    'Zero total',
+    0,
+    '2026-07-29T12:00:00Z'::timestamptz,
+    '99999999-9999-9999-9999-999999999901',
+    array['99999999-9999-9999-9999-999999999901'::uuid]
+  )$$,
+  'P0001',
+  'Expense total must be greater than zero',
+  'zero equal-expense totals are rejected'
+);
+
+select throws_ok(
+  $$select public.create_equal_expense(
+    '99999999-9999-9999-9999-999999999999',
+    'Negative total',
+    -1,
+    '2026-07-29T12:00:00Z'::timestamptz,
+    '99999999-9999-9999-9999-999999999901',
+    array['99999999-9999-9999-9999-999999999901'::uuid]
+  )$$,
+  'P0001',
+  'Expense total must be greater than zero',
+  'negative equal-expense totals are rejected'
+);
+
+select throws_ok(
+  $$select public.create_equal_expense(
+    '99999999-9999-9999-9999-999999999999',
+    'No participants',
+    100,
+    '2026-07-29T12:00:00Z'::timestamptz,
+    '99999999-9999-9999-9999-999999999901',
+    array[]::uuid[]
+  )$$,
+  'P0001',
+  'Select at least one active participant',
+  'an equal expense requires at least one participant'
+);
+
+select throws_ok(
+  $$select public.create_equal_expense(
+    '99999999-9999-9999-9999-999999999999',
+    'Duplicate participant',
+    100,
+    '2026-07-29T12:00:00Z'::timestamptz,
+    '99999999-9999-9999-9999-999999999901',
+    array[
+      '99999999-9999-9999-9999-999999999901'::uuid,
+      '99999999-9999-9999-9999-999999999901'::uuid
+    ]
+  )$$,
+  'P0001',
+  'Participants cannot be selected more than once',
+  'duplicate equal-expense participants are rejected'
+);
+
+select throws_ok(
+  $$select public.create_equal_expense(
+    '99999999-9999-9999-9999-999999999999',
+    'Cross-group payer',
+    100,
+    '2026-07-29T12:00:00Z'::timestamptz,
+    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1',
+    array['99999999-9999-9999-9999-999999999901'::uuid]
+  )$$,
+  'P0001',
+  'Payer must be an active member of this group',
+  'a cross-group payer is rejected'
+);
+
+select throws_ok(
+  $$select public.create_equal_expense(
+    '99999999-9999-9999-9999-999999999999',
+    'Cross-group participant',
+    100,
+    '2026-07-29T12:00:00Z'::timestamptz,
+    '99999999-9999-9999-9999-999999999901',
+    array[
+      '99999999-9999-9999-9999-999999999901'::uuid,
+      'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1'::uuid
+    ]
+  )$$,
+  'P0001',
+  'Participants must be active members of this group',
+  'a cross-group participant is rejected'
+);
+
+select throws_ok(
+  $$select public.create_equal_expense(
+    '99999999-9999-9999-9999-999999999999',
+    'Removed participant',
+    100,
+    '2026-07-29T12:00:00Z'::timestamptz,
+    '99999999-9999-9999-9999-999999999901',
+    array['99999999-9999-9999-9999-999999999904'::uuid]
+  )$$,
+  'P0001',
+  'Participants must be active members of this group',
+  'a removed participant is rejected'
+);
+
+insert into public.groups (id, name, currency_code)
+values (
+  '88888888-8888-8888-8888-888888888888',
+  'Archived expense group',
+  'USD'
+);
+
+update public.groups
+set archived_at = now()
+where id = '88888888-8888-8888-8888-888888888888';
+
+select throws_ok(
+  $$select public.create_equal_expense(
+    '88888888-8888-8888-8888-888888888888',
+    'Archived expense',
+    100,
+    '2026-07-29T12:00:00Z'::timestamptz,
+    (
+      select id
+      from public.group_members
+      where group_id = '88888888-8888-8888-8888-888888888888'
+        and user_id = '11111111-1111-1111-1111-111111111111'
+    ),
+    array[(
+      select id
+      from public.group_members
+      where group_id = '88888888-8888-8888-8888-888888888888'
+        and user_id = '11111111-1111-1111-1111-111111111111'
+    )]
+  )$$,
+  'P0001',
+  'Expenses cannot be added to an archived group',
+  'an archived group rejects equal-expense creation'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '', true);
+set local role authenticated;
+
+select throws_ok(
+  $$select public.create_equal_expense(
+    '99999999-9999-9999-9999-999999999999',
+    'Unauthenticated expense',
+    100,
+    '2026-07-29T12:00:00Z'::timestamptz,
+    '99999999-9999-9999-9999-999999999901',
+    array['99999999-9999-9999-9999-999999999901'::uuid]
+  )$$,
+  'P0001',
+  'Authentication is required to create an expense',
+  'unauthenticated callers cannot create equal expenses'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
+set local role authenticated;
+
+select public.complete_profile('Outsider');
+
+select throws_ok(
+  $$select public.create_equal_expense(
+    '99999999-9999-9999-9999-999999999999',
+    'Outsider expense',
+    100,
+    '2026-07-29T12:00:00Z'::timestamptz,
+    '99999999-9999-9999-9999-999999999901',
+    array['99999999-9999-9999-9999-999999999901'::uuid]
+  )$$,
+  'P0001',
+  'Only an active group member can create an expense',
+  'an unrelated user cannot create an equal expense'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+select throws_ok(
+  $$select public.create_equal_expense(
+    '99999999-9999-9999-9999-999999999999',
+    'Atomic validation failure',
+    100,
+    '2026-07-29T12:00:00Z'::timestamptz,
+    '99999999-9999-9999-9999-999999999901',
+    array['bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1'::uuid]
+  )$$,
+  'P0001',
+  'Participants must be active members of this group',
+  'a failed equal-expense validation aborts the transaction'
+);
+
+select is(
+  (
+    select count(*)
+    from public.expenses
+    where description = 'Atomic validation failure'
+  ),
+  0::bigint,
+  'a failed equal-expense validation persists no partial expense'
+);
+
+select lives_ok(
+  $$update public.expense_payers
+    set amount_minor = 999
+    where expense_id = (
+      select id from public.expenses where description = 'Dinner with everyone'
+    )$$,
+  'posted payer writes are ignored by row-level access'
+);
+
+select is(
+  (
+    select amount_minor
+    from public.expense_payers
+    where expense_id = (
+      select id from public.expenses where description = 'Dinner with everyone'
+    )
+  ),
+  1000::bigint,
+  'posted payer amounts remain immutable'
+);
+
+select lives_ok(
+  $$update public.expense_splits
+    set amount_minor = 999
+    where expense_id = (
+      select id from public.expenses where description = 'Dinner with everyone'
+    )
+      and group_member_id = '99999999-9999-9999-9999-999999999901'$$,
+  'posted split writes are ignored by row-level access'
+);
+
+select is(
+  (
+    select amount_minor
+    from public.expense_splits
+    where expense_id = (
+      select id from public.expenses where description = 'Dinner with everyone'
+    )
+      and group_member_id = '99999999-9999-9999-9999-999999999901'
+  ),
+  334::bigint,
+  'posted split amounts remain immutable'
+);
+
+select is(
+  (
+    select count(*)
+    from public.expense_events
+    where expense_id = (
+      select id from public.expenses where description = 'Dinner with everyone'
+    )
+  ),
+  6::bigint,
+  'equal-expense creation records the existing audit events'
 );
 
 select * from finish();

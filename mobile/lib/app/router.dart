@@ -9,6 +9,8 @@ import '../features/authentication/presentation/verification_pending_screen.dart
 import '../features/authentication/state/authentication_controller.dart';
 import '../features/authentication/state/authentication_providers.dart';
 import '../features/authentication/state/authentication_state.dart';
+import '../features/expenses/presentation/add_expense_screen.dart';
+import '../features/expenses/presentation/expense_detail_screen.dart';
 import '../features/groups/presentation/create_group_screen.dart';
 import '../features/groups/presentation/group_detail_screen.dart';
 import '../features/groups/presentation/group_list_screen.dart';
@@ -22,8 +24,16 @@ abstract final class AppRoutes {
   static const home = '/home';
   static const newGroup = '/groups/new';
   static const groupDetail = '/groups/:groupId';
+  static const newExpense = '/groups/:groupId/expenses/new';
+  static const expenseDetail = '/groups/:groupId/expenses/:expenseId';
 
   static String groupDetailPath(String groupId) => '/groups/$groupId';
+
+  static String newExpensePath(String groupId) =>
+      '/groups/$groupId/expenses/new';
+
+  static String expenseDetailPath(String groupId, String expenseId) =>
+      '/groups/$groupId/expenses/$expenseId';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -74,6 +84,18 @@ GoRouter createAppRouter(AuthenticationController controller) {
         path: AppRoutes.groupDetail,
         builder: (context, state) =>
             GroupDetailScreen(groupId: state.pathParameters['groupId']!),
+      ),
+      GoRoute(
+        path: AppRoutes.newExpense,
+        builder: (context, state) =>
+            AddExpenseScreen(groupId: state.pathParameters['groupId']!),
+      ),
+      GoRoute(
+        path: AppRoutes.expenseDetail,
+        builder: (context, state) => ExpenseDetailScreen(
+          groupId: state.pathParameters['groupId']!,
+          expenseId: state.pathParameters['expenseId']!,
+        ),
       ),
     ],
   );
