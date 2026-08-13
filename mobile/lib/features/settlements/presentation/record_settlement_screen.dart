@@ -266,6 +266,7 @@ class _SettlementForm extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
+                  key: const Key('settlement-amount-input'),
                   controller: amountController,
                   keyboardType: TextInputType.numberWithOptions(
                     decimal: fractionDigits != null && fractionDigits > 0,

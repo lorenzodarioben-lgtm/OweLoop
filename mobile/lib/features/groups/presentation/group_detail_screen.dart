@@ -7,6 +7,7 @@ import '../../balances/presentation/group_balance_section.dart';
 import '../../balances/state/balances_providers.dart';
 import '../../expenses/presentation/expense_history_section.dart';
 import '../../expenses/state/expenses_providers.dart';
+import '../../repayments/presentation/repayment_suggestions_section.dart';
 import '../../settlements/presentation/settlement_history_section.dart';
 import '../../settlements/state/settlements_providers.dart';
 import '../domain/group_models.dart';
@@ -110,7 +111,7 @@ class _GroupDetailContent extends ConsumerWidget {
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
-        itemCount: members.length + 5,
+        itemCount: members.length + 6,
         separatorBuilder: (_, index) =>
             index == 0 ? const SizedBox(height: 24) : const Divider(height: 1),
         itemBuilder: (context, index) {
@@ -144,17 +145,21 @@ class _GroupDetailContent extends ConsumerWidget {
           }
 
           if (index == 2) {
+            return RepaymentSuggestionsSection(group: group);
+          }
+
+          if (index == 3) {
             return const Padding(
               padding: EdgeInsets.only(bottom: 8),
               child: Text('Members'),
             );
           }
 
-          if (index <= members.length + 2) {
-            return _MemberListItem(member: members[index - 3]);
+          if (index <= members.length + 3) {
+            return _MemberListItem(member: members[index - 4]);
           }
 
-          if (index == members.length + 3) {
+          if (index == members.length + 4) {
             return SettlementHistorySection(
               groupId: groupId,
               currencyCode: group.currencyCode,
