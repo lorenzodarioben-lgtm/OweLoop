@@ -1,6 +1,6 @@
 begin;
 
-select plan(123);
+select plan(134);
 
 insert into auth.users (
   id,
@@ -1567,13 +1567,7 @@ insert into public.expenses (
   '11111111-1111-1111-1111-111111111111'
 );
 
-insert into public.settlements (
-  group_id,
-  paying_member_id,
-  receiving_member_id,
-  amount_minor,
-  created_by
-) values (
+select public.record_settlement(
   '77777777-7777-7777-7777-777777777777',
   '77777777-7777-7777-7777-777777777701',
   (
@@ -1583,19 +1577,23 @@ insert into public.settlements (
       and user_id = '11111111-1111-1111-1111-111111111111'
   ),
   500,
-  '11111111-1111-1111-1111-111111111111'
-), (
+  now()
+);
+
+select public.record_settlement(
   '77777777-7777-7777-7777-777777777777',
   '77777777-7777-7777-7777-777777777702',
   '77777777-7777-7777-7777-777777777701',
   777,
-  '11111111-1111-1111-1111-111111111111'
+  now()
 );
 
-update public.settlements
-set voided_at = now()
-where group_id = '77777777-7777-7777-7777-777777777777'
-  and amount_minor = 777;
+select public.void_settlement((
+  select id
+  from public.settlements
+  where group_id = '77777777-7777-7777-7777-777777777777'
+    and amount_minor = 777
+));
 
 update public.group_members
 set removed_at = now()
@@ -1941,6 +1939,137 @@ select is(
   0::bigint,
   'balance loading recovers after consistent financial records are restored'
 );
+
+select lives_ok(
+  $$select public.record_settlement(
+    '77777777-7777-7777-7777-777777777777',
+    '77777777-7777-7777-7777-777777777701',
+    '77777777-7777-7777-7777-777777777702',
+    123,
+    now()
+  )$$,
+  'an active member can record an exact settlement for a guest'
+);
+
+select is(
+  (
+    select amount_minor
+    from public.get_group_settlements('77777777-7777-7777-7777-777777777777')
+    where amount_minor = 123
+  ),
+  123::bigint,
+  'settlement history returns the recorded exact amount'
+);
+
+select throws_ok(
+  $$select public.record_settlement(
+    '77777777-7777-7777-7777-777777777777',
+    '77777777-7777-7777-7777-777777777701',
+    '77777777-7777-7777-7777-777777777701',
+    123,
+    now()
+  )$$,
+  'P0001',
+  'Choose two different active group members',
+  'a settlement cannot name the same member as payer and receiver'
+);
+
+select throws_ok(
+  $$select public.record_settlement(
+    '77777777-7777-7777-7777-777777777777',
+    '77777777-7777-7777-7777-777777777701',
+    '77777777-7777-7777-7777-777777777702',
+    0,
+    now()
+  )$$,
+  'P0001',
+  'Settlement amount must be greater than zero',
+  'a zero settlement is rejected'
+);
+
+select lives_ok(
+  $$select public.void_settlement((
+    select id
+    from public.settlements
+    where group_id = '77777777-7777-7777-7777-777777777777'
+      and amount_minor = 123
+  ))$$,
+  'the settlement creator can void a recorded settlement'
+);
+
+select is(
+  (
+    select is_voided
+    from public.get_group_settlements('77777777-7777-7777-7777-777777777777')
+    where amount_minor = 123
+  ),
+  true,
+  'a voided settlement remains visible in history'
+);
+
+select throws_ok(
+  $$select public.void_settlement((
+    select id
+    from public.settlements
+    where group_id = '77777777-7777-7777-7777-777777777777'
+      and amount_minor = 123
+  ))$$,
+  'P0001',
+  'Settlement is already voided',
+  'a voided settlement cannot be voided again'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
+set local role authenticated;
+
+select throws_ok(
+  $$select public.record_settlement(
+    '77777777-7777-7777-7777-777777777777',
+    '77777777-7777-7777-7777-777777777701',
+    '77777777-7777-7777-7777-777777777702',
+    123,
+    now()
+  )$$,
+  'P0001',
+  'Group is unavailable',
+  'an unrelated member cannot record a settlement'
+);
+
+select throws_ok(
+  $$select * from public.get_group_settlements('77777777-7777-7777-7777-777777777777')$$,
+  'P0001',
+  'Group is unavailable',
+  'an unrelated member cannot load settlement history'
+);
+
+reset role;
+set local role anon;
+
+select throws_ok(
+  $$select public.record_settlement(
+    '77777777-7777-7777-7777-777777777777',
+    '77777777-7777-7777-7777-777777777701',
+    '77777777-7777-7777-7777-777777777702',
+    123,
+    now()
+  )$$,
+  '42501',
+  null,
+  'unauthenticated callers cannot execute settlement recording'
+);
+
+select is(
+  has_function_privilege(
+    'anon',
+    'public.get_group_settlements(uuid)'::regprocedure,
+    'execute'
+  ),
+  false,
+  'unauthenticated callers cannot execute settlement history'
+);
+
+reset role;
 
 select * from finish();
 

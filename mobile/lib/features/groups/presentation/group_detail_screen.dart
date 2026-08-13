@@ -7,6 +7,8 @@ import '../../balances/presentation/group_balance_section.dart';
 import '../../balances/state/balances_providers.dart';
 import '../../expenses/presentation/expense_history_section.dart';
 import '../../expenses/state/expenses_providers.dart';
+import '../../settlements/presentation/settlement_history_section.dart';
+import '../../settlements/state/settlements_providers.dart';
 import '../domain/group_models.dart';
 import '../state/groups_providers.dart';
 import '../state/groups_state.dart';
@@ -81,12 +83,20 @@ class _GroupDetailContent extends ConsumerWidget {
               )
               .refresh(),
           ref.read(expenseHistoryControllerProvider(groupId)).refresh(),
+          ref
+              .read(
+                settlementHistoryControllerProvider((
+                  groupId: groupId,
+                  currencyCode: group.currencyCode,
+                )),
+              )
+              .refresh(),
         ]);
       },
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
-        itemCount: members.length + 4,
+        itemCount: members.length + 5,
         separatorBuilder: (_, index) =>
             index == 0 ? const SizedBox(height: 24) : const Divider(height: 1),
         itemBuilder: (context, index) {
@@ -103,6 +113,8 @@ class _GroupDetailContent extends ConsumerWidget {
                     }
                   : null,
               onAddExpense: () => context.go(AppRoutes.newExpensePath(groupId)),
+              onRecordSettlement: () =>
+                  context.go(AppRoutes.newSettlementPath(groupId)),
             );
           }
 
@@ -124,6 +136,13 @@ class _GroupDetailContent extends ConsumerWidget {
             return _MemberListItem(member: members[index - 3]);
           }
 
+          if (index == members.length + 3) {
+            return SettlementHistorySection(
+              groupId: groupId,
+              currencyCode: group.currencyCode,
+            );
+          }
+
           return ExpenseHistorySection(groupId: groupId);
         },
       ),
@@ -136,11 +155,13 @@ class _GroupSummary extends StatelessWidget {
     required this.group,
     required this.onAddGuest,
     required this.onAddExpense,
+    required this.onRecordSettlement,
   });
 
   final AppGroup group;
   final VoidCallback? onAddGuest;
   final VoidCallback onAddExpense;
+  final VoidCallback onRecordSettlement;
 
   @override
   Widget build(BuildContext context) {
@@ -166,6 +187,11 @@ class _GroupSummary extends StatelessWidget {
               onPressed: onAddExpense,
               icon: const Icon(Icons.add),
               label: const Text('Add expense'),
+            ),
+            OutlinedButton.icon(
+              onPressed: onRecordSettlement,
+              icon: const Icon(Icons.handshake_outlined),
+              label: const Text('Record settlement'),
             ),
             if (onAddGuest != null)
               OutlinedButton.icon(

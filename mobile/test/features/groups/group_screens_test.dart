@@ -11,11 +11,13 @@ import 'package:oweloop/features/expenses/state/expenses_providers.dart';
 import 'package:oweloop/features/groups/domain/group_models.dart';
 import 'package:oweloop/features/groups/presentation/group_feedback.dart';
 import 'package:oweloop/features/groups/state/groups_providers.dart';
+import 'package:oweloop/features/settlements/state/settlements_providers.dart';
 
 import '../../fakes/authentication_fakes.dart';
 import '../../fakes/balances_fakes.dart';
 import '../../fakes/expenses_fakes.dart';
 import '../../fakes/groups_fakes.dart';
+import '../../fakes/settlements_fakes.dart';
 
 void main() {
   Widget buildApp(
@@ -37,6 +39,9 @@ void main() {
         ),
         balancesRepositoryProvider.overrideWithValue(
           balancesRepository ?? FakeBalancesRepository(),
+        ),
+        settlementsRepositoryProvider.overrideWithValue(
+          FakeSettlementsRepository(),
         ),
       ],
       child: const OweLoopBootstrap(),

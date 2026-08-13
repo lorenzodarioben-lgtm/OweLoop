@@ -14,6 +14,8 @@ import '../features/expenses/presentation/expense_detail_screen.dart';
 import '../features/groups/presentation/create_group_screen.dart';
 import '../features/groups/presentation/group_detail_screen.dart';
 import '../features/groups/presentation/group_list_screen.dart';
+import '../features/settlements/domain/settlement_models.dart';
+import '../features/settlements/presentation/record_settlement_screen.dart';
 
 abstract final class AppRoutes {
   static const loading = '/loading';
@@ -26,6 +28,7 @@ abstract final class AppRoutes {
   static const groupDetail = '/groups/:groupId';
   static const newExpense = '/groups/:groupId/expenses/new';
   static const expenseDetail = '/groups/:groupId/expenses/:expenseId';
+  static const newSettlement = '/groups/:groupId/settlements/new';
 
   static String groupDetailPath(String groupId) => '/groups/$groupId';
 
@@ -34,6 +37,9 @@ abstract final class AppRoutes {
 
   static String expenseDetailPath(String groupId, String expenseId) =>
       '/groups/$groupId/expenses/$expenseId';
+
+  static String newSettlementPath(String groupId) =>
+      '/groups/$groupId/settlements/new';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -95,6 +101,15 @@ GoRouter createAppRouter(AuthenticationController controller) {
         builder: (context, state) => ExpenseDetailScreen(
           groupId: state.pathParameters['groupId']!,
           expenseId: state.pathParameters['expenseId']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.newSettlement,
+        builder: (context, state) => RecordSettlementScreen(
+          groupId: state.pathParameters['groupId']!,
+          draft: state.extra is SettlementDraft
+              ? state.extra! as SettlementDraft
+              : null,
         ),
       ),
     ],

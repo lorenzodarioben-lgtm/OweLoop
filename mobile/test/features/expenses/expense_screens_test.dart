@@ -9,11 +9,13 @@ import 'package:oweloop/features/balances/state/balances_providers.dart';
 import 'package:oweloop/features/expenses/domain/expense_models.dart';
 import 'package:oweloop/features/expenses/state/expenses_providers.dart';
 import 'package:oweloop/features/groups/state/groups_providers.dart';
+import 'package:oweloop/features/settlements/state/settlements_providers.dart';
 
 import '../../fakes/authentication_fakes.dart';
 import '../../fakes/balances_fakes.dart';
 import '../../fakes/expenses_fakes.dart';
 import '../../fakes/groups_fakes.dart';
+import '../../fakes/settlements_fakes.dart';
 
 void main() {
   FakeGroupsRepository groupRepository() {
@@ -42,6 +44,9 @@ void main() {
         expensesRepositoryProvider.overrideWithValue(expensesRepository),
         balancesRepositoryProvider.overrideWithValue(
           balancesRepository ?? FakeBalancesRepository(),
+        ),
+        settlementsRepositoryProvider.overrideWithValue(
+          FakeSettlementsRepository(),
         ),
       ],
       child: const OweLoopBootstrap(),
