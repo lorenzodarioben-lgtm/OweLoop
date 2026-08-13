@@ -13,19 +13,27 @@ Version 0.1 is the first usable shared-expense workflow. It will support:
 - Account creation.
 - Group creation.
 - Registered and guest group members.
-- Equal expense splitting.
+- Equal, exact, percentage, and share-based expense splitting.
 - Multiple payers.
 - Group balances.
-- Settlements.
+- Recorded settlements and settlement history.
+- Expense correction by void-and-duplicate.
 - Basic expense audit history.
+- Group administration and repayment suggestions.
 
 The repository now implements the first prerequisite journey: email-and-password registration and sign-in, email-verification guidance where Supabase requires confirmation, session restoration, and required profile onboarding. A user must explicitly choose a display name before reaching the authenticated home screen.
 
 The repository now implements group creation, group list and detail views, and adding account-free guest members. The initial mobile currency selection supports AUD, CAD, EUR, GBP, JPY, NZD, SGD, and USD, while the database remains compatible with any valid uppercase three-letter ISO code.
 
-The repository now implements equal-split expense entry, posted expense history, and transparent group balances. An active group member selects one payer and one or more active participants. The total is entered and stored as exact integer minor units, split equally, and posted atomically. Any remainder is assigned deterministically by ascending durable group-member ID. The mobile client supports JPY as a zero-decimal currency and AUD, CAD, EUR, GBP, NZD, SGD, and USD with two decimals. Balances derive from posted, non-voided payer and split rows plus recorded, non-voided settlements; the member list includes active zero balances, guests, and historical removed members.
+The repository implements expense entry with one or multiple payers and equal, exact, percentage, or share-based splits. The client previews only exact integer minor-unit allocations, and the guarded database operation revalidates active membership, duplicate entries, non-negative split values, positive payer values, and exact payer/split totals before atomically posting. Equal, percentage, and share remainders have deterministic durable-member-ID ordering. JPY uses zero decimals; AUD, CAD, EUR, GBP, NZD, SGD, and USD use two decimals.
 
-Registered-user invitations, guest claiming, member removal or role changes, group archiving UI, settlement entry, expense editing or voiding, and audit-history screens are not yet implemented.
+The repository implements recorded settlements, chronological settlement history, and guarded voiding. An active member records a payment that already occurred between two different active participants; a creator or administrator can void it while preserving history. Balances derive from posted, non-voided expenses and non-voided settlements, and include active zero balances, guests, and historical removed members.
+
+Expense correction preserves the original record. A posted expense can be voided once by its creator or an administrator, then duplicated into a reviewable new-expense form. The expense-detail activity timeline presents safe human-readable creation, allocation, finalization, and void events without exposing raw audit JSON.
+
+Owners and administrators can rename active groups, archive them, remove members while preserving historical records, and use the existing owner-only role and ownership-transfer controls. Archived groups retain readable history but reject future financial and membership writes. Repayment suggestions are deterministic, read-only simplifications of reconciled current balances; they can prefill a settlement record for active members but never transfer money automatically.
+
+Registered-user invitations, guest claiming, account deletion, receipt scanning, payment processing, offline synchronization, and production launch configuration remain deliberately postponed.
 
 ## Deliberately postponed
 

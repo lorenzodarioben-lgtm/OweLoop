@@ -5,3 +5,5 @@ Architecture Decision Records (ADRs) preserve decisions that affect the project'
 Create an ADR only when a meaningful architectural decision has been made. Copy [0000-template.md](0000-template.md), assign the next sequential four-digit number, and use a concise kebab-case filename such as `0001-state-management.md`.
 
 Keep the status current, describe the alternatives considered, and link related documentation or pull requests. Do not use ADRs for routine implementation notes or temporary task status.
+
+Current financial and workflow decisions include [integer minor units](0001-integer-minor-units.md), [durable group-member identity](0002-durable-group-member-identity.md), [guarded finalization](0003-atomic-expense-finalization.md), [explicit onboarding](0004-explicit-profile-onboarding.md), [derived balances](0005-derived-group-balances.md), [generic exact expense persistence](0006-generic-expense-persistence.md), [void-and-duplicate correction](0007-void-instead-of-editing-posted-expenses.md), and [read-only repayment suggestions](0008-repayment-suggestions-are-read-only.md).

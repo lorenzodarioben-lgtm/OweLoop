@@ -6,7 +6,7 @@ The initial implementation lives in [`mobile/`](mobile/). It uses Flutter, Supab
 
 ## Current project status
 
-The repository contains the application and collaboration foundations, a secure Version 0.1 database foundation, email-and-password authentication with profile onboarding, group creation with guest membership, equal-split expense entry, and transparent per-group balances. An onboarded group member can record one payer and selected active participants; the database posts the expense atomically with exact minor-unit splits. Balances are derived on demand from posted, non-voided expenses and recorded, non-voided settlements using exact minor units. Settlement entry, invitations, guest claiming, and expense editing remain planned work; see the [product requirements](docs/product-requirements.md) and [roadmap](docs/roadmap.md).
+The repository now contains the Version 0.1 shared-expense core: email-and-password access with profile onboarding; groups with registered and guest members; exact expenses with one or multiple payers and equal, exact, percentage, or share-based splits; settlement recording and immutable history; transparent group balances; expense activity; correction by void-and-duplicate; group administration; and repayment suggestions. Balances and suggestions derive from posted, non-voided expenses and non-voided settlements using integer minor units. OweLoop records payments that have already happened; it never moves money automatically. Invitations, guest claiming, account deletion, receipts, payments, offline sync, and production release work remain outside this scope.
 
 ## Local database development
 
