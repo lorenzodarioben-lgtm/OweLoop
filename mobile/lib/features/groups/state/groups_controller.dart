@@ -175,6 +175,59 @@ class GroupDetailController extends ChangeNotifier {
     }
   }
 
+  Future<bool> rename(GroupRenameInput input) async {
+    return _manage(
+      () => repository.renameGroup(groupId: groupId, input: input),
+    );
+  }
+
+  Future<bool> archive() async {
+    return _manage(() => repository.archiveGroup(groupId));
+  }
+
+  Future<bool> removeMember(String memberId) async {
+    return _manage(
+      () => repository.removeGroupMember(groupId: groupId, memberId: memberId),
+    );
+  }
+
+  Future<bool> setMemberRole(String memberId, GroupRole role) async {
+    return _manage(
+      () => repository.setGroupMemberRole(
+        groupId: groupId,
+        memberId: memberId,
+        role: role,
+      ),
+    );
+  }
+
+  Future<bool> transferOwnership(String successorMemberId) async {
+    return _manage(
+      () => repository.transferGroupOwnership(
+        groupId: groupId,
+        successorMemberId: successorMemberId,
+      ),
+    );
+  }
+
+  Future<bool> _manage(Future<Object?> Function() operation) async {
+    if (_state.isManaging) return false;
+    _setState(_state.copyWith(isManaging: true, clearErrorMessage: true));
+    try {
+      await operation();
+      await load();
+      return _state.status == GroupDetailStatus.ready;
+    } catch (error) {
+      _setState(
+        _state.copyWith(
+          isManaging: false,
+          errorMessage: GroupsErrorMapper.messageFor(error),
+        ),
+      );
+      return false;
+    }
+  }
+
   void clearError() {
     _setState(_state.copyWith(clearErrorMessage: true));
   }

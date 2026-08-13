@@ -50,6 +50,7 @@ class GroupDetailState {
     this.members = const [],
     this.errorMessage,
     this.isAddingGuest = false,
+    this.isManaging = false,
   });
 
   const GroupDetailState.loading() : this(status: GroupDetailStatus.loading);
@@ -59,6 +60,7 @@ class GroupDetailState {
   final List<GroupMember> members;
   final String? errorMessage;
   final bool isAddingGuest;
+  final bool isManaging;
 
   GroupDetailState copyWith({
     GroupDetailStatus? status,
@@ -66,6 +68,7 @@ class GroupDetailState {
     List<GroupMember>? members,
     String? errorMessage,
     bool? isAddingGuest,
+    bool? isManaging,
     bool clearErrorMessage = false,
   }) {
     return GroupDetailState(
@@ -76,6 +79,7 @@ class GroupDetailState {
           ? null
           : errorMessage ?? this.errorMessage,
       isAddingGuest: isAddingGuest ?? this.isAddingGuest,
+      isManaging: isManaging ?? this.isManaging,
     );
   }
 }

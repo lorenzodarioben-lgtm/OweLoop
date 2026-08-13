@@ -26,7 +26,21 @@ class GroupDetailScreen extends ConsumerWidget {
     final state = ref.watch(groupDetailControllerProvider(groupId)).state;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Group details')),
+      appBar: AppBar(
+        title: const Text('Group details'),
+        actions:
+            state.status == GroupDetailStatus.ready &&
+                state.group!.currentUserRole != GroupRole.member
+            ? [
+                IconButton(
+                  tooltip: 'Group settings',
+                  onPressed: () =>
+                      context.go(AppRoutes.groupSettingsPath(groupId)),
+                  icon: const Icon(Icons.settings_outlined),
+                ),
+              ]
+            : null,
+      ),
       body: SafeArea(
         top: false,
         child: switch (state.status) {
@@ -103,7 +117,8 @@ class _GroupDetailContent extends ConsumerWidget {
           if (index == 0) {
             return _GroupSummary(
               group: group,
-              onAddGuest: group.currentUserRole.canAddGuests
+              onAddGuest:
+                  group.currentUserRole.canAddGuests && !group.isArchived
                   ? () {
                       controller.clearError();
                       showDialog<void>(
@@ -112,9 +127,12 @@ class _GroupDetailContent extends ConsumerWidget {
                       );
                     }
                   : null,
-              onAddExpense: () => context.go(AppRoutes.newExpensePath(groupId)),
-              onRecordSettlement: () =>
-                  context.go(AppRoutes.newSettlementPath(groupId)),
+              onAddExpense: group.isArchived
+                  ? null
+                  : () => context.go(AppRoutes.newExpensePath(groupId)),
+              onRecordSettlement: group.isArchived
+                  ? null
+                  : () => context.go(AppRoutes.newSettlementPath(groupId)),
             );
           }
 
@@ -160,8 +178,8 @@ class _GroupSummary extends StatelessWidget {
 
   final AppGroup group;
   final VoidCallback? onAddGuest;
-  final VoidCallback onAddExpense;
-  final VoidCallback onRecordSettlement;
+  final VoidCallback? onAddExpense;
+  final VoidCallback? onRecordSettlement;
 
   @override
   Widget build(BuildContext context) {
@@ -176,6 +194,7 @@ class _GroupSummary extends StatelessWidget {
           children: [
             Chip(label: Text(group.currencyCode)),
             Chip(label: Text('Your role: ${group.currentUserRole.label}')),
+            if (group.isArchived) const Chip(label: Text('Archived')),
           ],
         ),
         const SizedBox(height: 20),

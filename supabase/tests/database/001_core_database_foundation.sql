@@ -1,6 +1,6 @@
 begin;
 
-select plan(156);
+select plan(165);
 
 insert into auth.users (
   id,
@@ -2069,8 +2069,6 @@ select is(
   'unauthenticated callers cannot execute settlement history'
 );
 
-reset role;
-
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
 set local role authenticated;
 
@@ -2314,6 +2312,70 @@ select is(
   false,
   'unauthenticated roles cannot execute the activity operation'
 );
+
+reset role;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+select lives_ok(
+  $$select public.rename_group('77777777-7777-7777-7777-777777777777', '  Renamed balance group  ')$$,
+  'an owner can rename an active group through the guarded operation'
+);
+
+select is(
+  (select name from public.groups where id = '77777777-7777-7777-7777-777777777777'),
+  'Renamed balance group'::text,
+  'group rename trims and persists the safe name'
+);
+
+select throws_ok(
+  $$select public.remove_group_member('77777777-7777-7777-7777-777777777777', (select id from public.group_members where group_id = '77777777-7777-7777-7777-777777777777' and user_id = '11111111-1111-1111-1111-111111111111'))$$,
+  'P0001',
+  'Transfer ownership before removing an owner',
+  'the final owner cannot be removed'
+);
+
+select lives_ok(
+  $$select public.remove_group_member('77777777-7777-7777-7777-777777777777', '77777777-7777-7777-7777-777777777703')$$,
+  'an owner can remove an ordinary registered member while preserving records'
+);
+
+select ok(
+  (select removed_at is not null from public.group_members where id = '77777777-7777-7777-7777-777777777703'),
+  'removed group members retain their durable historical record'
+);
+
+select lives_ok(
+  $$select public.archive_group('77777777-7777-7777-7777-777777777777')$$,
+  'an owner can archive an active group'
+);
+
+select throws_ok(
+  $$select public.rename_group('77777777-7777-7777-7777-777777777777', 'Cannot rename archived')$$,
+  'P0001',
+  'Group is unavailable',
+  'an archived group rejects rename writes'
+);
+
+select throws_ok(
+  $$select public.remove_group_member('77777777-7777-7777-7777-777777777777', '77777777-7777-7777-7777-777777777701')$$,
+  'P0001',
+  'Group is unavailable',
+  'an archived group rejects membership writes'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
+set local role authenticated;
+
+select throws_ok(
+  $$select public.archive_group('77777777-7777-7777-7777-777777777777')$$,
+  'P0001',
+  'Only an active group owner or administrator can archive a group',
+  'an unrelated user cannot archive a group'
+);
+
+reset role;
 
 select * from finish();
 

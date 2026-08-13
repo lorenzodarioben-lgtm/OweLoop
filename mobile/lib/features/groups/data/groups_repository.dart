@@ -13,4 +13,27 @@ abstract interface class GroupsRepository {
     required String groupId,
     required GuestCreationInput input,
   });
+
+  Future<AppGroup> renameGroup({
+    required String groupId,
+    required GroupRenameInput input,
+  });
+
+  Future<AppGroup> archiveGroup(String groupId);
+
+  Future<GroupMember> removeGroupMember({
+    required String groupId,
+    required String memberId,
+  });
+
+  Future<GroupMember> setGroupMemberRole({
+    required String groupId,
+    required String memberId,
+    required GroupRole role,
+  });
+
+  Future<void> transferGroupOwnership({
+    required String groupId,
+    required String successorMemberId,
+  });
 }

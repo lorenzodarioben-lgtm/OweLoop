@@ -15,6 +15,7 @@ import '../features/expenses/domain/expense_models.dart';
 import '../features/groups/presentation/create_group_screen.dart';
 import '../features/groups/presentation/group_detail_screen.dart';
 import '../features/groups/presentation/group_list_screen.dart';
+import '../features/groups/presentation/group_settings_screen.dart';
 import '../features/settlements/domain/settlement_models.dart';
 import '../features/settlements/presentation/record_settlement_screen.dart';
 
@@ -27,11 +28,15 @@ abstract final class AppRoutes {
   static const home = '/home';
   static const newGroup = '/groups/new';
   static const groupDetail = '/groups/:groupId';
+  static const groupSettings = '/groups/:groupId/settings';
   static const newExpense = '/groups/:groupId/expenses/new';
   static const expenseDetail = '/groups/:groupId/expenses/:expenseId';
   static const newSettlement = '/groups/:groupId/settlements/new';
 
   static String groupDetailPath(String groupId) => '/groups/$groupId';
+
+  static String groupSettingsPath(String groupId) =>
+      '/groups/$groupId/settings';
 
   static String newExpensePath(String groupId) =>
       '/groups/$groupId/expenses/new';
@@ -86,6 +91,11 @@ GoRouter createAppRouter(AuthenticationController controller) {
       GoRoute(
         path: AppRoutes.newGroup,
         builder: (context, state) => const CreateGroupScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.groupSettings,
+        builder: (context, state) =>
+            GroupSettingsScreen(groupId: state.pathParameters['groupId']!),
       ),
       GoRoute(
         path: AppRoutes.groupDetail,
