@@ -11,6 +11,7 @@ import '../features/authentication/state/authentication_providers.dart';
 import '../features/authentication/state/authentication_state.dart';
 import '../features/expenses/presentation/add_expense_screen.dart';
 import '../features/expenses/presentation/expense_detail_screen.dart';
+import '../features/expenses/domain/expense_models.dart';
 import '../features/groups/presentation/create_group_screen.dart';
 import '../features/groups/presentation/group_detail_screen.dart';
 import '../features/groups/presentation/group_list_screen.dart';
@@ -93,8 +94,12 @@ GoRouter createAppRouter(AuthenticationController controller) {
       ),
       GoRoute(
         path: AppRoutes.newExpense,
-        builder: (context, state) =>
-            AddExpenseScreen(groupId: state.pathParameters['groupId']!),
+        builder: (context, state) => AddExpenseScreen(
+          groupId: state.pathParameters['groupId']!,
+          draft: state.extra is ExpenseRecord
+              ? state.extra! as ExpenseRecord
+              : null,
+        ),
       ),
       GoRoute(
         path: AppRoutes.expenseDetail,

@@ -1,6 +1,6 @@
 begin;
 
-select plan(147);
+select plan(150);
 
 insert into auth.users (
   id,
@@ -2240,6 +2240,29 @@ select is(
   pg_catalog.to_regprocedure('public.create_expense(uuid,text,bigint,timestamp with time zone,jsonb,jsonb,uuid)'),
   null::regprocedure,
   'generic expense creation never accepts a caller or creator identity'
+);
+
+reset role;
+
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+select lives_ok(
+  $$select public.void_expense((select id from public.expenses where description = 'Flexible taxi'))$$,
+  'an expense manager can void a posted flexible expense'
+);
+
+select is(
+  (select status from public.expenses where description = 'Flexible taxi'),
+  'voided'::public.expense_status,
+  'a voided expense remains in history with its voided status'
+);
+
+select throws_ok(
+  $$select public.void_expense((select id from public.expenses where description = 'Flexible taxi'))$$,
+  'P0001',
+  'Expense is already voided',
+  'a voided expense cannot be voided a second time'
 );
 
 reset role;

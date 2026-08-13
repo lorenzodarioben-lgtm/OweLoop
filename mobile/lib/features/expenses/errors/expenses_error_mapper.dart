@@ -24,6 +24,9 @@ class ExpensesErrorMapper {
     if (rawMessage.contains('archived')) {
       return 'This group is archived and cannot be changed.';
     }
+    if (rawMessage.contains('already voided')) {
+      return 'This expense has already been voided.';
+    }
     if (rawMessage.contains('unavailable') ||
         rawMessage.contains('not found') ||
         rawMessage.contains('no rows')) {

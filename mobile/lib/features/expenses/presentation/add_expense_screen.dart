@@ -14,9 +14,10 @@ import '../validation/expense_validators.dart';
 import 'expense_feedback.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
-  const AddExpenseScreen({required this.groupId, super.key});
+  const AddExpenseScreen({required this.groupId, this.draft, super.key});
 
   final String groupId;
+  final ExpenseRecord? draft;
 
   @override
   ConsumerState<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -37,6 +38,17 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   bool _hasInitializedMembers = false;
   String? _payerMessage;
   String? _splitMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    final draft = widget.draft;
+    if (draft != null) {
+      _descriptionController.text = draft.description;
+      _amountController.text = _inputAmount(draft.total);
+      _occurredOn = draft.occurredAt.toLocal();
+    }
+  }
 
   @override
   void dispose() {
@@ -67,6 +79,26 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 : '1',
           );
         }
+        final draft = widget.draft;
+        if (draft != null) {
+          _participantIds = draft.splits.map((split) => split.memberId).toSet();
+          _payerIds = draft.payers.map((payer) => payer.memberId).toSet();
+          _multiplePayers = draft.payers.length > 1;
+          _singlePayerMemberId = draft.payers.isEmpty
+              ? _singlePayerMemberId
+              : draft.payers.first.memberId;
+          _splitMethod = SplitMethod.exact;
+          for (final payer in draft.payers) {
+            _payerAmountControllers[payer.memberId]?.text = _inputAmount(
+              payer.amount,
+            );
+          }
+          for (final split in draft.splits) {
+            _splitValueControllers[split.memberId]?.text = _inputAmount(
+              split.amount,
+            );
+          }
+        }
         _hasInitializedMembers = true;
       });
     });
@@ -75,6 +107,15 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   String _initialBasisPointInput(int memberCount) {
     final base = 10000 ~/ memberCount;
     return '${base ~/ 100}.${(base % 100).toString().padLeft(2, '0')}';
+  }
+
+  String _inputAmount(ExactMoney amount) {
+    final fractionDigits = CurrencyRules.fractionDigitsFor(
+      amount.currencyCode,
+    )!;
+    if (fractionDigits == 0) return '${amount.minorUnits}';
+    final scale = fractionDigits == 2 ? 100 : 1;
+    return '${amount.minorUnits ~/ scale}.${(amount.minorUnits % scale).toString().padLeft(fractionDigits, '0')}';
   }
 
   Future<void> _pickDate() async {

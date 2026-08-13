@@ -82,6 +82,7 @@ class ExpenseRecord {
     required this.status,
     this.payers = const [],
     this.splits = const [],
+    this.voidedAt,
   });
 
   final String id;
@@ -92,6 +93,7 @@ class ExpenseRecord {
   final ExpenseStatus status;
   final List<ExpensePayer> payers;
   final List<ExpenseSplit> splits;
+  final DateTime? voidedAt;
 
   factory ExpenseRecord.fromMap(
     Map<String, dynamic> map, {
@@ -114,6 +116,7 @@ class ExpenseRecord {
       ),
       occurredAt: _dateTimeFrom(map['occurred_at']),
       status: ExpenseStatus.fromDatabase(map['status']),
+      voidedAt: _nullableDateTimeFrom(map['voided_at']),
       payers: payerRows
           .map(
             (row) =>
@@ -416,6 +419,11 @@ DateTime _dateTimeFrom(Object? value) {
     String value => DateTime.parse(value),
     _ => throw const FormatException('The expense date is unavailable.'),
   };
+}
+
+DateTime? _nullableDateTimeFrom(Object? value) {
+  if (value == null) return null;
+  return _dateTimeFrom(value);
 }
 
 List<Map<String, dynamic>> _mapList(Object? value) {
