@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
+import '../../activity/presentation/expense_activity_section.dart';
 import '../../balances/state/balances_providers.dart';
 import '../domain/expense_models.dart';
 import '../state/expenses_providers.dart';
@@ -176,6 +177,11 @@ class _ExpenseDetailContent extends StatelessWidget {
             title: Text(split.displayName),
             trailing: Text(split.amount.formatted),
           ),
+        const SizedBox(height: 24),
+        ExpenseActivitySection(
+          expenseId: expense.id,
+          currencyCode: expense.total.currencyCode,
+        ),
       ],
     );
   }

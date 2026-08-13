@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oweloop/app/app_bootstrap.dart';
 import 'package:oweloop/features/authentication/state/authentication_providers.dart';
+import 'package:oweloop/features/activity/state/expense_activity_providers.dart';
 import 'package:oweloop/features/balances/domain/balance_models.dart';
 import 'package:oweloop/features/balances/state/balances_providers.dart';
 import 'package:oweloop/features/expenses/state/expenses_providers.dart';
@@ -14,6 +15,7 @@ import 'package:oweloop/features/groups/state/groups_providers.dart';
 import 'package:oweloop/features/settlements/state/settlements_providers.dart';
 
 import '../../fakes/authentication_fakes.dart';
+import '../../fakes/activity_fakes.dart';
 import '../../fakes/balances_fakes.dart';
 import '../../fakes/expenses_fakes.dart';
 import '../../fakes/groups_fakes.dart';
@@ -42,6 +44,9 @@ void main() {
         ),
         settlementsRepositoryProvider.overrideWithValue(
           FakeSettlementsRepository(),
+        ),
+        expenseActivityRepositoryProvider.overrideWithValue(
+          FakeExpenseActivityRepository(),
         ),
       ],
       child: const OweLoopBootstrap(),

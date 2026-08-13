@@ -1,6 +1,6 @@
 begin;
 
-select plan(150);
+select plan(156);
 
 insert into auth.users (
   id,
@@ -2266,6 +2266,54 @@ select throws_ok(
 );
 
 reset role;
+
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+select ok(
+  (select count(*) from public.get_expense_activity((select id from public.expenses where description = 'Flexible taxi'))) >= 5,
+  'expense activity exposes the creation, allocations, posting, and void history'
+);
+
+select is(
+  (select event_type from public.get_expense_activity((select id from public.expenses where description = 'Flexible taxi')) limit 1),
+  'expense_created'::text,
+  'expense activity is returned in chronological order'
+);
+
+select is(
+  (select member_display_name from public.get_expense_activity((select id from public.expenses where description = 'Flexible taxi')) where event_type = 'payer_added' and member_display_name = 'Owner A' limit 1),
+  'Owner A'::text,
+  'payer activity maps the durable member display name without raw audit JSON'
+);
+
+select ok(
+  exists (
+    select 1
+    from public.get_expense_activity((select id from public.expenses where description = 'Flexible taxi'))
+    where event_type = 'expense_voided'
+  ),
+  'expense activity includes the immutable void event'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
+set local role authenticated;
+
+select throws_ok(
+  $$select * from public.get_expense_activity((select id from public.expenses where description = 'Flexible taxi'))$$,
+  'P0001',
+  'Expense is unavailable',
+  'an unrelated user cannot load expense activity'
+);
+
+reset role;
+
+select is(
+  has_function_privilege('anon', 'public.get_expense_activity(uuid)'::regprocedure, 'execute'),
+  false,
+  'unauthenticated roles cannot execute the activity operation'
+);
 
 select * from finish();
 
