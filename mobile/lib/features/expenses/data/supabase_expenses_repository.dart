@@ -27,17 +27,29 @@ class SupabaseExpensesRepository implements ExpensesRepository {
   }
 
   @override
-  Future<ExpenseRecord> createEqualExpense(ExpenseCreationInput input) async {
+  Future<ExpenseRecord> createExpense(ExpenseCreationInput input) async {
     final row = await _client
         .rpc(
-          'create_equal_expense',
+          'create_expense',
           params: <String, dynamic>{
             'p_group_id': input.groupId,
             'p_description': input.trimmedDescription,
             'p_total_amount_minor': input.total.minorUnits,
             'p_occurred_at': input.occurredAt.toUtc().toIso8601String(),
-            'p_payer_member_id': input.payerMemberId,
-            'p_participant_member_ids': input.participantMemberIds,
+            'p_payers': [
+              for (final payer in input.resolvedPayers)
+                <String, dynamic>{
+                  'member_id': payer.memberId,
+                  'amount_minor': payer.amountMinor,
+                },
+            ],
+            'p_splits': [
+              for (final split in input.resolvedSplits)
+                <String, dynamic>{
+                  'member_id': split.memberId,
+                  'amount_minor': split.amountMinor,
+                },
+            ],
           },
         )
         .single();

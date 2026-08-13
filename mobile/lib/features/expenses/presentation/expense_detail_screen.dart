@@ -58,8 +58,6 @@ class _ExpenseDetailContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localizations = MaterialLocalizations.of(context);
-    final payer = expense.payers.isEmpty ? null : expense.payers.first;
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
       children: [
@@ -86,14 +84,25 @@ class _ExpenseDetailContent extends StatelessWidget {
           label: 'Date',
           value: localizations.formatMediumDate(expense.occurredAt.toLocal()),
         ),
-        _DetailRow(
-          label: 'Payer',
-          value: payer == null
-              ? 'Unavailable'
-              : '${payer.displayName} paid ${payer.amount.formatted}',
-        ),
         const SizedBox(height: 24),
-        Text('Participants', style: Theme.of(context).textTheme.titleLarge),
+        Text('Payer', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        if (expense.payers.isEmpty)
+          const Text('Payer details are unavailable.')
+        else
+          for (final payer in expense.payers)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.account_balance_wallet_outlined),
+              title: Text(
+                '${payer.displayName} paid ${payer.amount.formatted}',
+              ),
+            ),
+        const SizedBox(height: 24),
+        Text(
+          'What each person owes',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
         const SizedBox(height: 8),
         for (final split in expense.splits)
           ListTile(

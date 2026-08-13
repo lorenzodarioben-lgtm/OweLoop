@@ -34,7 +34,7 @@ class FakeExpensesRepository implements ExpensesRepository {
   }
 
   @override
-  Future<ExpenseRecord> createEqualExpense(ExpenseCreationInput input) async {
+  Future<ExpenseRecord> createExpense(ExpenseCreationInput input) async {
     lastCreationInput = input;
     if (createHandler != null) {
       return createHandler!(input);

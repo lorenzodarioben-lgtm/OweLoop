@@ -26,36 +26,55 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
+  final Map<String, TextEditingController> _payerAmountControllers = {};
+  final Map<String, TextEditingController> _splitValueControllers = {};
   Set<String> _participantIds = <String>{};
-  String? _payerMemberId;
-  String? _participantsMessage;
+  Set<String> _payerIds = <String>{};
+  String? _singlePayerMemberId;
+  SplitMethod _splitMethod = SplitMethod.equal;
   DateTime _occurredOn = DateTime.now();
+  bool _multiplePayers = false;
   bool _hasInitializedMembers = false;
-  bool _memberInitializationScheduled = false;
+  String? _payerMessage;
+  String? _splitMessage;
 
   @override
   void dispose() {
     _descriptionController.dispose();
     _amountController.dispose();
+    for (final controller in _payerAmountControllers.values) {
+      controller.dispose();
+    }
+    for (final controller in _splitValueControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
   void _initializeMembers(List<GroupMember> members) {
-    if (_hasInitializedMembers || _memberInitializationScheduled) {
-      return;
-    }
-    _memberInitializationScheduled = true;
+    if (_hasInitializedMembers || members.isEmpty) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
+      if (!mounted || _hasInitializedMembers) return;
       setState(() {
         _participantIds = members.map((member) => member.id).toSet();
-        _payerMemberId = members.isEmpty ? null : members.first.id;
+        _singlePayerMemberId = members.first.id;
+        _payerIds = {members.first.id};
+        for (final member in members) {
+          _payerAmountControllers[member.id] = TextEditingController();
+          _splitValueControllers[member.id] = TextEditingController(
+            text: _splitMethod == SplitMethod.percentage
+                ? _initialBasisPointInput(members.length)
+                : '1',
+          );
+        }
         _hasInitializedMembers = true;
-        _memberInitializationScheduled = false;
       });
     });
+  }
+
+  String _initialBasisPointInput(int memberCount) {
+    final base = 10000 ~/ memberCount;
+    return '${base ~/ 100}.${(base % 100).toString().padLeft(2, '0')}';
   }
 
   Future<void> _pickDate() async {
@@ -70,21 +89,163 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     }
   }
 
-  EqualSplitPreview? _previewFor({
+  void _setSplitMethod(SplitMethod? value, List<GroupMember> members) {
+    if (value == null) return;
+    setState(() {
+      _splitMethod = value;
+      _splitMessage = null;
+      if (value == SplitMethod.shares) {
+        for (final member in members) {
+          _splitValueControllers[member.id]?.text = '1';
+        }
+      }
+      if (value == SplitMethod.percentage) {
+        for (final member in members) {
+          _splitValueControllers[member.id]?.text = _initialBasisPointInput(
+            members.length,
+          );
+        }
+      }
+    });
+  }
+
+  List<ExpenseAllocation>? _previewFor({
     required String currencyCode,
     required Set<String> participantIds,
   }) {
-    final money = ExactMoney.tryParse(
+    final total = ExactMoney.tryParse(
       text: _amountController.text,
       currencyCode: currencyCode,
     );
-    if (money == null || money.minorUnits <= 0 || participantIds.isEmpty) {
+    if (total == null || total.minorUnits <= 0 || participantIds.isEmpty) {
       return null;
     }
-    return EqualSplitPreview.forParticipants(
-      total: money,
-      participantMemberIds: participantIds,
+    try {
+      return _buildSplits(total: total, participantIds: participantIds);
+    } on SplitAllocationException {
+      return null;
+    }
+  }
+
+  List<ExpenseAllocation> _buildSplits({
+    required ExactMoney total,
+    required Set<String> participantIds,
+  }) {
+    return switch (_splitMethod) {
+      SplitMethod.equal => SplitAllocationCalculator.equal(
+        totalMinor: total.minorUnits,
+        memberIds: participantIds,
+      ),
+      SplitMethod.exact => SplitAllocationCalculator.exact(
+        totalMinor: total.minorUnits,
+        amountsByMemberId: {
+          for (final memberId in participantIds)
+            memberId: _minorInput(
+              _splitValueControllers[memberId]?.text ?? '',
+              total.currencyCode,
+            ),
+        },
+      ),
+      SplitMethod.percentage => SplitAllocationCalculator.percentages(
+        totalMinor: total.minorUnits,
+        basisPointsByMemberId: {
+          for (final memberId in participantIds)
+            memberId: _basisPoints(
+              _splitValueControllers[memberId]?.text ?? '',
+            ),
+        },
+      ),
+      SplitMethod.shares => SplitAllocationCalculator.shares(
+        totalMinor: total.minorUnits,
+        sharesByMemberId: {
+          for (final memberId in participantIds)
+            memberId: _positiveInteger(
+              _splitValueControllers[memberId]?.text ?? '',
+            ),
+        },
+      ),
+    };
+  }
+
+  int _minorInput(String value, String currencyCode) {
+    final money = ExactMoney.tryParse(text: value, currencyCode: currencyCode);
+    if (money == null) {
+      throw const SplitAllocationException('Enter valid exact split amounts.');
+    }
+    return money.minorUnits;
+  }
+
+  int _basisPoints(String value) {
+    final match = RegExp(
+      r'^(\d{1,3})(?:\.(\d{1,2}))?$',
+    ).firstMatch(value.trim());
+    if (match == null) {
+      throw const SplitAllocationException(
+        'Enter percentages with up to two decimal places.',
+      );
+    }
+    final whole = int.parse(match.group(1)!);
+    final decimal = (match.group(2) ?? '').padRight(2, '0');
+    final basisPoints =
+        whole * 100 + int.parse(decimal.isEmpty ? '0' : decimal);
+    if (basisPoints > 10000) {
+      throw const SplitAllocationException(
+        'A percentage cannot exceed 100.00%.',
+      );
+    }
+    return basisPoints;
+  }
+
+  int _positiveInteger(String value) {
+    final amount = int.tryParse(value.trim());
+    if (amount == null || amount <= 0) {
+      throw const SplitAllocationException(
+        'Enter a positive whole-number share count.',
+      );
+    }
+    return amount;
+  }
+
+  List<ExpenseAllocation> _buildPayers(ExactMoney total) {
+    if (!_multiplePayers) {
+      if (_singlePayerMemberId == null) {
+        throw const SplitAllocationException('Choose who paid.');
+      }
+      return [
+        ExpenseAllocation(
+          memberId: _singlePayerMemberId!,
+          amountMinor: total.minorUnits,
+        ),
+      ];
+    }
+    if (_payerIds.isEmpty) {
+      throw const SplitAllocationException('Select at least one payer.');
+    }
+    final allocations = [
+      for (final memberId in _payerIds)
+        ExpenseAllocation(
+          memberId: memberId,
+          amountMinor: _minorInput(
+            _payerAmountControllers[memberId]?.text ?? '',
+            total.currencyCode,
+          ),
+        ),
+    ];
+    if (allocations.any((allocation) => allocation.amountMinor <= 0)) {
+      throw const SplitAllocationException(
+        'Each payer amount must be positive.',
+      );
+    }
+    final paidTotal = allocations.fold(
+      0,
+      (sum, allocation) => sum + allocation.amountMinor,
     );
+    if (paidTotal != total.minorUnits) {
+      throw const SplitAllocationException(
+        'Payer amounts must equal the expense total.',
+      );
+    }
+    return allocations;
   }
 
   Future<void> _submit({
@@ -93,18 +254,26 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   }) async {
     final isFormValid = _formKey.currentState?.validate() ?? false;
     if (participantIds.isEmpty) {
-      setState(() => _participantsMessage = 'Select at least one participant.');
+      setState(() => _splitMessage = 'Select at least one participant.');
       return;
     }
-    if (!isFormValid || _payerMemberId == null) {
-      return;
-    }
-
+    if (!isFormValid) return;
     final total = ExactMoney.tryParse(
       text: _amountController.text,
       currencyCode: group.currencyCode,
     );
-    if (total == null || total.minorUnits <= 0) {
+    if (total == null || total.minorUnits <= 0) return;
+
+    late final List<ExpenseAllocation> payers;
+    late final List<ExpenseAllocation> splits;
+    try {
+      payers = _buildPayers(total);
+      splits = _buildSplits(total: total, participantIds: participantIds);
+    } on SplitAllocationException catch (error) {
+      setState(() {
+        _payerMessage = _multiplePayers ? error.message : null;
+        _splitMessage = _multiplePayers ? null : error.message;
+      });
       return;
     }
 
@@ -121,11 +290,13 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               _occurredOn.day,
               12,
             ),
-            payerMemberId: _payerMemberId!,
+            payers: payers,
+            splits: splits,
+            splitMethod: _splitMethod,
+            payerMemberId: _singlePayerMemberId,
             participantMemberIds: participantIds.toList(),
           ),
         );
-
     if (expense != null && mounted) {
       await Future.wait([
         ref.read(expenseHistoryControllerProvider(group.id)).refresh(),
@@ -152,7 +323,6 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     final groupController = ref.read(
       groupDetailControllerProvider(widget.groupId),
     );
-
     return Scaffold(
       appBar: AppBar(title: const Text('Add expense')),
       body: SafeArea(
@@ -176,26 +346,52 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           GroupDetailStatus.ready => _ExpenseForm(
             group: groupState.group!,
             members: groupState.members,
-            onMembersReady: _initializeMembers,
             formKey: _formKey,
             descriptionController: _descriptionController,
             amountController: _amountController,
+            payerAmountControllers: _payerAmountControllers,
+            splitValueControllers: _splitValueControllers,
             occurredOn: _occurredOn,
-            payerMemberId: _payerMemberId,
+            singlePayerMemberId: _singlePayerMemberId,
+            payerIds: _payerIds,
             participantIds: _participantIds,
-            participantsMessage: _participantsMessage,
+            multiplePayers: _multiplePayers,
+            splitMethod: _splitMethod,
+            payerMessage: _payerMessage,
+            splitMessage: _splitMessage,
+            onMembersReady: _initializeMembers,
             onPickDate: _pickDate,
-            onPayerChanged: (value) => setState(() => _payerMemberId = value),
-            onParticipantChanged: (memberId, selected) {
-              setState(() {
-                if (selected) {
-                  _participantIds.add(memberId);
-                } else {
-                  _participantIds.remove(memberId);
-                }
-                _participantsMessage = null;
-              });
-            },
+            onSinglePayerChanged: (value) =>
+                setState(() => _singlePayerMemberId = value),
+            onMultiplePayersChanged: (value) => setState(() {
+              _multiplePayers = value;
+              _payerMessage = null;
+              if (value && _singlePayerMemberId != null) {
+                _payerIds = {_singlePayerMemberId!};
+                _payerAmountControllers[_singlePayerMemberId!]?.text =
+                    _amountController.text;
+              }
+            }),
+            onPayerChanged: (memberId, selected) => setState(() {
+              if (selected) {
+                _payerIds.add(memberId);
+                _payerAmountControllers[memberId]?.text =
+                    _amountController.text;
+              } else {
+                _payerIds.remove(memberId);
+              }
+              _payerMessage = null;
+            }),
+            onParticipantChanged: (memberId, selected) => setState(() {
+              if (selected) {
+                _participantIds.add(memberId);
+              } else {
+                _participantIds.remove(memberId);
+              }
+              _splitMessage = null;
+            }),
+            onSplitMethodChanged: (value) =>
+                _setSplitMethod(value, groupState.members),
             onAmountChanged: (_) => setState(() {}),
             previewFor: _previewFor,
             onSubmit: _submit,
@@ -210,17 +406,26 @@ class _ExpenseForm extends ConsumerWidget {
   const _ExpenseForm({
     required this.group,
     required this.members,
-    required this.onMembersReady,
     required this.formKey,
     required this.descriptionController,
     required this.amountController,
+    required this.payerAmountControllers,
+    required this.splitValueControllers,
     required this.occurredOn,
-    required this.payerMemberId,
+    required this.singlePayerMemberId,
+    required this.payerIds,
     required this.participantIds,
-    required this.participantsMessage,
+    required this.multiplePayers,
+    required this.splitMethod,
+    required this.payerMessage,
+    required this.splitMessage,
+    required this.onMembersReady,
     required this.onPickDate,
+    required this.onSinglePayerChanged,
+    required this.onMultiplePayersChanged,
     required this.onPayerChanged,
     required this.onParticipantChanged,
+    required this.onSplitMethodChanged,
     required this.onAmountChanged,
     required this.previewFor,
     required this.onSubmit,
@@ -228,19 +433,28 @@ class _ExpenseForm extends ConsumerWidget {
 
   final AppGroup group;
   final List<GroupMember> members;
-  final ValueChanged<List<GroupMember>> onMembersReady;
   final GlobalKey<FormState> formKey;
   final TextEditingController descriptionController;
   final TextEditingController amountController;
+  final Map<String, TextEditingController> payerAmountControllers;
+  final Map<String, TextEditingController> splitValueControllers;
   final DateTime occurredOn;
-  final String? payerMemberId;
+  final String? singlePayerMemberId;
+  final Set<String> payerIds;
   final Set<String> participantIds;
-  final String? participantsMessage;
+  final bool multiplePayers;
+  final SplitMethod splitMethod;
+  final String? payerMessage;
+  final String? splitMessage;
+  final ValueChanged<List<GroupMember>> onMembersReady;
   final Future<void> Function() onPickDate;
-  final ValueChanged<String?> onPayerChanged;
-  final void Function(String memberId, bool selected) onParticipantChanged;
+  final ValueChanged<String?> onSinglePayerChanged;
+  final ValueChanged<bool> onMultiplePayersChanged;
+  final void Function(String, bool) onPayerChanged;
+  final void Function(String, bool) onParticipantChanged;
+  final ValueChanged<SplitMethod?> onSplitMethodChanged;
   final ValueChanged<String> onAmountChanged;
-  final EqualSplitPreview? Function({
+  final List<ExpenseAllocation>? Function({
     required String currencyCode,
     required Set<String> participantIds,
   })
@@ -264,16 +478,12 @@ class _ExpenseForm extends ConsumerWidget {
         onRetry: () {},
       );
     }
-
     final preview = previewFor(
       currencyCode: group.currencyCode,
       participantIds: participantIds,
     );
-    final membersById = <String, GroupMember>{
-      for (final member in members) member.id: member,
-    };
+    final membersById = {for (final member in members) member.id: member};
     final localizations = MaterialLocalizations.of(context);
-
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
@@ -289,8 +499,8 @@ class _ExpenseForm extends ConsumerWidget {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  'The total is split equally in exact ${group.currencyCode} minor units.',
+                const Text(
+                  'Choose who paid, how the cost is split, and review the exact result before posting.',
                 ),
                 const SizedBox(height: 24),
                 if (creationState.errorMessage case final message?) ...[
@@ -329,49 +539,58 @@ class _ExpenseForm extends ConsumerWidget {
                   label: Text(localizations.formatMediumDate(occurredOn)),
                 ),
                 const SizedBox(height: 24),
-                DropdownButtonFormField<String>(
-                  key: ValueKey(payerMemberId),
-                  initialValue: payerMemberId,
-                  decoration: const InputDecoration(labelText: 'Payer'),
-                  items: members
-                      .map(
-                        (member) => DropdownMenuItem(
-                          value: member.id,
-                          child: Text(
-                            member.isGuest
-                                ? '${member.displayName} (Guest)'
-                                : member.displayName,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: creationState.isSubmitting ? null : onPayerChanged,
-                  validator: (value) =>
-                      value == null ? 'Choose a payer.' : null,
-                ),
-                const SizedBox(height: 24),
                 Text(
-                  'Participants',
+                  'Who paid?',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-                const SizedBox(height: 4),
-                const Text('Choose who shares this cost.'),
-                const SizedBox(height: 8),
-                for (final member in members)
-                  CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: participantIds.contains(member.id),
-                    title: Text(member.displayName),
-                    subtitle: member.isGuest ? const Text('Guest') : null,
-                    controlAffinity: ListTileControlAffinity.leading,
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Multiple payers'),
+                  subtitle: const Text(
+                    'Split the amount paid between members.',
+                  ),
+                  value: multiplePayers,
+                  onChanged: creationState.isSubmitting
+                      ? null
+                      : onMultiplePayersChanged,
+                ),
+                if (!multiplePayers)
+                  DropdownButtonFormField<String>(
+                    initialValue: singlePayerMemberId,
+                    decoration: const InputDecoration(labelText: 'Payer'),
+                    items: _memberItems(members),
                     onChanged: creationState.isSubmitting
                         ? null
-                        : (selected) => onParticipantChanged(
-                            member.id,
-                            selected ?? false,
-                          ),
-                  ),
-                if (participantsMessage case final message?) ...[
+                        : onSinglePayerChanged,
+                    validator: (value) =>
+                        value == null ? 'Choose a payer.' : null,
+                  )
+                else
+                  for (final member in members)
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: payerIds.contains(member.id),
+                      title: Text(member.displayName),
+                      subtitle: payerIds.contains(member.id)
+                          ? TextFormField(
+                              controller: payerAmountControllers[member.id],
+                              keyboardType: TextInputType.numberWithOptions(
+                                decimal: fractionDigits > 0,
+                              ),
+                              decoration: InputDecoration(
+                                labelText: '${member.displayName} paid',
+                                prefixText: '${group.currencyCode} ',
+                              ),
+                              onChanged: onAmountChanged,
+                            )
+                          : (member.isGuest ? const Text('Guest') : null),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      onChanged: creationState.isSubmitting
+                          ? null
+                          : (selected) =>
+                                onPayerChanged(member.id, selected ?? false),
+                    ),
+                if (payerMessage case final message?) ...[
                   const SizedBox(height: 4),
                   Text(
                     message,
@@ -382,24 +601,89 @@ class _ExpenseForm extends ConsumerWidget {
                 ],
                 const SizedBox(height: 24),
                 Text(
-                  'Equal split preview',
+                  'How is it split?',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<SplitMethod>(
+                  initialValue: splitMethod,
+                  decoration: const InputDecoration(labelText: 'Split method'),
+                  items: [
+                    for (final method in SplitMethod.values)
+                      DropdownMenuItem(
+                        value: method,
+                        child: Text(method.label),
+                      ),
+                  ],
+                  onChanged: creationState.isSubmitting
+                      ? null
+                      : onSplitMethodChanged,
+                ),
+                const SizedBox(height: 4),
+                Text(splitMethod.helper),
+                const SizedBox(height: 12),
+                for (final member in members)
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: participantIds.contains(member.id),
+                    title: Text(member.displayName),
+                    subtitle:
+                        participantIds.contains(member.id) &&
+                            splitMethod != SplitMethod.equal
+                        ? _splitInput(
+                            member: member,
+                            controller: splitValueControllers[member.id]!,
+                            method: splitMethod,
+                            currencyCode: group.currencyCode,
+                            fractionDigits: fractionDigits,
+                            onChanged: onAmountChanged,
+                          )
+                        : (member.isGuest ? const Text('Guest') : null),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    onChanged: creationState.isSubmitting
+                        ? null
+                        : (selected) => onParticipantChanged(
+                            member.id,
+                            selected ?? false,
+                          ),
+                  ),
+                if (splitMessage case final message?) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    message,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                Text(
+                  splitMethod == SplitMethod.equal
+                      ? 'Equal split preview'
+                      : 'Exact preview',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),
                 if (preview == null)
-                  const Text('Enter a valid amount and select participants.'),
-                if (preview != null) ...[
+                  const Text('Enter a valid amount and complete this split.')
+                else ...[
                   const Text(
-                    'Any remainder is assigned in a stable member order so the split is reproducible.',
+                    'This is the exact amount each participant will owe.',
                   ),
                   const SizedBox(height: 8),
-                  for (final share in preview.shares)
+                  for (final allocation in preview)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(
-                        membersById[share.memberId]?.displayName ?? 'Member',
+                        membersById[allocation.memberId]?.displayName ??
+                            'Member',
                       ),
-                      trailing: Text(share.amount.formatted),
+                      trailing: Text(
+                        ExactMoney(
+                          currencyCode: group.currencyCode,
+                          minorUnits: allocation.amountMinor,
+                        ).formatted,
+                      ),
                     ),
                 ],
                 const SizedBox(height: 28),
@@ -428,4 +712,39 @@ class _ExpenseForm extends ConsumerWidget {
       ),
     );
   }
+
+  List<DropdownMenuItem<String>> _memberItems(List<GroupMember> members) => [
+    for (final member in members)
+      DropdownMenuItem(
+        value: member.id,
+        child: Text(
+          member.isGuest ? '${member.displayName} (Guest)' : member.displayName,
+        ),
+      ),
+  ];
+
+  Widget _splitInput({
+    required GroupMember member,
+    required TextEditingController controller,
+    required SplitMethod method,
+    required String currencyCode,
+    required int fractionDigits,
+    required ValueChanged<String> onChanged,
+  }) => TextFormField(
+    controller: controller,
+    keyboardType: TextInputType.numberWithOptions(
+      decimal: method != SplitMethod.shares,
+    ),
+    decoration: InputDecoration(
+      labelText: switch (method) {
+        SplitMethod.exact => '${member.displayName} owes',
+        SplitMethod.percentage => '${member.displayName} percentage',
+        SplitMethod.shares => '${member.displayName} shares',
+        SplitMethod.equal => '',
+      },
+      prefixText: method == SplitMethod.exact ? '$currencyCode ' : null,
+      suffixText: method == SplitMethod.percentage ? '%' : null,
+    ),
+    onChanged: onChanged,
+  );
 }

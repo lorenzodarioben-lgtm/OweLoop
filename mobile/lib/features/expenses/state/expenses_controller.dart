@@ -90,7 +90,7 @@ class ExpenseCreationController extends ChangeNotifier {
     final sessionGeneration = _sessionGeneration;
     _setState(_state.copyWith(isSubmitting: true, clearErrorMessage: true));
     try {
-      final expense = await _repository.createEqualExpense(input);
+      final expense = await _repository.createExpense(input);
       if (sessionGeneration != _sessionGeneration) {
         return null;
       }

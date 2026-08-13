@@ -1,6 +1,6 @@
 begin;
 
-select plan(134);
+select plan(147);
 
 insert into auth.users (
   id,
@@ -2067,6 +2067,179 @@ select is(
   ),
   false,
   'unauthenticated callers cannot execute settlement history'
+);
+
+reset role;
+
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+select lives_ok(
+  $$select public.create_expense(
+    '77777777-7777-7777-7777-777777777777',
+    'Flexible taxi',
+    10000,
+    now(),
+    jsonb_build_array(
+      jsonb_build_object(
+        'member_id', (select id from public.group_members where group_id = '77777777-7777-7777-7777-777777777777' and user_id = '11111111-1111-1111-1111-111111111111'),
+        'amount_minor', 6000
+      ),
+      jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 4000)
+    ),
+    jsonb_build_array(
+      jsonb_build_object(
+        'member_id', (select id from public.group_members where group_id = '77777777-7777-7777-7777-777777777777' and user_id = '11111111-1111-1111-1111-111111111111'),
+        'amount_minor', 3334
+      ),
+      jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 3333),
+      jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777702', 'amount_minor', 3333)
+    )
+  )$$,
+  'an active member creates a multiple-payer expense atomically'
+);
+
+select is(
+  (select status from public.expenses where description = 'Flexible taxi'),
+  'posted'::public.expense_status,
+  'the generic expense operation posts before returning'
+);
+
+select is(
+  (select sum(amount_minor)::bigint from public.expense_payers where expense_id = (select id from public.expenses where description = 'Flexible taxi')),
+  10000::bigint,
+  'multiple payer amounts exactly equal the expense total'
+);
+
+select is(
+  (select sum(amount_minor)::bigint from public.expense_splits where expense_id = (select id from public.expenses where description = 'Flexible taxi')),
+  10000::bigint,
+  'flexible split amounts exactly equal the expense total'
+);
+
+select lives_ok(
+  $$select public.create_expense(
+    '77777777-7777-7777-7777-777777777777',
+    'One-cent split',
+    1,
+    now(),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 1)),
+    jsonb_build_array(
+      jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 1),
+      jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777702', 'amount_minor', 0)
+    )
+  )$$,
+  'a tiny exact split can retain an explicit zero-minor-unit participant'
+);
+
+select throws_ok(
+  $$select public.create_expense(
+    '77777777-7777-7777-7777-777777777777',
+    'Duplicate payer',
+    100,
+    now(),
+    jsonb_build_array(
+      jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 50),
+      jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 50)
+    ),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 100))
+  )$$,
+  'P0001',
+  'Payer members cannot be selected more than once',
+  'duplicate payer allocations are rejected'
+);
+
+select throws_ok(
+  $$select public.create_expense(
+    '77777777-7777-7777-7777-777777777777',
+    'Wrong payer total',
+    100,
+    now(),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 99)),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 100))
+  )$$,
+  'P0001',
+  'Expense payer amounts must equal the expense total',
+  'wrong payer totals are rejected'
+);
+
+select throws_ok(
+  $$select public.create_expense(
+    '77777777-7777-7777-7777-777777777777',
+    'Wrong split total',
+    100,
+    now(),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 100)),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 99))
+  )$$,
+  'P0001',
+  'Expense split amounts must equal the expense total',
+  'wrong split totals are rejected'
+);
+
+select throws_ok(
+  $$select public.create_expense(
+    '77777777-7777-7777-7777-777777777777',
+    'Negative split',
+    100,
+    now(),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 100)),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', -1))
+  )$$,
+  'P0001',
+  'Split amounts cannot be negative',
+  'negative split values are rejected'
+);
+
+select throws_ok(
+  $$select public.create_expense(
+    '77777777-7777-7777-7777-777777777777',
+    'Guest mismatch',
+    100,
+    now(),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777704', 'amount_minor', 100)),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 100))
+  )$$,
+  'P0001',
+  'Payer members must be active in this group',
+  'removed members cannot be used in new flexible expenses'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
+set local role authenticated;
+
+select throws_ok(
+  $$select public.create_expense(
+    '77777777-7777-7777-7777-777777777777',
+    'Outsider flexible expense',
+    100,
+    now(),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 100)),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 100))
+  )$$,
+  'P0001',
+  'Only an active group member can create an expense',
+  'an unrelated user cannot create a flexible expense'
+);
+
+reset role;
+set local role anon;
+
+select is(
+  has_function_privilege(
+    'anon',
+    'public.create_expense(uuid,text,bigint,timestamp with time zone,jsonb,jsonb)'::regprocedure,
+    'execute'
+  ),
+  false,
+  'unauthenticated roles cannot execute the generic expense operation'
+);
+
+select is(
+  pg_catalog.to_regprocedure('public.create_expense(uuid,text,bigint,timestamp with time zone,jsonb,jsonb,uuid)'),
+  null::regprocedure,
+  'generic expense creation never accepts a caller or creator identity'
 );
 
 reset role;
