@@ -59,6 +59,23 @@ The mobile equal-expense path uses `public.create_equal_expense(uuid, text, bigi
 
 Exact, percentage, and share-based split interfaces can be added later by calculating the final minor-unit split rows before finalization. The persisted source of truth remains the exact amount owed by each member.
 
+## Derived group balances
+
+`public.get_group_balances(uuid)` is the single read-only balance source. It accepts only a group ID, requires an authenticated, onboarded active registered member of that group, and returns no rows or identifiers for any other group. The RPC derives balances directly from durable financial records; there is no mutable balance table or balance column.
+
+For each included member, the net balance is calculated entirely in `bigint` minor units:
+
+```text
+sum(posted, non-voided payer amounts)
+- sum(posted, non-voided split amounts)
++ sum(non-voided settlements paid)
+- sum(non-voided settlements received)
+```
+
+A positive result means the member is owed money, a negative result means they owe money, and zero means they are settled up. Draft and voided expenses are excluded, as are voided settlements. The function includes all active members, even at zero, account-free guests, and removed members that still have financial history. It returns a deterministic display order: the caller first, then active members by name and durable ID, then historical removed members by name and durable ID.
+
+Before returning data, the function verifies that every contributing posted expense has exact payer and split totals and that the group-wide net is exactly zero. It rejects inconsistent financial records rather than returning a misleading balance. Settlement entry and payment recommendations remain future workflows; the calculation already accounts for valid settlement records so those additions do not need a second balance model.
+
 ## Membership, roles, and ownership
 
 Every group is created with an owner membership automatically. Direct client membership inserts can only create active `member` records. Only a group owner can use the guarded role function to make an active, registered member (`user_id is not null`) an administrator; a guest may remain a member but can never be promoted to administrator. Ownership changes use `public.transfer_group_ownership(uuid, uuid)`, which accepts only a different active, registered member of the same group, assigns that successor first, and then demotes the current owner. The final active owner cannot be removed or demoted without a replacement.
@@ -77,7 +94,7 @@ Indexes support the primary access paths: active group lookup by user, active me
 
 ## Known limitations
 
-- The schema does not calculate balances; that future business logic must derive balances from posted expenses and non-voided settlements.
+- The schema derives balances but does not yet provide settlement entry, payment recommendations, or automatic settlement creation.
 - The foundation contains no invitation or guest-claim workflow yet.
 - Account-deletion and ownership-transfer operations need an operational support process before user account deletion is exposed.
 - Receipt data, payments, bank connections, multiple currencies, and offline synchronisation are intentionally excluded.

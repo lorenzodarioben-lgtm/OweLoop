@@ -5,11 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oweloop/app/app_bootstrap.dart';
 import 'package:oweloop/features/authentication/state/authentication_providers.dart';
+import 'package:oweloop/features/balances/state/balances_providers.dart';
 import 'package:oweloop/features/expenses/domain/expense_models.dart';
 import 'package:oweloop/features/expenses/state/expenses_providers.dart';
 import 'package:oweloop/features/groups/state/groups_providers.dart';
 
 import '../../fakes/authentication_fakes.dart';
+import '../../fakes/balances_fakes.dart';
 import '../../fakes/expenses_fakes.dart';
 import '../../fakes/groups_fakes.dart';
 
@@ -26,6 +28,7 @@ void main() {
   Widget buildApp({
     required FakeGroupsRepository groupsRepository,
     required FakeExpensesRepository expensesRepository,
+    FakeBalancesRepository? balancesRepository,
   }) {
     return ProviderScope(
       overrides: [
@@ -37,6 +40,9 @@ void main() {
         ),
         groupsRepositoryProvider.overrideWithValue(groupsRepository),
         expensesRepositoryProvider.overrideWithValue(expensesRepository),
+        balancesRepositoryProvider.overrideWithValue(
+          balancesRepository ?? FakeBalancesRepository(),
+        ),
       ],
       child: const OweLoopBootstrap(),
     );
@@ -46,11 +52,13 @@ void main() {
     WidgetTester tester, {
     required FakeGroupsRepository groupsRepository,
     required FakeExpensesRepository expensesRepository,
+    FakeBalancesRepository? balancesRepository,
   }) async {
     await tester.pumpWidget(
       buildApp(
         groupsRepository: groupsRepository,
         expensesRepository: expensesRepository,
+        balancesRepository: balancesRepository,
       ),
     );
     await tester.pumpAndSettle();
@@ -62,11 +70,13 @@ void main() {
     WidgetTester tester, {
     required FakeGroupsRepository groupsRepository,
     required FakeExpensesRepository expensesRepository,
+    FakeBalancesRepository? balancesRepository,
   }) async {
     await openGroup(
       tester,
       groupsRepository: groupsRepository,
       expensesRepository: expensesRepository,
+      balancesRepository: balancesRepository,
     );
     await tester.tap(find.text('Add expense').first);
     await tester.pumpAndSettle();
@@ -98,6 +108,7 @@ void main() {
       expensesRepository: FakeExpensesRepository(),
     );
 
+    await tester.scrollUntilVisible(find.text('Expense history'), 240);
     expect(find.text('Expense history'), findsOneWidget);
     expect(find.text('No posted expenses yet.'), findsOneWidget);
     expect(find.text('Add expense'), findsWidgets);
@@ -116,9 +127,16 @@ void main() {
       expensesRepository: expensesRepository,
     );
 
+    final dinnerTile = find.ancestor(
+      of: find.text('Dinner'),
+      matching: find.byType(ListTile),
+    );
+    final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+    scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
+    await tester.pumpAndSettle();
     expect(find.text('Dinner'), findsOneWidget);
     expect(find.text('AUD 10.00'), findsOneWidget);
-    await tester.tap(find.text('Dinner'));
+    await tester.tap(dinnerTile);
     await tester.pumpAndSettle();
 
     expect(find.text('Expense details'), findsOneWidget);
@@ -163,10 +181,12 @@ void main() {
       expensesRepository.expenses = [testExpense];
       return testExpense;
     };
+    final balancesRepository = FakeBalancesRepository();
     await openExpenseForm(
       tester,
       groupsRepository: groupRepository(),
       expensesRepository: expensesRepository,
+      balancesRepository: balancesRepository,
     );
     await enterValidExpense(tester);
     await deselectGuestParticipant(tester);
@@ -179,6 +199,7 @@ void main() {
       'owner-member',
     ]);
     expect(expensesRepository.loadExpensesCalls, greaterThanOrEqualTo(2));
+    expect(balancesRepository.loadBalancesCalls, greaterThanOrEqualTo(2));
     expect(find.text('Expense details'), findsOneWidget);
   });
 
