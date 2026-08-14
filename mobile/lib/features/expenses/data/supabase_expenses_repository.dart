@@ -50,6 +50,7 @@ class SupabaseExpensesRepository implements ExpensesRepository {
                   'amount_minor': split.amountMinor,
                 },
             ],
+            'p_operation_id': input.operationId,
           },
         )
         .single();

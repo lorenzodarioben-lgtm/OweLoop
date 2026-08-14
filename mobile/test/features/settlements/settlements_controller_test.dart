@@ -29,6 +29,7 @@ void main() {
         receivingMemberId: 'member-b',
         amount: const ExactMoney(currencyCode: 'AUD', minorUnits: 1250),
         settledAt: DateTime.utc(2026, 8, 1, 12),
+        operationId: '00000000-0000-4000-8000-000000000001',
       ),
     );
     expect(created, testSettlement);
@@ -52,6 +53,7 @@ void main() {
         receivingMemberId: 'member-b',
         amount: const ExactMoney(currencyCode: 'AUD', minorUnits: 0),
         settledAt: DateTime.utc(2026, 8, 1),
+        operationId: '00000000-0000-4000-8000-000000000002',
       ),
     );
 

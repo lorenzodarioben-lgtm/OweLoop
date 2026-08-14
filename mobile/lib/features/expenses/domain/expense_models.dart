@@ -139,6 +139,7 @@ class ExpenseCreationInput {
     required this.description,
     required this.total,
     required this.occurredAt,
+    required this.operationId,
     this.payers = const [],
     this.splits = const [],
     this.splitMethod = SplitMethod.equal,
@@ -150,6 +151,7 @@ class ExpenseCreationInput {
   final String description;
   final ExactMoney total;
   final DateTime occurredAt;
+  final String operationId;
   final List<ExpenseAllocation> payers;
   final List<ExpenseAllocation> splits;
   final SplitMethod splitMethod;

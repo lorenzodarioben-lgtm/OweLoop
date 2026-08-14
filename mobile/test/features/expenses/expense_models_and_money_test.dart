@@ -157,6 +157,7 @@ void main() {
         description: 'Taxi',
         total: ExactMoney(currencyCode: 'USD', minorUnits: 10000),
         occurredAt: DateTime(2026, 8, 2),
+        operationId: '00000000-0000-4000-8000-000000000005',
         payers: [
           ExpenseAllocation(memberId: 'member-a', amountMinor: 6000),
           ExpenseAllocation(memberId: 'member-b', amountMinor: 4000),

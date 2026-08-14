@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
+import '../../../core/operations/client_operation_id.dart';
 import '../../balances/state/balances_providers.dart';
 import '../../expenses/domain/exact_money.dart';
 import '../../expenses/validation/expense_validators.dart';
@@ -31,6 +32,7 @@ class _RecordSettlementScreenState
   String? _receivingMemberId;
   DateTime _settledOn = DateTime.now();
   bool _hasInitialized = false;
+  String? _operationId;
 
   @override
   void dispose() {
@@ -75,9 +77,14 @@ class _RecordSettlementScreenState
       context: context,
       initialDate: _settledOn,
       firstDate: DateTime(2000),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      lastDate: DateTime.now(),
     );
-    if (selected != null && mounted) setState(() => _settledOn = selected);
+    if (selected != null && mounted) {
+      setState(() {
+        _settledOn = selected;
+        _operationId = null;
+      });
+    }
   }
 
   Future<void> _submit(AppGroup group) async {
@@ -100,12 +107,12 @@ class _RecordSettlementScreenState
             payingMemberId: _payingMemberId!,
             receivingMemberId: _receivingMemberId!,
             amount: amount,
-            settledAt: DateTime.utc(
+            settledAt: DateTime(
               _settledOn.year,
               _settledOn.month,
               _settledOn.day,
-              12,
-            ),
+            ).toUtc(),
+            operationId: _operationId ??= ClientOperationId.generate().value,
           ),
         );
     if (settlement == null || !mounted) return;
@@ -165,9 +172,15 @@ class _RecordSettlementScreenState
             receivingMemberId: _receivingMemberId,
             settledOn: _settledOn,
             onReady: _initialize,
-            onPayingChanged: (value) => setState(() => _payingMemberId = value),
-            onReceivingChanged: (value) =>
-                setState(() => _receivingMemberId = value),
+            onPayingChanged: (value) => setState(() {
+              _payingMemberId = value;
+              _operationId = null;
+            }),
+            onReceivingChanged: (value) => setState(() {
+              _receivingMemberId = value;
+              _operationId = null;
+            }),
+            onAmountChanged: (_) => setState(() => _operationId = null),
             onPickDate: _pickDate,
             onSubmit: _submit,
           ),
@@ -189,6 +202,7 @@ class _SettlementForm extends ConsumerWidget {
     required this.onReady,
     required this.onPayingChanged,
     required this.onReceivingChanged,
+    required this.onAmountChanged,
     required this.onPickDate,
     required this.onSubmit,
   });
@@ -203,6 +217,7 @@ class _SettlementForm extends ConsumerWidget {
   final ValueChanged<List<GroupMember>> onReady;
   final ValueChanged<String?> onPayingChanged;
   final ValueChanged<String?> onReceivingChanged;
+  final ValueChanged<String> onAmountChanged;
   final Future<void> Function() onPickDate;
   final Future<void> Function(AppGroup group) onSubmit;
 
@@ -275,6 +290,7 @@ class _SettlementForm extends ConsumerWidget {
                     labelText: 'Amount',
                     prefixText: '${group.currencyCode} ',
                   ),
+                  onChanged: onAmountChanged,
                   validator: (value) =>
                       ExpenseValidators.amount(value, group.currencyCode),
                 ),

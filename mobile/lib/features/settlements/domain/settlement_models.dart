@@ -57,6 +57,7 @@ class SettlementCreationInput {
     required this.receivingMemberId,
     required this.amount,
     required this.settledAt,
+    required this.operationId,
   });
 
   final String groupId;
@@ -64,6 +65,7 @@ class SettlementCreationInput {
   final String receivingMemberId;
   final ExactMoney amount;
   final DateTime settledAt;
+  final String operationId;
 }
 
 class SettlementDraft {

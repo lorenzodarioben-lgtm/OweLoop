@@ -18,6 +18,9 @@ class SettlementsErrorMapper {
     if (lowerCase.contains('amount must be greater than zero')) {
       return 'Enter a valid positive amount.';
     }
+    if (lowerCase.contains('date cannot be in the future')) {
+      return 'A settlement can only be dated today or earlier.';
+    }
     if (lowerCase.contains('archived')) {
       return 'This group is archived and cannot be changed.';
     }

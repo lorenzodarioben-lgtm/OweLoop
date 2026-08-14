@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
+import '../../../core/operations/client_operation_id.dart';
 import '../../balances/state/balances_providers.dart';
 import '../../groups/domain/group_models.dart';
 import '../../groups/state/groups_providers.dart';
@@ -38,6 +39,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   bool _hasInitializedMembers = false;
   String? _payerMessage;
   String? _splitMessage;
+  String? _operationId;
 
   @override
   void initState() {
@@ -126,7 +128,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
     if (selectedDate != null && mounted) {
-      setState(() => _occurredOn = selectedDate);
+      setState(() {
+        _occurredOn = selectedDate;
+        _operationId = null;
+      });
     }
   }
 
@@ -135,6 +140,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     setState(() {
       _splitMethod = value;
       _splitMessage = null;
+      _operationId = null;
       if (value == SplitMethod.shares) {
         for (final member in members) {
           _splitValueControllers[member.id]?.text = '1';
@@ -331,6 +337,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               _occurredOn.day,
               12,
             ),
+            operationId: _operationId ??= ClientOperationId.generate().value,
             payers: payers,
             splits: splits,
             splitMethod: _splitMethod,
@@ -402,11 +409,14 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             splitMessage: _splitMessage,
             onMembersReady: _initializeMembers,
             onPickDate: _pickDate,
-            onSinglePayerChanged: (value) =>
-                setState(() => _singlePayerMemberId = value),
+            onSinglePayerChanged: (value) => setState(() {
+              _singlePayerMemberId = value;
+              _operationId = null;
+            }),
             onMultiplePayersChanged: (value) => setState(() {
               _multiplePayers = value;
               _payerMessage = null;
+              _operationId = null;
               if (value && _singlePayerMemberId != null) {
                 _payerIds = {_singlePayerMemberId!};
                 _payerAmountControllers[_singlePayerMemberId!]?.text =
@@ -422,6 +432,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 _payerIds.remove(memberId);
               }
               _payerMessage = null;
+              _operationId = null;
             }),
             onParticipantChanged: (memberId, selected) => setState(() {
               if (selected) {
@@ -430,10 +441,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 _participantIds.remove(memberId);
               }
               _splitMessage = null;
+              _operationId = null;
             }),
             onSplitMethodChanged: (value) =>
                 _setSplitMethod(value, groupState.members),
-            onAmountChanged: (_) => setState(() {}),
+            onAmountChanged: (_) => setState(() => _operationId = null),
             previewFor: _previewFor,
             onSubmit: _submit,
           ),
@@ -553,6 +565,7 @@ class _ExpenseForm extends ConsumerWidget {
                   textCapitalization: TextCapitalization.sentences,
                   textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(labelText: 'Description'),
+                  onChanged: onAmountChanged,
                   validator: ExpenseValidators.description,
                 ),
                 const SizedBox(height: 16),
