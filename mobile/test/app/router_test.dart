@@ -163,6 +163,19 @@ void main() {
       );
     });
 
+    test('allows authenticated users onto guest claim requests', () {
+      expect(
+        authenticationRedirect(
+          authenticationState: AuthenticationState(
+            status: AuthenticationStatus.authenticated,
+            user: user,
+          ),
+          location: AppRoutes.guestClaims,
+        ),
+        isNull,
+      );
+    });
+
     test('allows authenticated users onto protected expense routes', () {
       expect(
         authenticationRedirect(

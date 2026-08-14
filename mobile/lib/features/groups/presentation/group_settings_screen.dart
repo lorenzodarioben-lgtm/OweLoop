@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
+import '../../guest_claims/presentation/guest_claim_dialog.dart';
+import '../../guest_claims/presentation/group_guest_claims_section.dart';
 import '../../invitations/presentation/group_invitations_section.dart';
 import '../domain/group_models.dart';
 import '../state/groups_providers.dart';
@@ -261,9 +263,22 @@ class _SettingsContent extends StatelessWidget {
                           );
                         case 'transfer':
                           await onTransferOwnership(controller, member);
+                        case 'claim':
+                          await showDialog<void>(
+                            context: context,
+                            builder: (_) => GuestClaimDialog(
+                              groupId: group.id,
+                              guest: member,
+                            ),
+                          );
                       }
                     },
                     itemBuilder: (_) => [
+                      if (member.isGuest)
+                        const PopupMenuItem(
+                          value: 'claim',
+                          child: Text('Request account claim'),
+                        ),
                       if (isOwner &&
                           !member.isGuest &&
                           member.role == GroupRole.member)
@@ -292,6 +307,8 @@ class _SettingsContent extends StatelessWidget {
         if (canManage) ...[
           const SizedBox(height: 32),
           GroupInvitationsSection(groupId: group.id),
+          const SizedBox(height: 32),
+          GroupGuestClaimsSection(groupId: group.id),
         ],
         const SizedBox(height: 32),
         Text('Archive', style: Theme.of(context).textTheme.titleLarge),

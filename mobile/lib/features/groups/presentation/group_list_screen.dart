@@ -27,6 +27,11 @@ class GroupListScreen extends ConsumerWidget {
             onPressed: () => context.go(AppRoutes.invitations),
             icon: const Icon(Icons.mail_outline),
           ),
+          IconButton(
+            tooltip: 'Guest claim requests',
+            onPressed: () => context.go(AppRoutes.guestClaims),
+            icon: const Icon(Icons.person_search_outlined),
+          ),
           TextButton(
             onPressed: authState.isSubmitting
                 ? null
