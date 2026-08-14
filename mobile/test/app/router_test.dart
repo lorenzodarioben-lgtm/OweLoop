@@ -150,6 +150,19 @@ void main() {
       );
     });
 
+    test('allows authenticated users onto the invitation inbox', () {
+      expect(
+        authenticationRedirect(
+          authenticationState: AuthenticationState(
+            status: AuthenticationStatus.authenticated,
+            user: user,
+          ),
+          location: AppRoutes.invitations,
+        ),
+        isNull,
+      );
+    });
+
     test('allows authenticated users onto protected expense routes', () {
       expect(
         authenticationRedirect(

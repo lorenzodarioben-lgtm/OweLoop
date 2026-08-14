@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
+import '../../invitations/presentation/group_invitations_section.dart';
 import '../domain/group_models.dart';
 import '../state/groups_providers.dart';
 import '../state/groups_controller.dart';
@@ -288,6 +289,10 @@ class _SettingsContent extends StatelessWidget {
                   )
                 : null,
           ),
+        if (canManage) ...[
+          const SizedBox(height: 32),
+          GroupInvitationsSection(groupId: group.id),
+        ],
         const SizedBox(height: 32),
         Text('Archive', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 8),

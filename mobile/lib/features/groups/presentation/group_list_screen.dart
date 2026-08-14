@@ -22,6 +22,11 @@ class GroupListScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('OweLoop'),
         actions: [
+          IconButton(
+            tooltip: 'Invitations',
+            onPressed: () => context.go(AppRoutes.invitations),
+            icon: const Icon(Icons.mail_outline),
+          ),
           TextButton(
             onPressed: authState.isSubmitting
                 ? null

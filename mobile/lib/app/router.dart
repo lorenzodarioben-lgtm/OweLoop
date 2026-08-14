@@ -19,6 +19,7 @@ import '../features/groups/presentation/create_group_screen.dart';
 import '../features/groups/presentation/group_detail_screen.dart';
 import '../features/groups/presentation/group_list_screen.dart';
 import '../features/groups/presentation/group_settings_screen.dart';
+import '../features/invitations/presentation/invitation_inbox_screen.dart';
 import '../features/settlements/domain/settlement_models.dart';
 import '../features/settlements/presentation/record_settlement_screen.dart';
 
@@ -32,6 +33,7 @@ abstract final class AppRoutes {
   static const updatePassword = '/update-password';
   static const profileSetup = '/profile-setup';
   static const home = '/home';
+  static const invitations = '/invitations';
   static const newGroup = '/groups/new';
   static const groupDetail = '/groups/:groupId';
   static const groupSettings = '/groups/:groupId/settings';
@@ -105,6 +107,10 @@ GoRouter createAppRouter(AuthenticationController controller) {
       GoRoute(
         path: AppRoutes.home,
         builder: (context, state) => const GroupListScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.invitations,
+        builder: (context, state) => const InvitationInboxScreen(),
       ),
       GoRoute(
         path: AppRoutes.newGroup,
@@ -184,6 +190,7 @@ String? authenticationRedirect({
   }
 
   if (location == AppRoutes.home ||
+      location == AppRoutes.invitations ||
       location == AppRoutes.newGroup ||
       location.startsWith('/groups/')) {
     return null;
