@@ -74,6 +74,110 @@ void main() {
     });
   });
 
+  group('SplitAllocationCalculator', () {
+    test('keeps one minor unit exact across three equal participants', () {
+      final allocations = SplitAllocationCalculator.equal(
+        totalMinor: 1,
+        memberIds: const ['member-c', 'member-a', 'member-b'],
+      );
+
+      expect(allocations.map((allocation) => allocation.amountMinor), [
+        1,
+        0,
+        0,
+      ]);
+    });
+
+    test('accepts exact allocations only when their integer sum matches', () {
+      expect(
+        SplitAllocationCalculator.exact(
+          totalMinor: 3333,
+          amountsByMemberId: const {'member-b': 833, 'member-a': 2500},
+        ).map((allocation) => allocation.amountMinor),
+        [2500, 833],
+      );
+      expect(
+        () => SplitAllocationCalculator.exact(
+          totalMinor: 1000,
+          amountsByMemberId: const {'member-a': 999},
+        ),
+        throwsA(isA<SplitAllocationException>()),
+      );
+    });
+
+    test('converts basis points without using floating point', () {
+      final allocations = SplitAllocationCalculator.percentages(
+        totalMinor: 1000,
+        basisPointsByMemberId: const {
+          'member-c': 3333,
+          'member-a': 3333,
+          'member-b': 3334,
+        },
+      );
+
+      expect(allocations.map((allocation) => allocation.amountMinor), [
+        334,
+        333,
+        333,
+      ]);
+      expect(
+        () => SplitAllocationCalculator.percentages(
+          totalMinor: 1000,
+          basisPointsByMemberId: const {'member-a': 9999},
+        ),
+        throwsA(isA<SplitAllocationException>()),
+      );
+    });
+
+    test(
+      'allocates shares deterministically for JPY and rejects zero shares',
+      () {
+        final allocations = SplitAllocationCalculator.shares(
+          totalMinor: 100,
+          sharesByMemberId: const {'member-b': 1, 'member-a': 2},
+        );
+
+        expect(allocations.map((allocation) => allocation.amountMinor), [
+          67,
+          33,
+        ]);
+        expect(
+          () => SplitAllocationCalculator.shares(
+            totalMinor: 100,
+            sharesByMemberId: const {'member-a': 0},
+          ),
+          throwsA(isA<SplitAllocationException>()),
+        );
+      },
+    );
+
+    test('keeps multiple payer allocations as exact source values', () {
+      final input = ExpenseCreationInput(
+        groupId: 'group-id',
+        description: 'Taxi',
+        total: ExactMoney(currencyCode: 'USD', minorUnits: 10000),
+        occurredAt: DateTime(2026, 8, 2),
+        payers: [
+          ExpenseAllocation(memberId: 'member-a', amountMinor: 6000),
+          ExpenseAllocation(memberId: 'member-b', amountMinor: 4000),
+        ],
+        splits: [
+          ExpenseAllocation(memberId: 'member-a', amountMinor: 5000),
+          ExpenseAllocation(memberId: 'member-b', amountMinor: 5000),
+        ],
+      );
+
+      expect(
+        input.resolvedPayers.fold(0, (sum, payer) => sum + payer.amountMinor),
+        10000,
+      );
+      expect(
+        input.resolvedSplits.fold(0, (sum, split) => sum + split.amountMinor),
+        10000,
+      );
+    });
+  });
+
   test('maps expenses with payer and exact split details', () {
     final expense = ExpenseRecord.fromMap(<String, dynamic>{
       'id': 'expense-id',

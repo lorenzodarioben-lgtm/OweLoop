@@ -155,7 +155,7 @@ class _ExpenseHistoryList extends StatelessWidget {
             leading: const Icon(Icons.receipt_long_outlined),
             title: Text(expense.description),
             subtitle: Text(
-              localizations.formatMediumDate(expense.occurredAt.toLocal()),
+              '${localizations.formatMediumDate(expense.occurredAt.toLocal())}${expense.status == ExpenseStatus.voided ? ' · Voided' : ''}',
             ),
             trailing: Text(
               expense.total.formatted,

@@ -16,10 +16,12 @@ class FakeExpensesRepository implements ExpensesRepository {
   Object? loadExpensesError;
   Object? createExpenseError;
   Object? loadExpenseError;
+  Object? voidExpenseError;
   Future<List<ExpenseRecord>> Function()? loadExpensesHandler;
   Future<ExpenseRecord> Function(ExpenseCreationInput input)? createHandler;
   int loadExpensesCalls = 0;
   ExpenseCreationInput? lastCreationInput;
+  String? lastVoidedExpenseId;
 
   @override
   Future<List<ExpenseRecord>> loadPostedExpenses(String groupId) async {
@@ -34,7 +36,7 @@ class FakeExpensesRepository implements ExpensesRepository {
   }
 
   @override
-  Future<ExpenseRecord> createEqualExpense(ExpenseCreationInput input) async {
+  Future<ExpenseRecord> createExpense(ExpenseCreationInput input) async {
     lastCreationInput = input;
     if (createHandler != null) {
       return createHandler!(input);
@@ -52,6 +54,27 @@ class FakeExpensesRepository implements ExpensesRepository {
       throw loadExpenseError!;
     }
     return expensesById[expenseId];
+  }
+
+  @override
+  Future<ExpenseRecord> voidExpense({
+    required String expenseId,
+    required String currencyCode,
+  }) async {
+    lastVoidedExpenseId = expenseId;
+    if (voidExpenseError != null) throw voidExpenseError!;
+    final expense = expensesById[expenseId] ?? createdExpense ?? testExpense;
+    return ExpenseRecord(
+      id: expense.id,
+      groupId: expense.groupId,
+      description: expense.description,
+      total: expense.total,
+      occurredAt: expense.occurredAt,
+      status: ExpenseStatus.voided,
+      payers: expense.payers,
+      splits: expense.splits,
+      voidedAt: DateTime.utc(2026, 8, 3),
+    );
   }
 }
 

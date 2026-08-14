@@ -1,6 +1,6 @@
 begin;
 
-select plan(123);
+select plan(165);
 
 insert into auth.users (
   id,
@@ -1567,13 +1567,7 @@ insert into public.expenses (
   '11111111-1111-1111-1111-111111111111'
 );
 
-insert into public.settlements (
-  group_id,
-  paying_member_id,
-  receiving_member_id,
-  amount_minor,
-  created_by
-) values (
+select public.record_settlement(
   '77777777-7777-7777-7777-777777777777',
   '77777777-7777-7777-7777-777777777701',
   (
@@ -1583,19 +1577,23 @@ insert into public.settlements (
       and user_id = '11111111-1111-1111-1111-111111111111'
   ),
   500,
-  '11111111-1111-1111-1111-111111111111'
-), (
+  now()
+);
+
+select public.record_settlement(
   '77777777-7777-7777-7777-777777777777',
   '77777777-7777-7777-7777-777777777702',
   '77777777-7777-7777-7777-777777777701',
   777,
-  '11111111-1111-1111-1111-111111111111'
+  now()
 );
 
-update public.settlements
-set voided_at = now()
-where group_id = '77777777-7777-7777-7777-777777777777'
-  and amount_minor = 777;
+select public.void_settlement((
+  select id
+  from public.settlements
+  where group_id = '77777777-7777-7777-7777-777777777777'
+    and amount_minor = 777
+));
 
 update public.group_members
 set removed_at = now()
@@ -1941,6 +1939,443 @@ select is(
   0::bigint,
   'balance loading recovers after consistent financial records are restored'
 );
+
+select lives_ok(
+  $$select public.record_settlement(
+    '77777777-7777-7777-7777-777777777777',
+    '77777777-7777-7777-7777-777777777701',
+    '77777777-7777-7777-7777-777777777702',
+    123,
+    now()
+  )$$,
+  'an active member can record an exact settlement for a guest'
+);
+
+select is(
+  (
+    select amount_minor
+    from public.get_group_settlements('77777777-7777-7777-7777-777777777777')
+    where amount_minor = 123
+  ),
+  123::bigint,
+  'settlement history returns the recorded exact amount'
+);
+
+select throws_ok(
+  $$select public.record_settlement(
+    '77777777-7777-7777-7777-777777777777',
+    '77777777-7777-7777-7777-777777777701',
+    '77777777-7777-7777-7777-777777777701',
+    123,
+    now()
+  )$$,
+  'P0001',
+  'Choose two different active group members',
+  'a settlement cannot name the same member as payer and receiver'
+);
+
+select throws_ok(
+  $$select public.record_settlement(
+    '77777777-7777-7777-7777-777777777777',
+    '77777777-7777-7777-7777-777777777701',
+    '77777777-7777-7777-7777-777777777702',
+    0,
+    now()
+  )$$,
+  'P0001',
+  'Settlement amount must be greater than zero',
+  'a zero settlement is rejected'
+);
+
+select lives_ok(
+  $$select public.void_settlement((
+    select id
+    from public.settlements
+    where group_id = '77777777-7777-7777-7777-777777777777'
+      and amount_minor = 123
+  ))$$,
+  'the settlement creator can void a recorded settlement'
+);
+
+select is(
+  (
+    select is_voided
+    from public.get_group_settlements('77777777-7777-7777-7777-777777777777')
+    where amount_minor = 123
+  ),
+  true,
+  'a voided settlement remains visible in history'
+);
+
+select throws_ok(
+  $$select public.void_settlement((
+    select id
+    from public.settlements
+    where group_id = '77777777-7777-7777-7777-777777777777'
+      and amount_minor = 123
+  ))$$,
+  'P0001',
+  'Settlement is already voided',
+  'a voided settlement cannot be voided again'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
+set local role authenticated;
+
+select throws_ok(
+  $$select public.record_settlement(
+    '77777777-7777-7777-7777-777777777777',
+    '77777777-7777-7777-7777-777777777701',
+    '77777777-7777-7777-7777-777777777702',
+    123,
+    now()
+  )$$,
+  'P0001',
+  'Group is unavailable',
+  'an unrelated member cannot record a settlement'
+);
+
+select throws_ok(
+  $$select * from public.get_group_settlements('77777777-7777-7777-7777-777777777777')$$,
+  'P0001',
+  'Group is unavailable',
+  'an unrelated member cannot load settlement history'
+);
+
+reset role;
+set local role anon;
+
+select throws_ok(
+  $$select public.record_settlement(
+    '77777777-7777-7777-7777-777777777777',
+    '77777777-7777-7777-7777-777777777701',
+    '77777777-7777-7777-7777-777777777702',
+    123,
+    now()
+  )$$,
+  '42501',
+  null,
+  'unauthenticated callers cannot execute settlement recording'
+);
+
+select is(
+  has_function_privilege(
+    'anon',
+    'public.get_group_settlements(uuid)'::regprocedure,
+    'execute'
+  ),
+  false,
+  'unauthenticated callers cannot execute settlement history'
+);
+
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+select lives_ok(
+  $$select public.create_expense(
+    '77777777-7777-7777-7777-777777777777',
+    'Flexible taxi',
+    10000,
+    now(),
+    jsonb_build_array(
+      jsonb_build_object(
+        'member_id', (select id from public.group_members where group_id = '77777777-7777-7777-7777-777777777777' and user_id = '11111111-1111-1111-1111-111111111111'),
+        'amount_minor', 6000
+      ),
+      jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 4000)
+    ),
+    jsonb_build_array(
+      jsonb_build_object(
+        'member_id', (select id from public.group_members where group_id = '77777777-7777-7777-7777-777777777777' and user_id = '11111111-1111-1111-1111-111111111111'),
+        'amount_minor', 3334
+      ),
+      jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 3333),
+      jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777702', 'amount_minor', 3333)
+    )
+  )$$,
+  'an active member creates a multiple-payer expense atomically'
+);
+
+select is(
+  (select status from public.expenses where description = 'Flexible taxi'),
+  'posted'::public.expense_status,
+  'the generic expense operation posts before returning'
+);
+
+select is(
+  (select sum(amount_minor)::bigint from public.expense_payers where expense_id = (select id from public.expenses where description = 'Flexible taxi')),
+  10000::bigint,
+  'multiple payer amounts exactly equal the expense total'
+);
+
+select is(
+  (select sum(amount_minor)::bigint from public.expense_splits where expense_id = (select id from public.expenses where description = 'Flexible taxi')),
+  10000::bigint,
+  'flexible split amounts exactly equal the expense total'
+);
+
+select lives_ok(
+  $$select public.create_expense(
+    '77777777-7777-7777-7777-777777777777',
+    'One-cent split',
+    1,
+    now(),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 1)),
+    jsonb_build_array(
+      jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 1),
+      jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777702', 'amount_minor', 0)
+    )
+  )$$,
+  'a tiny exact split can retain an explicit zero-minor-unit participant'
+);
+
+select throws_ok(
+  $$select public.create_expense(
+    '77777777-7777-7777-7777-777777777777',
+    'Duplicate payer',
+    100,
+    now(),
+    jsonb_build_array(
+      jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 50),
+      jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 50)
+    ),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 100))
+  )$$,
+  'P0001',
+  'Payer members cannot be selected more than once',
+  'duplicate payer allocations are rejected'
+);
+
+select throws_ok(
+  $$select public.create_expense(
+    '77777777-7777-7777-7777-777777777777',
+    'Wrong payer total',
+    100,
+    now(),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 99)),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 100))
+  )$$,
+  'P0001',
+  'Expense payer amounts must equal the expense total',
+  'wrong payer totals are rejected'
+);
+
+select throws_ok(
+  $$select public.create_expense(
+    '77777777-7777-7777-7777-777777777777',
+    'Wrong split total',
+    100,
+    now(),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 100)),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 99))
+  )$$,
+  'P0001',
+  'Expense split amounts must equal the expense total',
+  'wrong split totals are rejected'
+);
+
+select throws_ok(
+  $$select public.create_expense(
+    '77777777-7777-7777-7777-777777777777',
+    'Negative split',
+    100,
+    now(),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 100)),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', -1))
+  )$$,
+  'P0001',
+  'Split amounts cannot be negative',
+  'negative split values are rejected'
+);
+
+select throws_ok(
+  $$select public.create_expense(
+    '77777777-7777-7777-7777-777777777777',
+    'Guest mismatch',
+    100,
+    now(),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777704', 'amount_minor', 100)),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 100))
+  )$$,
+  'P0001',
+  'Payer members must be active in this group',
+  'removed members cannot be used in new flexible expenses'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
+set local role authenticated;
+
+select throws_ok(
+  $$select public.create_expense(
+    '77777777-7777-7777-7777-777777777777',
+    'Outsider flexible expense',
+    100,
+    now(),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 100)),
+    jsonb_build_array(jsonb_build_object('member_id', '77777777-7777-7777-7777-777777777701', 'amount_minor', 100))
+  )$$,
+  'P0001',
+  'Only an active group member can create an expense',
+  'an unrelated user cannot create a flexible expense'
+);
+
+reset role;
+set local role anon;
+
+select is(
+  has_function_privilege(
+    'anon',
+    'public.create_expense(uuid,text,bigint,timestamp with time zone,jsonb,jsonb)'::regprocedure,
+    'execute'
+  ),
+  false,
+  'unauthenticated roles cannot execute the generic expense operation'
+);
+
+select is(
+  pg_catalog.to_regprocedure('public.create_expense(uuid,text,bigint,timestamp with time zone,jsonb,jsonb,uuid)'),
+  null::regprocedure,
+  'generic expense creation never accepts a caller or creator identity'
+);
+
+reset role;
+
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+select lives_ok(
+  $$select public.void_expense((select id from public.expenses where description = 'Flexible taxi'))$$,
+  'an expense manager can void a posted flexible expense'
+);
+
+select is(
+  (select status from public.expenses where description = 'Flexible taxi'),
+  'voided'::public.expense_status,
+  'a voided expense remains in history with its voided status'
+);
+
+select throws_ok(
+  $$select public.void_expense((select id from public.expenses where description = 'Flexible taxi'))$$,
+  'P0001',
+  'Expense is already voided',
+  'a voided expense cannot be voided a second time'
+);
+
+reset role;
+
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+select ok(
+  (select count(*) from public.get_expense_activity((select id from public.expenses where description = 'Flexible taxi'))) >= 5,
+  'expense activity exposes the creation, allocations, posting, and void history'
+);
+
+select is(
+  (select event_type from public.get_expense_activity((select id from public.expenses where description = 'Flexible taxi')) limit 1),
+  'expense_created'::text,
+  'expense activity is returned in chronological order'
+);
+
+select is(
+  (select member_display_name from public.get_expense_activity((select id from public.expenses where description = 'Flexible taxi')) where event_type = 'payer_added' and member_display_name = 'Owner A' limit 1),
+  'Owner A'::text,
+  'payer activity maps the durable member display name without raw audit JSON'
+);
+
+select ok(
+  exists (
+    select 1
+    from public.get_expense_activity((select id from public.expenses where description = 'Flexible taxi'))
+    where event_type = 'expense_voided'
+  ),
+  'expense activity includes the immutable void event'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
+set local role authenticated;
+
+select throws_ok(
+  $$select * from public.get_expense_activity((select id from public.expenses where description = 'Flexible taxi'))$$,
+  'P0001',
+  'Expense is unavailable',
+  'an unrelated user cannot load expense activity'
+);
+
+reset role;
+
+select is(
+  has_function_privilege('anon', 'public.get_expense_activity(uuid)'::regprocedure, 'execute'),
+  false,
+  'unauthenticated roles cannot execute the activity operation'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+set local role authenticated;
+
+select lives_ok(
+  $$select public.rename_group('77777777-7777-7777-7777-777777777777', '  Renamed balance group  ')$$,
+  'an owner can rename an active group through the guarded operation'
+);
+
+select is(
+  (select name from public.groups where id = '77777777-7777-7777-7777-777777777777'),
+  'Renamed balance group'::text,
+  'group rename trims and persists the safe name'
+);
+
+select throws_ok(
+  $$select public.remove_group_member('77777777-7777-7777-7777-777777777777', (select id from public.group_members where group_id = '77777777-7777-7777-7777-777777777777' and user_id = '11111111-1111-1111-1111-111111111111'))$$,
+  'P0001',
+  'Transfer ownership before removing an owner',
+  'the final owner cannot be removed'
+);
+
+select lives_ok(
+  $$select public.remove_group_member('77777777-7777-7777-7777-777777777777', '77777777-7777-7777-7777-777777777703')$$,
+  'an owner can remove an ordinary registered member while preserving records'
+);
+
+select ok(
+  (select removed_at is not null from public.group_members where id = '77777777-7777-7777-7777-777777777703'),
+  'removed group members retain their durable historical record'
+);
+
+select lives_ok(
+  $$select public.archive_group('77777777-7777-7777-7777-777777777777')$$,
+  'an owner can archive an active group'
+);
+
+select throws_ok(
+  $$select public.rename_group('77777777-7777-7777-7777-777777777777', 'Cannot rename archived')$$,
+  'P0001',
+  'Group is unavailable',
+  'an archived group rejects rename writes'
+);
+
+select throws_ok(
+  $$select public.remove_group_member('77777777-7777-7777-7777-777777777777', '77777777-7777-7777-7777-777777777701')$$,
+  'P0001',
+  'Group is unavailable',
+  'an archived group rejects membership writes'
+);
+
+reset role;
+select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', true);
+set local role authenticated;
+
+select throws_ok(
+  $$select public.archive_group('77777777-7777-7777-7777-777777777777')$$,
+  'P0001',
+  'Only an active group owner or administrator can archive a group',
+  'an unrelated user cannot archive a group'
+);
+
+reset role;
 
 select * from finish();
 

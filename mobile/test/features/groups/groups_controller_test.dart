@@ -179,4 +179,73 @@ void main() {
       'We could not reach OweLoop. Check your connection and try again.',
     );
   });
+
+  test(
+    'performs protected group administration actions and reloads details',
+    () async {
+      const administrator = GroupMember(
+        id: 'admin-member',
+        displayName: 'Jordan',
+        role: GroupRole.admin,
+        userId: 'admin-user',
+      );
+      repository.groupsById[testGroup.id] = testGroup;
+      repository.membersByGroupId[testGroup.id] = const [
+        testOwnerMember,
+        administrator,
+        testGuestMember,
+      ];
+      final controller = GroupDetailController(
+        groupId: testGroup.id,
+        repository: repository,
+      );
+      await controller.load();
+
+      expect(
+        await controller.rename(const GroupRenameInput(name: ' Renamed trip ')),
+        isTrue,
+      );
+      expect(repository.lastRenameInput?.trimmedName, 'Renamed trip');
+      expect(
+        await controller.setMemberRole(administrator.id, GroupRole.member),
+        isTrue,
+      );
+      expect(repository.lastRoleChange, (
+        memberId: administrator.id,
+        role: GroupRole.member,
+      ));
+      expect(await controller.transferOwnership(administrator.id), isTrue);
+      expect(repository.lastOwnershipTransferMemberId, administrator.id);
+      expect(await controller.removeMember(testGuestMember.id), isTrue);
+      expect(repository.lastRemovedMemberId, testGuestMember.id);
+      expect(await controller.archive(), isTrue);
+      expect(controller.state.status, GroupDetailStatus.ready);
+    },
+  );
+
+  test(
+    'keeps existing details visible when group administration fails',
+    () async {
+      repository.groupsById[testGroup.id] = testGroup;
+      repository.membersByGroupId[testGroup.id] = const [testOwnerMember];
+      repository.managementError = const GroupsRepositoryException(
+        'Only an active group owner or administrator can rename a group',
+      );
+      final controller = GroupDetailController(
+        groupId: testGroup.id,
+        repository: repository,
+      );
+      await controller.load();
+
+      expect(
+        await controller.rename(const GroupRenameInput(name: 'No access')),
+        isFalse,
+      );
+      expect(controller.state.status, GroupDetailStatus.ready);
+      expect(
+        controller.state.errorMessage,
+        'You do not have permission to do that.',
+      );
+    },
+  );
 }

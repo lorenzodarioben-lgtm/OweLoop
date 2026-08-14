@@ -27,6 +27,7 @@ class AppGroup {
     required this.currencyCode,
     required this.currentUserRole,
     this.createdAt,
+    this.archivedAt,
   });
 
   final String id;
@@ -34,12 +35,16 @@ class AppGroup {
   final String currencyCode;
   final GroupRole currentUserRole;
   final DateTime? createdAt;
+  final DateTime? archivedAt;
+
+  bool get isArchived => archivedAt != null;
 
   factory AppGroup.fromMap(
     Map<String, dynamic> map, {
     required GroupRole currentUserRole,
   }) {
     final createdAt = map['created_at'];
+    final archivedAt = map['archived_at'];
     return AppGroup(
       id: map['id'] as String,
       name: map['name'] as String,
@@ -48,6 +53,9 @@ class AppGroup {
       createdAt: createdAt is String
           ? DateTime.tryParse(createdAt)
           : createdAt as DateTime?,
+      archivedAt: archivedAt is String
+          ? DateTime.tryParse(archivedAt)
+          : archivedAt as DateTime?,
     );
   }
 
@@ -74,14 +82,17 @@ class GroupMember {
     required this.displayName,
     required this.role,
     required this.userId,
+    this.removedAt,
   });
 
   final String id;
   final String displayName;
   final GroupRole role;
   final String? userId;
+  final DateTime? removedAt;
 
   bool get isGuest => userId == null;
+  bool get isRemoved => removedAt != null;
 
   factory GroupMember.fromMap(Map<String, dynamic> map) {
     return GroupMember(
@@ -89,6 +100,9 @@ class GroupMember {
       displayName: map['display_name'] as String,
       role: GroupRole.fromDatabase(map['role']),
       userId: map['user_id'] as String?,
+      removedAt: map['removed_at'] is String
+          ? DateTime.tryParse(map['removed_at'] as String)
+          : map['removed_at'] as DateTime?,
     );
   }
 }
@@ -108,4 +122,12 @@ class GuestCreationInput {
   final String displayName;
 
   String get trimmedDisplayName => displayName.trim();
+}
+
+class GroupRenameInput {
+  const GroupRenameInput({required this.name});
+
+  final String name;
+
+  String get trimmedName => name.trim();
 }

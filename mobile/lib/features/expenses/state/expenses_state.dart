@@ -63,6 +63,7 @@ class ExpenseDetailState {
     required this.status,
     this.expense,
     this.errorMessage,
+    this.isVoiding = false,
   });
 
   const ExpenseDetailState.loading()
@@ -71,4 +72,18 @@ class ExpenseDetailState {
   final ExpenseDetailStatus status;
   final ExpenseRecord? expense;
   final String? errorMessage;
+  final bool isVoiding;
+
+  ExpenseDetailState copyWith({
+    ExpenseDetailStatus? status,
+    ExpenseRecord? expense,
+    String? errorMessage,
+    bool? isVoiding,
+    bool clearErrorMessage = false,
+  }) => ExpenseDetailState(
+    status: status ?? this.status,
+    expense: expense ?? this.expense,
+    errorMessage: clearErrorMessage ? null : errorMessage ?? this.errorMessage,
+    isVoiding: isVoiding ?? this.isVoiding,
+  );
 }

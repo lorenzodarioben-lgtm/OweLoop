@@ -5,17 +5,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oweloop/app/app_bootstrap.dart';
 import 'package:oweloop/features/authentication/state/authentication_providers.dart';
+import 'package:oweloop/features/activity/state/expense_activity_providers.dart';
 import 'package:oweloop/features/balances/domain/balance_models.dart';
 import 'package:oweloop/features/balances/state/balances_providers.dart';
+import 'package:oweloop/features/expenses/domain/exact_money.dart';
 import 'package:oweloop/features/expenses/state/expenses_providers.dart';
 import 'package:oweloop/features/groups/domain/group_models.dart';
 import 'package:oweloop/features/groups/presentation/group_feedback.dart';
 import 'package:oweloop/features/groups/state/groups_providers.dart';
+import 'package:oweloop/features/settlements/state/settlements_providers.dart';
 
 import '../../fakes/authentication_fakes.dart';
+import '../../fakes/activity_fakes.dart';
 import '../../fakes/balances_fakes.dart';
 import '../../fakes/expenses_fakes.dart';
 import '../../fakes/groups_fakes.dart';
+import '../../fakes/settlements_fakes.dart';
 
 void main() {
   Widget buildApp(
@@ -37,6 +42,12 @@ void main() {
         ),
         balancesRepositoryProvider.overrideWithValue(
           balancesRepository ?? FakeBalancesRepository(),
+        ),
+        settlementsRepositoryProvider.overrideWithValue(
+          FakeSettlementsRepository(),
+        ),
+        expenseActivityRepositoryProvider.overrideWithValue(
+          FakeExpenseActivityRepository(),
         ),
       ],
       child: const OweLoopBootstrap(),
@@ -149,6 +160,60 @@ void main() {
     expect(find.text('Robin owes AUD 2.00'), findsOneWidget);
     expect(find.text('Removed'), findsOneWidget);
     expect(find.text('Guest'), findsWidgets);
+  });
+
+  testWidgets('offers a repayment suggestion that opens a settlement record', (
+    tester,
+  ) async {
+    const owingMember = GroupMember(
+      id: 'owing-member',
+      displayName: 'Alex',
+      role: GroupRole.member,
+      userId: 'alex-user',
+    );
+    const owingBalance = GroupBalance(
+      groupMemberId: 'owing-member',
+      displayName: 'Alex',
+      role: GroupRole.member,
+      isRemoved: false,
+      isGuest: false,
+      isCurrentUser: false,
+      netBalance: ExactMoney(currencyCode: 'AUD', minorUnits: -1250),
+    );
+    const owedBalance = GroupBalance(
+      groupMemberId: 'owner-member',
+      displayName: 'Taylor',
+      role: GroupRole.owner,
+      isRemoved: false,
+      isGuest: false,
+      isCurrentUser: true,
+      netBalance: ExactMoney(currencyCode: 'AUD', minorUnits: 1250),
+    );
+    final groupsRepository = FakeGroupsRepository(groups: const [testGroup])
+      ..groupsById[testGroup.id] = testGroup
+      ..membersByGroupId[testGroup.id] = const [testOwnerMember, owingMember];
+    final balancesRepository = FakeBalancesRepository(
+      balances: const [owedBalance, owingBalance],
+    );
+    await pumpApp(
+      tester,
+      groupsRepository,
+      balancesRepository: balancesRepository,
+    );
+    await tester.tap(find.text('Weekend trip'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('Repayment suggestions'), 240);
+    expect(find.text('Alex pays Taylor'), findsOneWidget);
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -180));
+    await tester.pumpAndSettle();
+    final recordButton = find.widgetWithText(OutlinedButton, 'Record');
+    await tester.tap(recordButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Record a repayment'), findsOneWidget);
+    final amountField = find.byKey(const Key('settlement-amount-input'));
+    expect(tester.widget<TextFormField>(amountField).controller?.text, '12.50');
   });
 
   testWidgets('shows a loading balance state until the ledger is available', (

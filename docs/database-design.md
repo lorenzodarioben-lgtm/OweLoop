@@ -57,7 +57,7 @@ The posted-status trigger repeats the total checks at the database boundary. Pay
 
 The mobile equal-expense path uses `public.create_equal_expense(uuid, text, bigint, timestamptz, uuid, uuid[])` instead of coordinating draft inserts from the client. It checks the authenticated, onboarded caller's active group membership; validates the non-archived group, description, positive amount, payer, and unique active participants; inserts the expense, one payer row, and split rows; then invokes the existing finalization guard in the same transaction. Split rows receive `total / participant_count` minor units, with the first `total % participant_count` rows in ascending `group_members.id` order receiving one additional minor unit. Existing audit triggers record every resulting parent, payer, split, and posted transition.
 
-Exact, percentage, and share-based split interfaces can be added later by calculating the final minor-unit split rows before finalization. The persisted source of truth remains the exact amount owed by each member.
+`public.create_expense(uuid, text, bigint, timestamptz, jsonb, jsonb)` is the normal flexible-entry operation. It accepts final payer and split allocations only, never a caller identity, role, currency, or posted status. It requires authenticated onboarding and active membership, rejects archived groups, duplicate members, foreign or removed members, non-positive payer allocations, negative split allocations, and unequal totals. It inserts all rows and finalizes in one transaction. The mobile client derives equal, percentage, and share inputs into these final exact allocations with deterministic remainder assignment by durable member ID. Zero-minor-unit split rows are allowed where a mathematically valid exact allocation needs them; payer rows must stay positive.
 
 ## Derived group balances
 
@@ -74,11 +74,21 @@ sum(posted, non-voided payer amounts)
 
 A positive result means the member is owed money, a negative result means they owe money, and zero means they are settled up. Draft and voided expenses are excluded, as are voided settlements. The function includes all active members, even at zero, account-free guests, and removed members that still have financial history. It returns a deterministic display order: the caller first, then active members by name and durable ID, then historical removed members by name and durable ID.
 
-Before returning data, the function verifies that every contributing posted expense has exact payer and split totals and that the group-wide net is exactly zero. It rejects inconsistent financial records rather than returning a misleading balance. Settlement entry and payment recommendations remain future workflows; the calculation already accounts for valid settlement records so those additions do not need a second balance model.
+Before returning data, the function verifies that every contributing posted expense has exact payer and split totals and that the group-wide net is exactly zero. It rejects inconsistent financial records rather than returning a misleading balance. Settlement entry and repayment suggestions reuse this calculation rather than introducing a second balance model.
+
+## Settlements, correction, and activity
+
+`public.record_settlement(uuid, uuid, uuid, bigint, timestamptz)` records an external payment that users report has already occurred. It requires an active onboarded member, a non-archived group, two different active participant IDs, and a positive integer amount. `public.void_settlement(uuid)` preserves the settlement row while excluding it from future balance reads; only its creator or an active administrator can void it. `public.get_group_settlements(uuid)` returns a role-safe chronological history with participant display names and void state.
+
+`public.void_expense(uuid)` preserves a posted expense and all payer, split, and audit rows while changing its status to `voided`. Creator or administrator authority is required, and the operation cannot be repeated. The mobile correction workflow copies the immutable source values into a new draft for review; it never edits the original financial record.
+
+`public.get_expense_activity(uuid)` is a safe read projection over append-only `expense_events`. It returns a stable chronological sequence of known event type, timestamp, actor display name, participant display name, amount, and description. Raw JSON snapshots and authentication metadata are never returned to the app.
 
 ## Membership, roles, and ownership
 
-Every group is created with an owner membership automatically. Direct client membership inserts can only create active `member` records. Only a group owner can use the guarded role function to make an active, registered member (`user_id is not null`) an administrator; a guest may remain a member but can never be promoted to administrator. Ownership changes use `public.transfer_group_ownership(uuid, uuid)`, which accepts only a different active, registered member of the same group, assigns that successor first, and then demotes the current owner. The final active owner cannot be removed or demoted without a replacement.
+Every group is created with an owner membership automatically. Direct client membership inserts can only create active `member` records. `public.rename_group(uuid, text)`, `public.archive_group(uuid)`, and `public.remove_group_member(uuid, uuid)` require an active owner or administrator. Administrators can remove only ordinary members; only an owner can remove an administrator. Removing an owner is rejected. Removal sets `removed_at`, preserving every historical reference. Archive sets `archived_at`; no financial or membership transition can proceed afterwards.
+
+Only a group owner can use the guarded role function to make an active, registered member (`user_id is not null`) an administrator; a guest may remain a member but can never be promoted to administrator. Ownership changes use `public.transfer_group_ownership(uuid, uuid)`, which accepts only a different active, registered member of the same group, assigns that successor first, and then demotes the current owner. The final active owner cannot be removed or demoted without a replacement.
 
 Guests have a null `user_id` and no database credentials. Linking a guest to an account is a future controlled operation; it must retain the same `group_members.id` to preserve history. Before deleting an owner account, ownership must be transferred to an active registered member. An owner record remains historically valid if its linked account is deleted, but that group should receive human support review if no active registered owner remains.
 
@@ -94,7 +104,7 @@ Indexes support the primary access paths: active group lookup by user, active me
 
 ## Known limitations
 
-- The schema derives balances but does not yet provide settlement entry, payment recommendations, or automatic settlement creation.
-- The foundation contains no invitation or guest-claim workflow yet.
+- The schema records settlements and calculates repayment suggestions in the client, but does not verify payments or create them automatically.
+- The foundation contains no invitation or guest-claim workflow.
 - Account-deletion and ownership-transfer operations need an operational support process before user account deletion is exposed.
 - Receipt data, payments, bank connections, multiple currencies, and offline synchronisation are intentionally excluded.

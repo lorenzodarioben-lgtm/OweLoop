@@ -90,7 +90,7 @@ class ExpenseCreationController extends ChangeNotifier {
     final sessionGeneration = _sessionGeneration;
     _setState(_state.copyWith(isSubmitting: true, clearErrorMessage: true));
     try {
-      final expense = await _repository.createEqualExpense(input);
+      final expense = await _repository.createExpense(input);
       if (sessionGeneration != _sessionGeneration) {
         return null;
       }
@@ -172,6 +172,40 @@ class ExpenseDetailController extends ChangeNotifier {
           errorMessage: ExpensesErrorMapper.messageFor(error),
         ),
       );
+    }
+  }
+
+  Future<bool> voidExpense() async {
+    final expense = _state.expense;
+    if (expense == null ||
+        _state.isVoiding ||
+        expense.status == ExpenseStatus.voided) {
+      return false;
+    }
+    final sessionGeneration = _sessionGeneration;
+    _setState(_state.copyWith(isVoiding: true, clearErrorMessage: true));
+    try {
+      final voidedExpense = await repository.voidExpense(
+        expenseId: expense.id,
+        currencyCode: expense.total.currencyCode,
+      );
+      if (sessionGeneration != _sessionGeneration) return false;
+      _setState(
+        ExpenseDetailState(
+          status: ExpenseDetailStatus.ready,
+          expense: voidedExpense,
+        ),
+      );
+      return true;
+    } catch (error) {
+      if (sessionGeneration != _sessionGeneration) return false;
+      _setState(
+        _state.copyWith(
+          isVoiding: false,
+          errorMessage: ExpensesErrorMapper.messageFor(error),
+        ),
+      );
+      return false;
     }
   }
 

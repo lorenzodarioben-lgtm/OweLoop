@@ -22,6 +22,7 @@ class FakeGroupsRepository implements GroupsRepository {
   Object? loadGroupError;
   Object? loadMembersError;
   Object? addGuestError;
+  Object? managementError;
   Future<List<AppGroup>> Function()? loadGroupsHandler;
   Future<AppGroup> Function(GroupCreationInput input)? createGroupHandler;
   Future<GroupMember> Function({
@@ -33,6 +34,10 @@ class FakeGroupsRepository implements GroupsRepository {
   int loadMembersCalls = 0;
   GroupCreationInput? lastGroupInput;
   GuestCreationInput? lastGuestInput;
+  GroupRenameInput? lastRenameInput;
+  String? lastRemovedMemberId;
+  ({String memberId, GroupRole role})? lastRoleChange;
+  String? lastOwnershipTransferMemberId;
 
   @override
   Future<List<AppGroup>> loadCurrentUserGroups() async {
@@ -92,6 +97,58 @@ class FakeGroupsRepository implements GroupsRepository {
     }
     return addedGuest ??
         (throw StateError('No added guest was configured for this test.'));
+  }
+
+  @override
+  Future<AppGroup> renameGroup({
+    required String groupId,
+    required GroupRenameInput input,
+  }) async {
+    if (managementError != null) throw managementError!;
+    lastRenameInput = input;
+    return groupsById[groupId] ?? createdGroup ?? testGroup;
+  }
+
+  @override
+  Future<AppGroup> archiveGroup(String groupId) async {
+    if (managementError != null) throw managementError!;
+    return groupsById[groupId] ?? createdGroup ?? testGroup;
+  }
+
+  @override
+  Future<GroupMember> removeGroupMember({
+    required String groupId,
+    required String memberId,
+  }) async {
+    if (managementError != null) throw managementError!;
+    lastRemovedMemberId = memberId;
+    return (membersByGroupId[groupId] ?? const []).firstWhere(
+      (member) => member.id == memberId,
+      orElse: () => testGuestMember,
+    );
+  }
+
+  @override
+  Future<GroupMember> setGroupMemberRole({
+    required String groupId,
+    required String memberId,
+    required GroupRole role,
+  }) async {
+    if (managementError != null) throw managementError!;
+    lastRoleChange = (memberId: memberId, role: role);
+    return (membersByGroupId[groupId] ?? const []).firstWhere(
+      (member) => member.id == memberId,
+      orElse: () => testGuestMember,
+    );
+  }
+
+  @override
+  Future<void> transferGroupOwnership({
+    required String groupId,
+    required String successorMemberId,
+  }) async {
+    if (managementError != null) throw managementError!;
+    lastOwnershipTransferMemberId = successorMemberId;
   }
 }
 

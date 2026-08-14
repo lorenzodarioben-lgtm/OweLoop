@@ -13,11 +13,11 @@ class SupabaseExpensesRepository implements ExpensesRepository {
     final rows = await _client
         .from('expenses')
         .select(
-          'id, group_id, description, total_amount_minor, occurred_at, status, '
+          'id, group_id, description, total_amount_minor, occurred_at, status, voided_at, '
           'groups!inner(currency_code)',
         )
         .eq('group_id', groupId)
-        .eq('status', 'posted')
+        .inFilter('status', const ['posted', 'voided'])
         .order('occurred_at', ascending: false)
         .order('created_at', ascending: false);
 
@@ -27,17 +27,29 @@ class SupabaseExpensesRepository implements ExpensesRepository {
   }
 
   @override
-  Future<ExpenseRecord> createEqualExpense(ExpenseCreationInput input) async {
+  Future<ExpenseRecord> createExpense(ExpenseCreationInput input) async {
     final row = await _client
         .rpc(
-          'create_equal_expense',
+          'create_expense',
           params: <String, dynamic>{
             'p_group_id': input.groupId,
             'p_description': input.trimmedDescription,
             'p_total_amount_minor': input.total.minorUnits,
             'p_occurred_at': input.occurredAt.toUtc().toIso8601String(),
-            'p_payer_member_id': input.payerMemberId,
-            'p_participant_member_ids': input.participantMemberIds,
+            'p_payers': [
+              for (final payer in input.resolvedPayers)
+                <String, dynamic>{
+                  'member_id': payer.memberId,
+                  'amount_minor': payer.amountMinor,
+                },
+            ],
+            'p_splits': [
+              for (final split in input.resolvedSplits)
+                <String, dynamic>{
+                  'member_id': split.memberId,
+                  'amount_minor': split.amountMinor,
+                },
+            ],
           },
         )
         .single();
@@ -53,7 +65,7 @@ class SupabaseExpensesRepository implements ExpensesRepository {
     final row = await _client
         .from('expenses')
         .select(
-          'id, group_id, description, total_amount_minor, occurred_at, status, '
+          'id, group_id, description, total_amount_minor, occurred_at, status, voided_at, '
           'groups!inner(currency_code), '
           'expense_payers(group_member_id, amount_minor, '
           'group_members!inner(display_name)), '
@@ -68,6 +80,23 @@ class SupabaseExpensesRepository implements ExpensesRepository {
     }
 
     return ExpenseRecord.fromMap(Map<String, dynamic>.from(row));
+  }
+
+  @override
+  Future<ExpenseRecord> voidExpense({
+    required String expenseId,
+    required String currencyCode,
+  }) async {
+    final row = await _client
+        .rpc(
+          'void_expense',
+          params: <String, dynamic>{'p_expense_id': expenseId},
+        )
+        .single();
+    return ExpenseRecord.fromMap(
+      Map<String, dynamic>.from(row),
+      currencyCode: currencyCode,
+    );
   }
 }
 

@@ -130,4 +130,23 @@ void main() {
       expect(mismatchedRoute.state.status, ExpenseDetailStatus.unavailable);
     },
   );
+
+  test(
+    'voids a posted expense without mutating its original allocations',
+    () async {
+      repository.expensesById[testExpense.id] = testExpense;
+      final controller = ExpenseDetailController(
+        groupId: testExpense.groupId,
+        expenseId: testExpense.id,
+        repository: repository,
+      );
+
+      await controller.load();
+      expect(await controller.voidExpense(), isTrue);
+      expect(repository.lastVoidedExpenseId, testExpense.id);
+      expect(controller.state.expense?.status, ExpenseStatus.voided);
+      expect(controller.state.expense?.payers, testExpense.payers);
+      expect(controller.state.expense?.splits, testExpense.splits);
+    },
+  );
 }

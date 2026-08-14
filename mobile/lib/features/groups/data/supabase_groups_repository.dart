@@ -14,7 +14,7 @@ class SupabaseGroupsRepository implements GroupsRepository {
     final rows = await _client
         .from('groups')
         .select(
-          'id, name, currency_code, created_at, '
+          'id, name, currency_code, created_at, archived_at, '
           'group_members!inner(role, user_id, removed_at)',
         )
         .eq('group_members.user_id', userId)
@@ -45,7 +45,7 @@ class SupabaseGroupsRepository implements GroupsRepository {
           'name': input.trimmedName,
           'currency_code': input.currencyCode,
         })
-        .select('id, name, currency_code, created_at')
+        .select('id, name, currency_code, created_at, archived_at')
         .single();
 
     return AppGroup.fromMap(
@@ -60,13 +60,12 @@ class SupabaseGroupsRepository implements GroupsRepository {
     final row = await _client
         .from('groups')
         .select(
-          'id, name, currency_code, created_at, '
+          'id, name, currency_code, created_at, archived_at, '
           'group_members!inner(role, user_id, removed_at)',
         )
         .eq('id', groupId)
         .eq('group_members.user_id', userId)
         .isFilter('group_members.removed_at', null)
-        .isFilter('archived_at', null)
         .maybeSingle();
 
     if (row == null) {
@@ -80,7 +79,7 @@ class SupabaseGroupsRepository implements GroupsRepository {
   Future<List<GroupMember>> loadGroupMembers(String groupId) async {
     final rows = await _client
         .from('group_members')
-        .select('id, display_name, role, user_id')
+        .select('id, display_name, role, user_id, removed_at')
         .eq('group_id', groupId)
         .isFilter('removed_at', null)
         .order('created_at');
@@ -88,6 +87,87 @@ class SupabaseGroupsRepository implements GroupsRepository {
     return (rows as List)
         .map((row) => GroupMember.fromMap(Map<String, dynamic>.from(row)))
         .toList();
+  }
+
+  @override
+  Future<AppGroup> renameGroup({
+    required String groupId,
+    required GroupRenameInput input,
+  }) async {
+    final row = await _client
+        .rpc(
+          'rename_group',
+          params: <String, dynamic>{
+            'p_group_id': groupId,
+            'p_name': input.trimmedName,
+          },
+        )
+        .single();
+    return AppGroup.fromMap(
+      Map<String, dynamic>.from(row),
+      currentUserRole: GroupRole.member,
+    );
+  }
+
+  @override
+  Future<AppGroup> archiveGroup(String groupId) async {
+    final row = await _client
+        .rpc('archive_group', params: <String, dynamic>{'p_group_id': groupId})
+        .single();
+    return AppGroup.fromMap(
+      Map<String, dynamic>.from(row),
+      currentUserRole: GroupRole.member,
+    );
+  }
+
+  @override
+  Future<GroupMember> removeGroupMember({
+    required String groupId,
+    required String memberId,
+  }) async {
+    final row = await _client
+        .rpc(
+          'remove_group_member',
+          params: <String, dynamic>{
+            'p_group_id': groupId,
+            'p_member_id': memberId,
+          },
+        )
+        .single();
+    return GroupMember.fromMap(Map<String, dynamic>.from(row));
+  }
+
+  @override
+  Future<GroupMember> setGroupMemberRole({
+    required String groupId,
+    required String memberId,
+    required GroupRole role,
+  }) async {
+    final row = await _client
+        .rpc(
+          'set_group_member_role',
+          params: <String, dynamic>{
+            'p_group_id': groupId,
+            'p_member_id': memberId,
+            'p_role': role.name,
+          },
+        )
+        .single();
+    return GroupMember.fromMap(Map<String, dynamic>.from(row));
+  }
+
+  @override
+  Future<void> transferGroupOwnership({
+    required String groupId,
+    required String successorMemberId,
+  }) async {
+    await _client.rpc(
+      'transfer_group_ownership',
+      params: <String, dynamic>{
+        'p_group_id': groupId,
+        'p_successor_member_id': successorMemberId,
+      },
+    );
   }
 
   @override
