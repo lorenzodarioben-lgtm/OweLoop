@@ -3,16 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oweloop/features/authentication/state/authentication_providers.dart';
 import 'package:oweloop/features/balances/state/balances_providers.dart';
+import 'package:oweloop/features/expenses/state/expenses_providers.dart';
 import 'package:oweloop/features/guest_claims/presentation/guest_claim_dialog.dart';
 import 'package:oweloop/features/guest_claims/presentation/guest_claim_inbox_screen.dart';
 import 'package:oweloop/features/guest_claims/state/guest_claims_providers.dart';
 import 'package:oweloop/features/groups/domain/group_models.dart';
 import 'package:oweloop/features/groups/state/groups_providers.dart';
+import 'package:oweloop/features/settlements/state/settlements_providers.dart';
 
 import '../../fakes/authentication_fakes.dart';
 import '../../fakes/balances_fakes.dart';
+import '../../fakes/expenses_fakes.dart';
 import '../../fakes/guest_claims_fakes.dart';
 import '../../fakes/groups_fakes.dart';
+import '../../fakes/settlements_fakes.dart';
 
 void main() {
   Widget buildScreen(Widget child, FakeGuestClaimsRepository claims) {
@@ -26,6 +30,10 @@ void main() {
         ),
         groupsRepositoryProvider.overrideWithValue(FakeGroupsRepository()),
         balancesRepositoryProvider.overrideWithValue(FakeBalancesRepository()),
+        expensesRepositoryProvider.overrideWithValue(FakeExpensesRepository()),
+        settlementsRepositoryProvider.overrideWithValue(
+          FakeSettlementsRepository(),
+        ),
         guestClaimsRepositoryProvider.overrideWithValue(claims),
       ],
       child: MaterialApp(home: Scaffold(body: child)),

@@ -4,13 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../balances/presentation/group_balance_section.dart';
-import '../../balances/state/balances_providers.dart';
 import '../../expenses/presentation/expense_history_section.dart';
-import '../../expenses/state/expenses_providers.dart';
 import '../../repayments/presentation/repayment_suggestions_section.dart';
 import '../../settlements/presentation/settlement_history_section.dart';
-import '../../settlements/state/settlements_providers.dart';
 import '../domain/group_models.dart';
+import '../state/group_data_refresh_coordinator.dart';
 import '../state/groups_providers.dart';
 import '../state/groups_state.dart';
 import 'add_guest_dialog.dart';
@@ -84,30 +82,15 @@ class _GroupDetailContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(groupDetailControllerProvider(groupId));
+    final refreshCoordinator = ref.read(
+      groupDataRefreshCoordinatorProvider((
+        groupId: groupId,
+        currencyCode: group.currencyCode,
+      )),
+    );
 
     return RefreshIndicator(
-      onRefresh: () async {
-        await Future.wait([
-          controller.load(),
-          ref
-              .read(
-                groupBalancesControllerProvider((
-                  groupId: groupId,
-                  currencyCode: group.currencyCode,
-                )),
-              )
-              .refresh(),
-          ref.read(expenseHistoryControllerProvider(groupId)).refresh(),
-          ref
-              .read(
-                settlementHistoryControllerProvider((
-                  groupId: groupId,
-                  currencyCode: group.currencyCode,
-                )),
-              )
-              .refresh(),
-        ]);
-      },
+      onRefresh: refreshCoordinator.refresh,
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),

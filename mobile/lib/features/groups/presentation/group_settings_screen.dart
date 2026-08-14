@@ -320,12 +320,16 @@ class _SettingsContent extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (!group.isArchived)
-          FilledButton.tonalIcon(
-            onPressed: canManage && !state.isManaging
-                ? () => onArchive(controller)
-                : null,
-            icon: const Icon(Icons.archive_outlined),
-            label: const Text('Archive group'),
+          Semantics(
+            button: true,
+            label: 'Archive group and make its history read only',
+            child: FilledButton.tonalIcon(
+              onPressed: canManage && !state.isManaging
+                  ? () => onArchive(controller)
+                  : null,
+              icon: const Icon(Icons.archive_outlined),
+              label: const Text('Archive group'),
+            ),
           ),
       ],
     );

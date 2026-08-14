@@ -4,10 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../core/operations/client_operation_id.dart';
-import '../../balances/state/balances_providers.dart';
 import '../../expenses/domain/exact_money.dart';
 import '../../expenses/validation/expense_validators.dart';
 import '../../groups/domain/group_models.dart';
+import '../../groups/state/group_data_refresh_coordinator.dart';
 import '../../groups/state/groups_providers.dart';
 import '../../groups/state/groups_state.dart';
 import '../domain/settlement_models.dart';
@@ -116,24 +116,14 @@ class _RecordSettlementScreenState
           ),
         );
     if (settlement == null || !mounted) return;
-    await Future.wait([
-      ref
-          .read(
-            settlementHistoryControllerProvider((
-              groupId: group.id,
-              currencyCode: group.currencyCode,
-            )),
-          )
-          .refresh(),
-      ref
-          .read(
-            groupBalancesControllerProvider((
-              groupId: group.id,
-              currencyCode: group.currencyCode,
-            )),
-          )
-          .refresh(),
-    ]);
+    await ref
+        .read(
+          groupDataRefreshCoordinatorProvider((
+            groupId: group.id,
+            currencyCode: group.currencyCode,
+          )),
+        )
+        .refresh();
     if (mounted) context.go(AppRoutes.groupDetailPath(group.id));
   }
 

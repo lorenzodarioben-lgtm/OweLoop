@@ -175,6 +175,10 @@ void main() {
     await enterValidExpense(tester);
     expect(find.text('Equal split preview'), findsOneWidget);
     expect(find.text('AUD 5.00'), findsNWidgets(2));
+    expect(
+      find.bySemanticsLabel('Post expense with exact allocation'),
+      findsOneWidget,
+    );
 
     await deselectGuestParticipant(tester);
     await tester.pump();

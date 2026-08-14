@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../balances/state/balances_providers.dart';
-import '../../groups/state/groups_providers.dart';
+import '../../groups/state/group_data_refresh_coordinator.dart';
 import '../domain/guest_claim_models.dart';
 import '../state/guest_claims_providers.dart';
 import '../state/guest_claims_state.dart';
@@ -19,17 +18,14 @@ class GuestClaimInboxScreen extends ConsumerWidget {
         .read(guestClaimInboxControllerProvider)
         .accept(claimRequest.id);
     if (!accepted || !context.mounted) return;
-    await Future.wait([
-      ref.read(groupsControllerProvider).refresh(),
-      ref
-          .read(
-            groupBalancesControllerProvider((
-              groupId: claimRequest.groupId,
-              currencyCode: claimRequest.currencyCode,
-            )),
-          )
-          .refresh(),
-    ]);
+    await ref
+        .read(
+          groupDataRefreshCoordinatorProvider((
+            groupId: claimRequest.groupId,
+            currencyCode: claimRequest.currencyCode,
+          )),
+        )
+        .refresh();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

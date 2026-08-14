@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../core/operations/client_operation_id.dart';
-import '../../balances/state/balances_providers.dart';
 import '../../groups/domain/group_models.dart';
+import '../../groups/state/group_data_refresh_coordinator.dart';
 import '../../groups/state/groups_providers.dart';
 import '../../groups/state/groups_state.dart';
 import '../domain/exact_money.dart';
@@ -346,17 +346,14 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           ),
         );
     if (expense != null && mounted) {
-      await Future.wait([
-        ref.read(expenseHistoryControllerProvider(group.id)).refresh(),
-        ref
-            .read(
-              groupBalancesControllerProvider((
-                groupId: group.id,
-                currencyCode: group.currencyCode,
-              )),
-            )
-            .refresh(),
-      ]);
+      await ref
+          .read(
+            groupDataRefreshCoordinatorProvider((
+              groupId: group.id,
+              currencyCode: group.currencyCode,
+            )),
+          )
+          .refresh();
       if (mounted) {
         context.go(AppRoutes.expenseDetailPath(group.id, expense.id));
       }
@@ -743,20 +740,24 @@ class _ExpenseForm extends ConsumerWidget {
                 const SizedBox(height: 28),
                 SizedBox(
                   width: double.infinity,
-                  child: FilledButton(
-                    onPressed: creationState.isSubmitting
-                        ? null
-                        : () => onSubmit(
-                            group: group,
-                            participantIds: participantIds,
-                          ),
-                    child: creationState.isSubmitting
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Post expense'),
+                  child: Semantics(
+                    button: true,
+                    label: 'Post expense with exact allocation',
+                    child: FilledButton(
+                      onPressed: creationState.isSubmitting
+                          ? null
+                          : () => onSubmit(
+                              group: group,
+                              participantIds: participantIds,
+                            ),
+                      child: creationState.isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Post expense'),
+                    ),
                   ),
                 ),
               ],
