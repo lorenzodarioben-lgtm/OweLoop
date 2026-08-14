@@ -1,0 +1,6 @@
+# Keep the real key.properties file local. It is ignored by Git.
+# Paths are resolved relative to mobile/android/.
+storeFile=../keys/oweloop-upload.jks
+storePassword=replace-with-local-password
+keyAlias=oweloop-upload
+keyPassword=replace-with-local-password
