@@ -33,7 +33,9 @@ Expense correction preserves the original record. A posted expense can be voided
 
 Owners and administrators can rename active groups, archive them, remove members while preserving historical records, and use the existing owner-only role and ownership-transfer controls. Archived groups retain readable history but reject future financial and membership writes. Repayment suggestions are deterministic, read-only simplifications of reconciled current balances; they can prefill a settlement record for active members but never transfer money automatically.
 
-Registered-user invitations, guest claiming, account deletion, receipt scanning, payment processing, offline synchronization, and production launch configuration remain deliberately postponed.
+The private-beta implementation also supports in-app invitations for registered users and explicit two-party guest account claims. Both are guarded server-side workflows: invitations can only create member roles, while claims preserve the original guest `group_members.id` and its financial history. Neither feature sends transactional email in this release or provides public account discovery.
+
+Hosted deployment, account deletion, receipt scanning, payment processing, offline synchronization, monitoring, and public-production configuration remain deliberately postponed or require an operator decision.
 
 ## Deliberately postponed
 
@@ -45,3 +47,5 @@ Registered-user invitations, guest claiming, account deletion, receipt scanning,
 - Advanced analytics.
 - Multiple currencies.
 - Full offline synchronisation.
+- Account deletion and data export.
+- Public account discovery or automated guest matching.
