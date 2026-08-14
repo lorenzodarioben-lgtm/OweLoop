@@ -5,6 +5,7 @@ enum AuthenticationStatus {
   loading,
   signedOut,
   verificationPending,
+  passwordRecovery,
   profileSetup,
   authenticated,
 }
@@ -16,14 +17,24 @@ class AuthenticationState {
     this.profile,
     this.pendingEmail,
     this.errorMessage,
+    this.noticeMessage,
+    this.hasRequestedPasswordRecovery = false,
     this.isSubmitting = false,
   });
 
   const AuthenticationState.loading()
     : this(status: AuthenticationStatus.loading);
 
-  const AuthenticationState.signedOut({String? errorMessage})
-    : this(status: AuthenticationStatus.signedOut, errorMessage: errorMessage);
+  const AuthenticationState.signedOut({
+    String? errorMessage,
+    String? noticeMessage,
+    bool hasRequestedPasswordRecovery = false,
+  }) : this(
+         status: AuthenticationStatus.signedOut,
+         errorMessage: errorMessage,
+         noticeMessage: noticeMessage,
+         hasRequestedPasswordRecovery: hasRequestedPasswordRecovery,
+       );
 
   const AuthenticationState.verificationPending({required String email})
     : this(
@@ -31,11 +42,16 @@ class AuthenticationState {
         pendingEmail: email,
       );
 
+  const AuthenticationState.passwordRecovery({required AuthenticatedUser user})
+    : this(status: AuthenticationStatus.passwordRecovery, user: user);
+
   final AuthenticationStatus status;
   final AuthenticatedUser? user;
   final AppProfile? profile;
   final String? pendingEmail;
   final String? errorMessage;
+  final String? noticeMessage;
+  final bool hasRequestedPasswordRecovery;
   final bool isSubmitting;
 
   AuthenticationState copyWith({
@@ -44,11 +60,14 @@ class AuthenticationState {
     AppProfile? profile,
     String? pendingEmail,
     String? errorMessage,
+    String? noticeMessage,
+    bool? hasRequestedPasswordRecovery,
     bool? isSubmitting,
     bool clearUser = false,
     bool clearProfile = false,
     bool clearPendingEmail = false,
     bool clearErrorMessage = false,
+    bool clearNoticeMessage = false,
   }) {
     return AuthenticationState(
       status: status ?? this.status,
@@ -60,6 +79,11 @@ class AuthenticationState {
       errorMessage: clearErrorMessage
           ? null
           : errorMessage ?? this.errorMessage,
+      noticeMessage: clearNoticeMessage
+          ? null
+          : noticeMessage ?? this.noticeMessage,
+      hasRequestedPasswordRecovery:
+          hasRequestedPasswordRecovery ?? this.hasRequestedPasswordRecovery,
       isSubmitting: isSubmitting ?? this.isSubmitting,
     );
   }

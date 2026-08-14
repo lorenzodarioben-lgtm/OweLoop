@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/authentication/auth_redirects.dart';
 import '../domain/auth_models.dart';
 import 'auth_repository.dart';
 
@@ -54,6 +55,7 @@ class SupabaseAuthRepository implements AuthRepository {
     final response = await _client.auth.signUp(
       email: email,
       password: password,
+      emailRedirectTo: AuthRedirects.callback.toString(),
     );
     final user = response.user;
 
@@ -71,11 +73,34 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<void> resendVerification({required String email}) async {
+    await _client.auth.resend(
+      email: email,
+      type: OtpType.signup,
+      emailRedirectTo: AuthRedirects.callback.toString(),
+    );
+  }
+
+  @override
+  Future<void> requestPasswordRecovery({required String email}) {
+    return _client.auth.resetPasswordForEmail(
+      email,
+      redirectTo: AuthRedirects.callback.toString(),
+    );
+  }
+
+  @override
+  Future<void> updatePassword({required String password}) async {
+    await _client.auth.updateUser(UserAttributes(password: password));
+  }
+
+  @override
   Future<void> signOut() => _client.auth.signOut();
 
   AuthSessionEventType _eventTypeFor(String eventName) {
     return switch (eventName) {
       'signedOut' => AuthSessionEventType.signedOut,
+      'passwordRecovery' => AuthSessionEventType.passwordRecovery,
       'tokenRefreshed' => AuthSessionEventType.tokenRefreshed,
       'userUpdated' => AuthSessionEventType.userUpdated,
       _ => AuthSessionEventType.signedIn,

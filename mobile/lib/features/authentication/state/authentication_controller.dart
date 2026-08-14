@@ -32,12 +32,22 @@ class AuthenticationController extends ChangeNotifier {
     _hasStarted = true;
     _authSubscription = authRepository.authEvents.listen(
       (event) => unawaited(_handleAuthEvent(event)),
+      onError: (Object error, StackTrace stackTrace) {
+        _setState(
+          AuthenticationState.signedOut(
+            errorMessage: AuthErrorMapper.messageFor(error),
+          ),
+        );
+      },
     );
 
     try {
       final user = await authRepository.restoreSession();
       if (user == null) {
         _setState(const AuthenticationState.signedOut());
+        return;
+      }
+      if (_state.status == AuthenticationStatus.passwordRecovery) {
         return;
       }
 
@@ -153,6 +163,85 @@ class AuthenticationController extends ChangeNotifier {
     }
   }
 
+  Future<void> resendVerification() async {
+    if (_state.isSubmitting ||
+        _state.status != AuthenticationStatus.verificationPending) {
+      return;
+    }
+    final email = _state.pendingEmail;
+    if (email == null || email.isEmpty) {
+      _setState(const AuthenticationState.signedOut());
+      return;
+    }
+
+    _setState(_state.copyWith(isSubmitting: true, clearErrorMessage: true));
+    try {
+      await authRepository.resendVerification(email: email);
+      _setState(
+        _state.copyWith(
+          isSubmitting: false,
+          noticeMessage:
+              'If confirmation is still needed, a new verification email will arrive shortly.',
+          clearErrorMessage: true,
+        ),
+      );
+    } catch (error) {
+      _setState(
+        _state.copyWith(
+          isSubmitting: false,
+          errorMessage: AuthErrorMapper.messageFor(error),
+          clearNoticeMessage: true,
+        ),
+      );
+    }
+  }
+
+  Future<void> requestPasswordRecovery({required String email}) async {
+    if (_state.isSubmitting) {
+      return;
+    }
+
+    _setState(
+      const AuthenticationState.signedOut().copyWith(isSubmitting: true),
+    );
+    try {
+      await authRepository.requestPasswordRecovery(email: email);
+      _setState(_passwordRecoveryRequestSentState);
+    } catch (error) {
+      final message = AuthErrorMapper.messageFor(error);
+      if (message == _networkErrorMessage) {
+        _setState(AuthenticationState.signedOut(errorMessage: message));
+        return;
+      }
+      _setState(_passwordRecoveryRequestSentState);
+    }
+  }
+
+  Future<void> updatePassword({required String password}) async {
+    if (_state.isSubmitting ||
+        _state.status != AuthenticationStatus.passwordRecovery) {
+      return;
+    }
+    final user = _state.user;
+    if (user == null) {
+      _setState(const AuthenticationState.signedOut());
+      return;
+    }
+
+    _setState(_state.copyWith(isSubmitting: true, clearErrorMessage: true));
+    try {
+      await authRepository.updatePassword(password: password);
+      await _loadProfileFor(user);
+    } catch (error) {
+      _setState(
+        _state.copyWith(
+          isSubmitting: false,
+          errorMessage: AuthErrorMapper.messageFor(error),
+        ),
+      );
+    }
+  }
+
   Future<void> signOut() async {
     if (_state.isSubmitting) {
       return;
@@ -182,6 +271,18 @@ class AuthenticationController extends ChangeNotifier {
     switch (event.type) {
       case AuthSessionEventType.signedOut:
         _setState(const AuthenticationState.signedOut());
+      case AuthSessionEventType.passwordRecovery:
+        final user = event.user;
+        if (user == null) {
+          _setState(
+            const AuthenticationState.signedOut(
+              errorMessage:
+                  'This password reset link is invalid or expired. Request a new one.',
+            ),
+          );
+          return;
+        }
+        _setState(AuthenticationState.passwordRecovery(user: user));
       case AuthSessionEventType.signedIn:
       case AuthSessionEventType.tokenRefreshed:
       case AuthSessionEventType.userUpdated:
@@ -191,6 +292,14 @@ class AuthenticationController extends ChangeNotifier {
         }
     }
   }
+
+  static const _networkErrorMessage =
+      'We could not reach OweLoop. Check your connection and try again.';
+  static const _passwordRecoveryRequestSentState = AuthenticationState.signedOut(
+    hasRequestedPasswordRecovery: true,
+    noticeMessage:
+        'If an account uses that email address, we sent password reset instructions.',
+  );
 
   Future<void> _loadProfileFor(AuthenticatedUser user) async {
     _setState(

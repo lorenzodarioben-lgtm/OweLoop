@@ -52,6 +52,13 @@ class AuthErrorMapper {
       return 'Your session has expired. Please sign in again.';
     }
 
+    if (rawMessage.contains('expired') ||
+        (rawMessage.contains('invalid') && rawMessage.contains('link')) ||
+        rawMessage.contains('code verifier') ||
+        rawMessage.contains('auth code')) {
+      return 'This password reset link is invalid or expired. Request a new one.';
+    }
+
     return 'Something went wrong. Please try again.';
   }
 }

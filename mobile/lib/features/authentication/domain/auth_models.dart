@@ -5,7 +5,13 @@ class AuthenticatedUser {
   final String email;
 }
 
-enum AuthSessionEventType { signedIn, signedOut, tokenRefreshed, userUpdated }
+enum AuthSessionEventType {
+  signedIn,
+  signedOut,
+  passwordRecovery,
+  tokenRefreshed,
+  userUpdated,
+}
 
 class AuthSessionEvent {
   const AuthSessionEvent({required this.type, this.user});

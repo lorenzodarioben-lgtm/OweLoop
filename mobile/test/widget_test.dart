@@ -138,6 +138,99 @@ void main() {
     },
   );
 
+  testWidgets('requests password reset without revealing account existence', (
+    tester,
+  ) async {
+    final authRepository = FakeAuthRepository();
+    final profileRepository = FakeProfileRepository();
+    await pumpApp(
+      tester,
+      authRepository: authRepository,
+      profileRepository: profileRepository,
+    );
+
+    await tester.tap(find.text('Forgot password?'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), 'unknown@example.test');
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Send reset instructions'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(authRepository.passwordRecoveryEmail, 'unknown@example.test');
+    expect(
+      find.text(
+        'If an account uses that email address, we sent password reset instructions.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('resends an email verification request from the pending screen', (
+    tester,
+  ) async {
+    final authRepository = FakeAuthRepository(
+      signUpResult: SignUpResult.verificationRequired(email: testUser.email),
+    );
+    final profileRepository = FakeProfileRepository();
+    await pumpApp(
+      tester,
+      authRepository: authRepository,
+      profileRepository: profileRepository,
+    );
+
+    await tester.tap(find.text('Create an account'));
+    await tester.pumpAndSettle();
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), testUser.email);
+    await tester.enterText(fields.at(1), 'long-enough');
+    await tester.enterText(fields.at(2), 'long-enough');
+    await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Resend verification email'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(authRepository.resentVerificationEmail, testUser.email);
+    expect(
+      find.textContaining('If confirmation is still needed'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('updates a password only after a recovery callback', (
+    tester,
+  ) async {
+    final authRepository = FakeAuthRepository();
+    final profileRepository = FakeProfileRepository(
+      currentProfile: completedTestProfile,
+    );
+    await pumpApp(
+      tester,
+      authRepository: authRepository,
+      profileRepository: profileRepository,
+    );
+
+    authRepository.emit(
+      const AuthSessionEvent(
+        type: AuthSessionEventType.passwordRecovery,
+        user: testUser,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Choose a new password'), findsOneWidget);
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), 'new-long-password');
+    await tester.enterText(fields.at(1), 'new-long-password');
+    await tester.tap(find.widgetWithText(FilledButton, 'Update password'));
+    await tester.pumpAndSettle();
+
+    expect(authRepository.updatedPassword, 'new-long-password');
+    expect(find.text('Hi, Taylor'), findsOneWidget);
+  });
+
   testWidgets('shows a safe error state for failed sign-in', (tester) async {
     final authRepository = FakeAuthRepository()
       ..signInError = const AuthenticationServiceException(

@@ -30,6 +30,41 @@ void main() {
       );
     });
 
+    test('allows signed-out recovery requests and auth callbacks', () {
+      const signedOut = AuthenticationState.signedOut();
+      expect(
+        authenticationRedirect(
+          authenticationState: signedOut,
+          location: AppRoutes.forgotPassword,
+        ),
+        isNull,
+      );
+      expect(
+        authenticationRedirect(
+          authenticationState: signedOut,
+          location: AppRoutes.authCallback,
+        ),
+        isNull,
+      );
+    });
+
+    test('only a recovery session can access password update', () {
+      expect(
+        authenticationRedirect(
+          authenticationState: const AuthenticationState.signedOut(),
+          location: AppRoutes.updatePassword,
+        ),
+        AppRoutes.signIn,
+      );
+      expect(
+        authenticationRedirect(
+          authenticationState: AuthenticationState.passwordRecovery(user: user),
+          location: AppRoutes.home,
+        ),
+        AppRoutes.updatePassword,
+      );
+    });
+
     test('protects group routes from signed-out users', () {
       expect(
         authenticationRedirect(

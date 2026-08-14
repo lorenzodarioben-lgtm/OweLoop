@@ -14,9 +14,15 @@ class FakeAuthRepository implements AuthRepository {
   Object? restoreError;
   Object? signInError;
   Object? signUpError;
+  Object? resendVerificationError;
+  Object? passwordRecoveryError;
+  Object? updatePasswordError;
   Object? signOutError;
   Future<AuthenticatedUser?> Function()? restoreSessionHandler;
   bool didSignOut = false;
+  String? resentVerificationEmail;
+  String? passwordRecoveryEmail;
+  String? updatedPassword;
 
   final StreamController<AuthSessionEvent> _events =
       StreamController<AuthSessionEvent>.broadcast();
@@ -60,6 +66,24 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<void> resendVerification({required String email}) async {
+    resentVerificationEmail = email;
+    if (resendVerificationError != null) throw resendVerificationError!;
+  }
+
+  @override
+  Future<void> requestPasswordRecovery({required String email}) async {
+    passwordRecoveryEmail = email;
+    if (passwordRecoveryError != null) throw passwordRecoveryError!;
+  }
+
+  @override
+  Future<void> updatePassword({required String password}) async {
+    updatedPassword = password;
+    if (updatePasswordError != null) throw updatePasswordError!;
+  }
+
+  @override
   Future<void> signOut() async {
     if (signOutError != null) {
       throw signOutError!;
@@ -68,6 +92,8 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   void emit(AuthSessionEvent event) => _events.add(event);
+
+  void emitError(Object error) => _events.addError(error);
 
   Future<void> dispose() => _events.close();
 }

@@ -28,7 +28,23 @@ class VerificationPendingScreen extends ConsumerWidget {
               'sign you in until the address is confirmed.',
             ),
           ),
+          if (state.errorMessage case final message?) ...[
+            const SizedBox(height: 20),
+            AuthenticationMessage(message: message),
+          ],
+          if (state.noticeMessage case final message?) ...[
+            const SizedBox(height: 20),
+            Semantics(liveRegion: true, child: Text(message)),
+          ],
           const SizedBox(height: 24),
+          AuthenticationSubmitButton(
+            label: 'Resend verification email',
+            isLoading: state.isSubmitting,
+            onPressed: ref
+                .read(authenticationControllerProvider)
+                .resendVerification,
+          ),
+          const SizedBox(height: 12),
           AuthenticationSubmitButton(
             label: 'Back to sign in',
             isLoading: false,
