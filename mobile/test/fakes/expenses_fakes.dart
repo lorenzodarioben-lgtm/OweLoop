@@ -20,6 +20,7 @@ class FakeExpensesRepository implements ExpensesRepository {
   Future<List<ExpenseRecord>> Function()? loadExpensesHandler;
   Future<ExpenseRecord> Function(ExpenseCreationInput input)? createHandler;
   int loadExpensesCalls = 0;
+  final List<ExpenseCreationInput> creationInputs = [];
   ExpenseCreationInput? lastCreationInput;
   String? lastVoidedExpenseId;
 
@@ -37,6 +38,7 @@ class FakeExpensesRepository implements ExpensesRepository {
 
   @override
   Future<ExpenseRecord> createExpense(ExpenseCreationInput input) async {
+    creationInputs.add(input);
     lastCreationInput = input;
     if (createHandler != null) {
       return createHandler!(input);

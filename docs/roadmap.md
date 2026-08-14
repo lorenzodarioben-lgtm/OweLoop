@@ -12,7 +12,7 @@
 ## Version 0.1 - shared-expense core complete
 
 1. Authentication and account lifecycle - complete for email/password access and required profile onboarding.
-2. Groups with registered and guest members - complete for creation, viewing, guest addition, safe removal, owner-only role and ownership changes, and archive. Invitations and guest claiming remain later work.
+2. Groups with registered and guest members - complete for creation, viewing, guest addition, safe removal, owner-only role and ownership changes, archive, protected in-app registered-user invitations, and explicit two-party guest account claims.
 3. Flexible expenses - complete for one or multiple payers; equal, exact, percentage, and share splits; exact previews; posted history; detail; and correction by void-and-duplicate.
 4. Transparent per-group balances - complete for exact, settlement-aware, read-only balances and deterministic repayment suggestions.
 5. Settlement recording and history - complete for recording externally completed payments and voiding history.
@@ -22,8 +22,9 @@
 
 - Build and test on configured Android and iOS toolchains and physical devices.
 - Configure a non-local Supabase project, email delivery, and environment values without committing secrets.
-- Design invitations, guest claiming, and account-deletion support flows.
-- Add accessibility, localization, performance, migration-upgrade, and end-to-end test coverage.
+- Configure and manually validate hosted in-app invitations and guest claims with real beta accounts.
+- Implement account deletion/data export and publish the associated support process.
+- Add localization, performance, physical-device accessibility, migration-upgrade, and live end-to-end coverage.
 - Establish privacy, support, monitoring, backup, incident-response, release, store-listing, and signing processes.
 
 ## Later versions

@@ -85,4 +85,4 @@ From the repository root, use `./scripts/check.sh` on macOS/Linux or `.\scripts\
 
 ## Current validation limitation
 
-The initial application foundation was not validated with an Android build because the original development machine did not have an Android SDK configured. Do not treat that as evidence of an Android build result; validate a native Android build after configuring the SDK.
+The current development machine has no Android SDK configured, so Android builds cannot be claimed as validated here. Do not treat Flutter analysis or widget tests as native-build evidence; validate a native Android build after configuring the SDK. Release builds also require the local signing setup documented in [Android private beta preparation](android-private-beta.md).

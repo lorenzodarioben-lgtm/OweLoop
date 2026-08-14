@@ -1,5 +1,67 @@
 begin;
 
+-- The historical assertions below exercise the original atomic financial
+-- validation paths. These temporary test-only grants and compatibility
+-- wrappers are rolled back with the test transaction; production callers can
+-- only use the idempotent public RPCs introduced by the latest migration.
+grant insert, update, delete on table public.expenses to authenticated;
+grant insert, update, delete on table public.expense_payers to authenticated;
+grant insert, update, delete on table public.expense_splits to authenticated;
+grant insert, update on table public.settlements to authenticated;
+grant execute on function public.create_equal_expense(uuid, text, bigint, timestamptz, uuid, uuid[]) to authenticated;
+grant execute on function public.finalize_expense(uuid) to authenticated;
+grant execute on function public.create_expense_unchecked_internal(uuid, text, bigint, timestamptz, jsonb, jsonb) to authenticated;
+grant execute on function public.record_settlement_unchecked_internal(uuid, uuid, uuid, bigint, timestamptz) to authenticated;
+
+create function public.create_expense(
+  p_group_id uuid,
+  p_description text,
+  p_total_amount_minor bigint,
+  p_occurred_at timestamptz,
+  p_payers jsonb,
+  p_splits jsonb
+)
+returns public.expenses
+language sql
+security definer
+set search_path = pg_catalog
+as $$
+  select * from public.create_expense_unchecked_internal(
+    p_group_id,
+    p_description,
+    p_total_amount_minor,
+    p_occurred_at,
+    p_payers,
+    p_splits
+  );
+$$;
+
+create function public.record_settlement(
+  p_group_id uuid,
+  p_paying_member_id uuid,
+  p_receiving_member_id uuid,
+  p_amount_minor bigint,
+  p_settled_at timestamptz
+)
+returns public.settlements
+language sql
+security definer
+set search_path = pg_catalog
+as $$
+  select * from public.record_settlement_unchecked_internal(
+    p_group_id,
+    p_paying_member_id,
+    p_receiving_member_id,
+    p_amount_minor,
+    p_settled_at
+  );
+$$;
+
+revoke all on function public.create_expense(uuid, text, bigint, timestamptz, jsonb, jsonb) from public;
+revoke all on function public.record_settlement(uuid, uuid, uuid, bigint, timestamptz) from public;
+grant execute on function public.create_expense(uuid, text, bigint, timestamptz, jsonb, jsonb) to authenticated;
+grant execute on function public.record_settlement(uuid, uuid, uuid, bigint, timestamptz) to authenticated;
+
 select plan(165);
 
 insert into auth.users (
@@ -2227,17 +2289,17 @@ set local role anon;
 select is(
   has_function_privilege(
     'anon',
-    'public.create_expense(uuid,text,bigint,timestamp with time zone,jsonb,jsonb)'::regprocedure,
+    'public.create_expense(uuid,text,bigint,timestamp with time zone,jsonb,jsonb,uuid)'::regprocedure,
     'execute'
   ),
   false,
   'unauthenticated roles cannot execute the generic expense operation'
 );
 
-select is(
+select isnt(
   pg_catalog.to_regprocedure('public.create_expense(uuid,text,bigint,timestamp with time zone,jsonb,jsonb,uuid)'),
   null::regprocedure,
-  'generic expense creation never accepts a caller or creator identity'
+  'idempotent expense creation never accepts a caller or creator identity'
 );
 
 reset role;

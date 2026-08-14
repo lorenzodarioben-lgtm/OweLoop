@@ -85,6 +85,63 @@ void main() {
     expect(controller.state.pendingEmail, testUser.email);
   });
 
+  test('resends verification with generic success feedback', () async {
+    authRepository.signUpResult = SignUpResult.verificationRequired(
+      email: testUser.email,
+    );
+    await controller.initialize();
+    await controller.signUp(email: testUser.email, password: 'long-enough');
+
+    await controller.resendVerification();
+
+    expect(authRepository.resentVerificationEmail, testUser.email);
+    expect(controller.state.status, AuthenticationStatus.verificationPending);
+    expect(controller.state.noticeMessage, contains('If confirmation'));
+  });
+
+  test('requests password recovery with enumeration-safe feedback', () async {
+    await controller.initialize();
+
+    await controller.requestPasswordRecovery(email: 'unknown@example.test');
+
+    expect(authRepository.passwordRecoveryEmail, 'unknown@example.test');
+    expect(controller.state.status, AuthenticationStatus.signedOut);
+    expect(controller.state.hasRequestedPasswordRecovery, isTrue);
+    expect(controller.state.noticeMessage, contains('If an account uses'));
+  });
+
+  test(
+    'requires a recovery auth event before allowing a password update',
+    () async {
+      profileRepository.currentProfile = completedTestProfile;
+      await controller.initialize();
+      authRepository.emit(
+        const AuthSessionEvent(
+          type: AuthSessionEventType.passwordRecovery,
+          user: testUser,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.state.status, AuthenticationStatus.passwordRecovery);
+      await controller.updatePassword(password: 'new-long-password');
+
+      expect(authRepository.updatedPassword, 'new-long-password');
+      expect(controller.state.status, AuthenticationStatus.authenticated);
+    },
+  );
+
+  test('handles missing or expired recovery state safely', () async {
+    await controller.initialize();
+    authRepository.emit(
+      const AuthSessionEvent(type: AuthSessionEventType.passwordRecovery),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.state.status, AuthenticationStatus.signedOut);
+    expect(controller.state.errorMessage, contains('invalid or expired'));
+  });
+
   test('completes a profile and enters the authenticated state', () async {
     authRepository.restoredUser = testUser;
     profileRepository.currentProfile = incompleteTestProfile;

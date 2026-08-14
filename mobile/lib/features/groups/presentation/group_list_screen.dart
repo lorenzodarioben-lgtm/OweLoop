@@ -22,6 +22,16 @@ class GroupListScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('OweLoop'),
         actions: [
+          IconButton(
+            tooltip: 'Invitations',
+            onPressed: () => context.go(AppRoutes.invitations),
+            icon: const Icon(Icons.mail_outline),
+          ),
+          IconButton(
+            tooltip: 'Guest claim requests',
+            onPressed: () => context.go(AppRoutes.guestClaims),
+            icon: const Icon(Icons.person_search_outlined),
+          ),
           TextButton(
             onPressed: authState.isSubmitting
                 ? null
@@ -119,39 +129,54 @@ class _GroupsContent extends ConsumerWidget {
       );
     }
 
+    final activeGroups = groups.where((group) => !group.isArchived).toList();
+    final archivedGroups = groups.where((group) => group.isArchived).toList();
+
     return RefreshIndicator(
       onRefresh: controller.refresh,
-      child: ListView.separated(
+      child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 104),
-        itemCount: groups.length + 1,
-        separatorBuilder: (_, index) =>
-            index == 0 ? const SizedBox(height: 16) : const Divider(height: 1),
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            return _GroupsHeading(
-              displayName: displayName,
-              isRefreshing: isRefreshing,
-            );
-          }
-          final group = groups[index - 1];
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 8,
-              vertical: 8,
+        children: [
+          _GroupsHeading(displayName: displayName, isRefreshing: isRefreshing),
+          const SizedBox(height: 16),
+          ...activeGroups.map((group) => _GroupListItem(group: group)),
+          if (archivedGroups.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            Text(
+              'Archived groups',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            leading: CircleAvatar(child: Text(group.currencyCode)),
-            title: Text(group.name),
-            subtitle: Text(
-              '${group.currencyCode} · ${group.currentUserRole.label}',
+            const SizedBox(height: 4),
+            const Text(
+              'Read-only history for groups that are no longer active.',
             ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.go(AppRoutes.groupDetailPath(group.id)),
-          );
-        },
+            const SizedBox(height: 8),
+            ...archivedGroups.map((group) => _GroupListItem(group: group)),
+          ],
+        ],
       ),
     );
   }
+}
+
+class _GroupListItem extends StatelessWidget {
+  const _GroupListItem({required this.group});
+
+  final AppGroup group;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+    leading: CircleAvatar(child: Text(group.currencyCode)),
+    title: Text(group.name),
+    subtitle: Text(
+      '${group.currencyCode} · ${group.currentUserRole.label}'
+      '${group.isArchived ? ' · Archived' : ''}',
+    ),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: () => context.go(AppRoutes.groupDetailPath(group.id)),
+  );
 }
 
 class _GroupsHeading extends StatelessWidget {

@@ -18,6 +18,9 @@ Future<void> main() async {
     await Supabase.initialize(
       url: environment.supabaseUrl,
       publishableKey: environment.supabaseAnonKey,
+      authOptions: const FlutterAuthClientOptions(
+        authFlowType: AuthFlowType.pkce,
+      ),
     );
 
     runApp(const ProviderScope(child: OweLoopBootstrap()));

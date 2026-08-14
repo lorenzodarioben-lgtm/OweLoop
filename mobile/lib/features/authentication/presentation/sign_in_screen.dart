@@ -96,6 +96,16 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
               isLoading: state.isSubmitting,
               onPressed: _submit,
             ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.center,
+              child: TextButton(
+                onPressed: state.isSubmitting
+                    ? null
+                    : () => context.go('/forgot-password'),
+                child: const Text('Forgot password?'),
+              ),
+            ),
             const SizedBox(height: 16),
             Align(
               alignment: Alignment.center,

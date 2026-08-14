@@ -26,6 +26,10 @@ class GroupsErrorMapper {
       return 'This group is archived and cannot be changed.';
     }
 
+    if (rawMessage.contains('settle their balance before removal')) {
+      return 'This member must settle their balance before they can be removed.';
+    }
+
     if (rawMessage.contains('group is unavailable') ||
         rawMessage.contains('not found') ||
         rawMessage.contains('no rows')) {

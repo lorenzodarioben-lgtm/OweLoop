@@ -32,5 +32,14 @@ void main() {
         'Something went wrong. Please try again.',
       );
     });
+
+    test('maps expired recovery links to a safe recovery action', () {
+      expect(
+        AuthErrorMapper.messageFor(
+          const AuthenticationServiceException('Auth code has expired'),
+        ),
+        'This password reset link is invalid or expired. Request a new one.',
+      );
+    });
   });
 }

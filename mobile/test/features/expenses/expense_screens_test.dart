@@ -175,6 +175,10 @@ void main() {
     await enterValidExpense(tester);
     expect(find.text('Equal split preview'), findsOneWidget);
     expect(find.text('AUD 5.00'), findsNWidgets(2));
+    expect(
+      find.bySemanticsLabel('Post expense with exact allocation'),
+      findsOneWidget,
+    );
 
     await deselectGuestParticipant(tester);
     await tester.pump();
@@ -208,6 +212,14 @@ void main() {
     expect(expensesRepository.lastCreationInput?.participantMemberIds, const [
       'owner-member',
     ]);
+    expect(
+      expensesRepository.lastCreationInput?.operationId,
+      matches(
+        RegExp(
+          r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+        ),
+      ),
+    );
     expect(expensesRepository.loadExpensesCalls, greaterThanOrEqualTo(2));
     expect(balancesRepository.loadBalancesCalls, greaterThanOrEqualTo(2));
     expect(find.text('Expense details'), findsOneWidget);
@@ -255,6 +267,35 @@ void main() {
         'We could not reach OweLoop. Check your connection and try again.',
       ),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('reuses an operation ID when a financial submission is retried', (
+    tester,
+  ) async {
+    var attempts = 0;
+    final expensesRepository = FakeExpensesRepository()
+      ..createHandler = (input) async {
+        attempts += 1;
+        if (attempts == 1) throw Exception('network timeout');
+        return testExpense;
+      };
+    await openExpenseForm(
+      tester,
+      groupsRepository: groupRepository(),
+      expensesRepository: expensesRepository,
+    );
+    await enterValidExpense(tester);
+
+    await tapPostExpense(tester);
+    await tester.pumpAndSettle();
+    await tapPostExpense(tester);
+    await tester.pumpAndSettle();
+
+    expect(expensesRepository.creationInputs, hasLength(2));
+    expect(
+      expensesRepository.creationInputs[1].operationId,
+      expensesRepository.creationInputs.first.operationId,
     );
   });
 }

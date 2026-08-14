@@ -6,7 +6,7 @@ The initial implementation lives in [`mobile/`](mobile/). It uses Flutter, Supab
 
 ## Current project status
 
-The repository now contains the Version 0.1 shared-expense core: email-and-password access with profile onboarding; groups with registered and guest members; exact expenses with one or multiple payers and equal, exact, percentage, or share-based splits; settlement recording and immutable history; transparent group balances; expense activity; correction by void-and-duplicate; group administration; and repayment suggestions. Balances and suggestions derive from posted, non-voided expenses and non-voided settlements using integer minor units. OweLoop records payments that have already happened; it never moves money automatically. Invitations, guest claiming, account deletion, receipts, payments, offline sync, and production release work remain outside this scope.
+The repository now contains the Version 0.1 shared-expense core plus private-beta readiness work: email-and-password access with verification resend and password recovery; groups with registered and guest members; exact expenses with one or multiple payers and equal, exact, percentage, or share-based splits; settlement recording and immutable history; transparent group balances; expense activity; correction by void-and-duplicate; group administration; repayment suggestions; in-app registered-user invitations; and explicit two-party guest account claims. Balances and suggestions derive from posted, non-voided expenses and non-voided settlements using integer minor units. OweLoop records payments that have already happened; it never moves money automatically.
 
 ## Local database development
 
@@ -45,6 +45,15 @@ For sign-up testing, configure email confirmation in the development Supabase pr
 - `.github/workflows/` — continuous integration.
 
 See the [product requirements](docs/product-requirements.md), [architecture](docs/architecture.md), and [roadmap](docs/roadmap.md).
+
+## Private beta preparation
+
+Hosted deployment is intentionally manual and remains unconfigured in this
+repository. Before inviting testers, follow the [hosted environment and
+migration runbook](docs/hosted-beta-environments.md), complete the
+[two-account test plan](docs/private-beta-test-plan.md), and record the
+[release checklist](docs/private-beta-release-checklist.md). Support, privacy,
+and crash-reporting decisions are tracked in [private beta operations](docs/private-beta-operations.md).
 
 ## Development setup
 

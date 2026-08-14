@@ -18,8 +18,7 @@ class SupabaseGroupsRepository implements GroupsRepository {
           'group_members!inner(role, user_id, removed_at)',
         )
         .eq('group_members.user_id', userId)
-        .isFilter('group_members.removed_at', null)
-        .isFilter('archived_at', null);
+        .isFilter('group_members.removed_at', null);
 
     final groups = (rows as List)
         .map(
@@ -27,6 +26,9 @@ class SupabaseGroupsRepository implements GroupsRepository {
         )
         .toList();
     groups.sort((first, second) {
+      if (first.isArchived != second.isArchived) {
+        return first.isArchived ? 1 : -1;
+      }
       final firstCreatedAt =
           first.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
       final secondCreatedAt =

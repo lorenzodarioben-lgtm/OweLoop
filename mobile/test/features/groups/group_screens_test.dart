@@ -130,6 +130,28 @@ void main() {
     expect(find.text('Expense history'), findsOneWidget);
   });
 
+  testWidgets('keeps archived groups available as clearly read-only history', (
+    tester,
+  ) async {
+    final archivedGroup = AppGroup(
+      id: 'archived-group',
+      name: 'Past holiday',
+      currencyCode: 'AUD',
+      currentUserRole: GroupRole.owner,
+      archivedAt: DateTime.utc(2026, 8, 15),
+    );
+    final repository = FakeGroupsRepository(groups: [testGroup, archivedGroup])
+      ..groupsById[testGroup.id] = testGroup
+      ..groupsById[archivedGroup.id] = archivedGroup
+      ..membersByGroupId[archivedGroup.id] = const [testOwnerMember];
+
+    await pumpApp(tester, repository);
+
+    expect(find.text('Archived groups'), findsOneWidget);
+    expect(find.text('Past holiday'), findsOneWidget);
+    expect(find.text('AUD · Owner · Archived'), findsOneWidget);
+  });
+
   testWidgets('shows current, guest, and removed member balances', (
     tester,
   ) async {

@@ -43,6 +43,7 @@ class SupabaseSettlementsRepository implements SettlementsRepository {
             'p_receiving_member_id': input.receivingMemberId,
             'p_amount_minor': input.amount.minorUnits,
             'p_settled_at': input.settledAt.toUtc().toIso8601String(),
+            'p_operation_id': input.operationId,
           },
         )
         .single();
