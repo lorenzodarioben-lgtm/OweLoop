@@ -1,5 +1,9 @@
 # Functional reference for the design phase
 
+For setup and the prioritized next task, start at [START_HERE](../START_HERE.md)
+and [the roadmap](roadmap.md). This document remains the neutral functional
+reference; it does not authorize a visual redesign or check off release gates.
+
 This describes behavior and contracts, not a visual direction. Presentation can
 be rebuilt without changing financial calculations, repository boundaries or
 authorization. No color, typography, animation or branding choices are required

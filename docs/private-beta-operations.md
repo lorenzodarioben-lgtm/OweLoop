@@ -54,5 +54,8 @@ unnecessary sensitive personal data.
 The functional sprint implements export and a trusted account-deletion component;
 see [account lifecycle](account-lifecycle.md). Hosted deployment, published
 retention terms and a staffed exception/support process remain unconfigured.
-Archived groups with outstanding balances need explicit operator review because
-there is no unarchive or archived-settlement workflow in the app.
+Live owners can reopen archived groups through audited Group settings, then
+record external settlements before deletion. Ownerless archives require a
+staffed, service-role-only recovery procedure to an existing active registered
+successor; no client override or debt forgiveness exists. See ADR 0012 and the
+account lifecycle runbook. That support process is still unconfigured.

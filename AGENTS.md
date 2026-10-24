@@ -6,7 +6,11 @@ OweLoop is a shared-expense mobile application for Android and iOS. It is intend
 
 ## Current project stage
 
-The repository implements the shared-expense core and functional completion work: guarded financial mutations, exact allocation, persisted submission recovery, nested navigation, paginated history, account management, and local integration coverage. Native device validation and hosted release setup remain separate gates. Read HANDOFF.md and docs/FUNCTIONAL_COMPLETION_REPORT.md for the verified state; code existence does not mean a feature was deployed or device-tested.
+The repository implements the shared-expense core and two functional sprints.
+Android emulator recovery is verified; physical-device/iOS and hosted release
+gates remain open. Read [START_HERE.md](START_HERE.md), [HANDOFF.md](HANDOFF.md),
+and relevant architecture/ADRs before changing code. Historical reports are
+checkpoint evidence; the handoff records later onboarding validation.
 
 ## Technology stack
 
@@ -19,7 +23,7 @@ The repository implements the shared-expense core and functional completion work
 ## Repository structure
 
 - `mobile/` contains the Flutter Android and iOS application.
-- `supabase/` contains version-controlled database migration work when it is introduced.
+- `supabase/` contains ordered migrations, pgTAP and the trusted deletion function.
 - `docs/` contains product, architecture, delivery, and collaboration documentation.
 - `.github/` contains GitHub Actions and issue or pull request templates.
 
@@ -76,6 +80,12 @@ npm run db:stop
 
 The Supabase CLI is project-local. Do not install it globally, link routine checks to a hosted project, or use production credentials for local validation.
 
+For an isolated app backend use `npm ci`, `npm run dev:check`, then explicitly
+`npm run dev:start -- --configure-mobile` on a fresh checkout. Stop with
+`npm run dev:stop`. For full isolated backend/security/upgrade/API checks use
+`.\scripts\check-local.ps1 -SkipInstall -DartIntegration` on Windows (PowerShell 7
+also supports this helper on macOS/Linux). See [testing](docs/testing.md).
+
 ## Architecture boundaries
 
 - UI code must not contain financial calculation logic.
@@ -86,10 +96,31 @@ The Supabase CLI is project-local. Do not install it globally, link routine chec
 - Row-Level Security must be enabled and reviewed for user-owned data.
 - Product scope must not be expanded without updating the relevant documentation.
 - Do not introduce major dependencies without a documented justification.
+- Preserve integer minor units, checked ranges and deterministic allocation.
+- Preserve transaction locks, current caller authorization, RLS and guarded RPCs;
+  never add direct mutation bypasses or edit historical applied migrations.
+- Posted financial rows/audit history and group-member UUIDs are durable;
+  void/duplicate corrects an expense. Claim/removal/deletion never replaces IDs.
+- Persist financial requests before send, with account-scoped secure storage.
+  Unknown outcome or missing lookup is not failure. Retry only the original ID
+  and payload; a rejected retry cannot erase previous uncertainty.
+- Drafts/templates are separate from financial operations and never auto-post.
+- Account deletion requires zero membership balances and no active ownership;
+  trusted server validation/de-identification preserves shared history.
+- Keep export files/private read state account-scoped; cleanup must preserve
+  pending/unknown operations. Never log credentials or raw recovery payloads.
+- Preserve Auth/provider generation guards across account changes and sign-out.
+- Update HANDOFF.md after significant work; keep setup, ADRs and scope accurate.
+- Keep visual design independent of domain logic; consult the neutral design
+  handoff. Report unavailable/skipped tests honestly. Deployment, physical
+  devices/iOS, callbacks/sharing, signing and operational gates need real evidence.
 
 ## Collaboration rules
 
 - Complete one task per branch where practical.
+- New contributions branch from `codex/functional-completion` while PR #8 remains
+  unmerged; target that branch in the PR, then retarget after baseline merge.
+  Follow [CONTRIBUTING.md](CONTRIBUTING.md) for collaborator and fork commands.
 - Avoid editing the same files simultaneously with another contributor.
 - Use GitHub issues or clearly documented tasks to define work.
 - Pull requests must explain their scope, testing, and risks.

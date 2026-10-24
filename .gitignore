@@ -25,6 +25,9 @@ supabase/.branches/
 # Node.js dependencies
 node_modules/
 
+# Per-checkout disposable development backend (public/local config and CLI state)
+.local-dev/
+
 # Android signing
 **/*.jks
 **/*.keystore

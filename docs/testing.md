@@ -1,101 +1,152 @@
-# Reproducible validation
+# Reproducible testing
 
-Use Flutter 3.44.2 / Dart 3.12.2 (the CI-pinned SDK), Node 22, and Docker Desktop's
-local Linux engine. Use only public development URL/anon values in `mobile/.env`.
-The Supabase CLI remains project local; do not link routine tests to hosted data.
+Run commands from the repository root unless a block says `cd mobile`.
+Use Flutter 3.44.2/Dart 3.12.2, Node 22/npm and the project-local Supabase CLI.
+[START_HERE](../START_HERE.md) installs locked dependencies and configures a
+separate app backend. Routine tests never need a hosted account or production key.
 
-## Windows: full disposable backend check
+| Level | Requires | Automatic CI |
+| --- | --- | --- |
+|1 Quick sanity | Flutter SDK; `flutter pub get`; `mobile/.env` exists (blank example is sufficient for unit tests) | Mobile CI checks format/analyze |
+|2 Full Flutter | Same; no Docker/device | Mobile CI unit/widget tests |
+|3 Backend | Node/npm, Docker local Linux; PowerShell on Windows or optional PowerShell 7 elsewhere | Database CI equivalent CLI steps |
+|4 Native | Android SDK/JDK/device or emulator; local backend for runtime | Mobile CI debug build; separate native workflow for configured runtime |
+|5 Release | Physical Android/iOS, macOS/Xcode, approved beta accounts/secrets/operators | Manual gates; not inferred from local CI |
 
-```powershell
-.\scripts\check-local.ps1
-```
+## Level 1: fast checks
 
-The script installs locked npm dependencies, creates a unique temporary Supabase
-project, uses API port 60421 and DB port 60422, initializes all migrations, runs
-pgTAP and lint, runs the deletion-handler tests, replays a non-empty baseline
-upgrade, and performs the real three-account HTTP journey. It stops and discards
-only its own stack. Existing local project volumes and hosted environments are
-not reset. Select another free port block with `-PortBase 61420` if necessary.
-Disposable configuration folders remain under the system temporary directory
-for inspection; they are not repository artifacts.
-
-The regular developer stack still uses `npm run db:start` / `npm run check:db` /
-`npm run db:stop`. Windows can reserve port 55422; the isolated helper avoids
-changing the checked-in project configuration to accommodate one workstation.
-
-## Mobile checks
+For documentation/setup instructions, `npm run check:docs` from root validates
+tracked/new Markdown relative file targets without fetching external links.
+It runs in Mobile CI too; heading fragments/external URL availability are outside
+this file-existence check. Manually review commands and anchor destinations.
 
 ```powershell
 cd mobile
 flutter pub get
 dart format --output=none --set-exit-if-changed .
 flutter analyze
-flutter test
-flutter build apk --debug
+flutter test test/features/expenses/expense_models_and_money_test.dart
 ```
 
-No release keystore is required for the debug smoke build. A release build must
-use the ignored signing configuration and must never fall back to a debug key.
-On this workstation Gradle failed before compilation while establishing its
-loopback connection; Android command-line tools/licence status also need repair.
-Treat that as an unavailable native-build result, not a passing build.
+Choose the actual feature test relevant to your change. `git diff --check` from
+root catches whitespace errors. Plain documentation changes need link/command
+validation; financial, authorization or persistence changes need deeper levels.
 
-## Individual backend and component checks
+## Level 2: complete Flutter suite
 
 ```powershell
-npm ci
-npm run db:start
-npm run check:db
-npm run test:account-function
+.\scripts\check.ps1
 ```
 
-For the real HTTP integration script, supply `SUPABASE_URL` and
-`SUPABASE_ANON_KEY` from `npx supabase status -o json` to the test process. The
-optional `SUPABASE_SERVICE_ROLE_KEY` is **local test-process only**, never Flutter
-configuration. The isolated helper supplies it without printing it. The HTTP
-script refuses every non-loopback endpoint. `npm run test:upgrade` accepts an
-`OWELOOP_DB_CONTAINER` override, checks that Docker is local, and creates/drops
-only a unique `oweloop_upgrade_*` database. Its Auth fixture is a minimal shim;
-real Auth is covered separately by the HTTP journey.
+macOS/Linux: `./scripts/check.sh`. Both install Flutter dependencies, check
+formatting, analyze and run `flutter test` in `mobile/`. Formatting may rewrite
+nonconforming files before returning failure; review the diff and format
+intentionally before committing. The suite includes Auth/domain/controller/widget
+coverage. The two `test/live/financial_transport_test.dart` tests skip without
+explicit loopback URL/anon environment; a skip is not a live pass.
 
-## Native integration test: configured device required
+A fresh checkout needs `mobile/.env` because it is a bundled Flutter asset. Use
+`dev:start -- --configure-mobile` for app development, or copy the blank example
+for unit-only work (`Copy-Item mobile/.env.example mobile/.env` on Windows,
+`cp mobile/.env.example mobile/.env` elsewhere). Do not overwrite a real env file.
+
+## Level 3: disposable backend/security/upgrade/API
+
+Docker Linux running; from root:
+
+```powershell
+.\scripts\check-local.ps1 -DartIntegration
+```
+
+It runs `npm ci`, starts its own unique temporary project (API 60421/DB 60422),
+initializes all 26 migrations, runs 404 pgTAP assertions/schema lint, six handler
+tests, the non-empty 20+6 upgrade preserving nine table snapshots/balances, and 44
+real Auth/PostgREST assertions with three accounts and actual Admin deletion.
+`-DartIntegration` then runs two real Dart SDK adapter tests. Public/local service
+keys remain test-process-only; no service role is written into Flutter config.
+The helper restores environment and stops/discards only its own stack in `finally`.
+Its temporary configuration/log folders may remain for diagnosis.
+
+After locked dependencies are installed, `-SkipInstall` saves time. Optional
+`-Benchmark` runs bounded rollback-only scale fixtures; [measurements](performance.md)
+are not production/device guarantees. Override occupied ports with `-PortBase 63420`.
+Run one helper at a time. Do not repurpose common environment variables.
+
+On macOS/Linux the same helper supports PowerShell 7:
+
+```sh
+pwsh -File scripts/check-local.ps1 -DartIntegration
+```
+
+That platform invocation is supported by command selection but was not executed
+on the Windows handover host. Without PowerShell, the standard root CLI commands
+are `npm ci`, `npm run db:start`, `npm run check:db`,
+`npm run test:account-function`, `npm run test:upgrade`, `npm run db:stop`.
+They target the normal local project's ports 55421/55422. `check:db` resets that
+local project; only use disposable data. The separate HTTP script requires
+loopback `SUPABASE_URL`, local `SUPABASE_ANON_KEY` and optionally the local
+`SUPABASE_SERVICE_ROLE_KEY` in its process environment; the PowerShell helper or
+Database CI supplies these without manual copy. Upgrade accepts
+`OWELOOP_DB_CONTAINER`, checks local Docker and creates/drops only its unique
+`oweloop_upgrade_*` database. Never link routine checks to a hosted project.
+
+## Level 4: Android compilation and native runtime
 
 ```powershell
 cd mobile
-flutter test integration_test/private_beta_journey_test.dart -d <device-id> --dart-define=OWELOOP_TEST_SUPABASE_URL=http://10.0.2.2:60421 --dart-define=OWELOOP_TEST_ANON_KEY=<local-public-anon-key>
+flutter doctor -v
+flutter devices
+flutter build apk --debug
 ```
 
-Android emulators use `10.0.2.2` for the host; iOS simulators can use loopback.
-Use a disposable stack with local email confirmations disabled. The test now
-registers a disposable account, uses the real repositories/secure storage, and
-exercises group/guest/expense entry, exact balances, history and back navigation.
-It is skipped when test URL/key are absent, and refuses hosted endpoints. Actual
-run status is recorded in [the Sprint II report](SPRINT_II_REPORT.md). The
-separate Node journey covers multi-account/concurrent backend scenarios without
-a device. The Android harness and force-stop probe are documented in
-[native recovery testing](native-recovery-testing.md).
-
-Physical restart, Keychain/Keystore behavior, TalkBack/VoiceOver, email callbacks,
-release signing and macOS/Xcode builds remain explicit release gates. No widget
-or service test substitutes for those checks.
-
-## Sprint II SDK and scale checks
+A debug build requires SDK/JDK, not a release key. Runtime tests additionally need
+an actual emulator and the configured local backend. From root after `dev:start`:
 
 ```powershell
-$env:FLUTTER_ROOT='C:\path\to\flutter'
-.\scripts\check-local.ps1 -SkipInstall -DartIntegration
-.\scripts\check-local.ps1 -SkipInstall -Benchmark
+$localStatus = npx.cmd supabase status -o json --workdir .local-dev | ConvertFrom-Json
+$anon = $localStatus.ANON_KEY
+cd mobile
+flutter test integration_test/private_beta_journey_test.dart -d emulator-5554 --dart-define=OWELOOP_TEST_SUPABASE_URL=http://10.0.2.2:61421 --dart-define=OWELOOP_TEST_ANON_KEY=$anon
+flutter build apk --debug -t integration_test/recovery_probe_app.dart --dart-define=OWELOOP_TEST_SUPABASE_URL=http://10.0.2.2:61421 --dart-define=OWELOOP_TEST_ANON_KEY=$anon
+cd ..
+node scripts/test-android-recovery.mjs emulator-5554
+Remove-Variable localStatus,anon
 ```
 
-`-DartIntegration` supplies only the disposable URL/anon key to the real Dart
-SDK adapter tests. They check absent operation lookup and a committed response
-loss followed by exactly-once reconciliation. The ordinary unit suite skips
-these two explicitly configured live tests. The test-only independent Auth
-clients use implicit signup because they do not supply Flutter PKCE storage;
-the application Auth configuration is unchanged. No hosted endpoints accepted.
+These commands use the default dev port; adjust it if you selected another block.
+They register disposable accounts. Native tests refuse hosted endpoints; the
+force-stop script refuses physical devices. It tests actual OS termination before
+send/after SQL commit, session/secure-store reload and same-ID exactly-once recovery.
+It does not yet cover unsent draft restoration. The separate debug probe must
+never become the release target. See [native testing](native-recovery-testing.md)
+for contract/CI details and Bash commands for CI's normal backend on 55421.
 
-`-Benchmark` runs rollback-only SQL fixtures at four scales. Results and limits
-are in [performance](performance.md). Both flags are optional and leave the
-ordinary pgTAP, lint, upgrade, handler and HTTP checks enabled. The upgrade now
-preserves all twenty first-sprint migrations while applying six Sprint II
-migrations, comparing existing column values and canonical balances.
+The native workflow runs on manual dispatch or changes to its harness paths; it
+uses API 35/local Supabase on Ubuntu. Ordinary source changes do not rerun that
+heavy workflow automatically. At the functional checkpoint the UI journey and
+all four process checkpoints passed; exact evidence is in [Sprint II](SPRINT_II_REPORT.md).
+The outgoing Windows host's Gradle loopback failure/no AVD remains a local build/
+launch limitation, even though independent CI compiled and executed the app.
+
+## Level 5: release validation
+
+On macOS with configured Xcode, run `flutter doctor -v`, `flutter build ios --no-codesign`
+and `flutter devices` from `mobile/`, then `flutter run` on the selected simulator/
+device. Signing and physical Keychain/Keystore tests require platform setup and
+credentials; do not invent passing results. Verify physical share destination/
+cancellation, account switching, connectivity, callbacks, text scaling and
+TalkBack/VoiceOver using the [multi-account plan](private-beta-test-plan.md).
+
+Hosted work requires a deliberately approved beta target, operator access,
+backup/restore rehearsal, SMTP/deep links and actual deletion Edge gateway tests.
+Only follow the [hosted runbook](hosted-beta-environments.md) after owner approval.
+Never run a hosted reset. Use the [release checklist](private-beta-release-checklist.md)
+to record commit/build/device/environment/results and staffed privacy/support/
+incident ownership. No script checks off these gates for you.
+
+## Latest evidence
+
+[HANDOFF](../HANDOFF.md) records the fresh-clone onboarding execution and any
+skips/failures; [functional report](FUNCTIONAL_COMPLETION_REPORT.md) and
+[Sprint II](SPRINT_II_REPORT.md) preserve earlier checkpoint evidence. Do not call
+an inherited result a new local execution. Inspect exact-head CI on the PR.

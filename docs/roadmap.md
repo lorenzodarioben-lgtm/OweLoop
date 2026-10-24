@@ -1,57 +1,82 @@
-# Roadmap
+# Roadmap and incoming developer queue
 
-## Implemented and locally verified
+The two functional sprints delivered the shared-expense core, guarded exact
+financial operations/recovery, lifecycle/account handling, complete history,
+categories/templates, private exports/sharing, inbox and device settings.
+See [functional inventory](FUNCTIONAL_COMPLETION_REPORT.md), [Sprint II evidence](SPRINT_II_REPORT.md)
+and [HANDOFF](../HANDOFF.md). Code availability is separate from release readiness.
 
-The shared-expense core includes email/password and profile flows, durable
-registered/guest memberships, invitations and explicit guest claims, guarded
-roles/ownership, archive and settled removal/leave. Expenses support multiple
-payers and equal/exact/percentage/share splits, audit history and void/duplicate
-correction. Canonical balances and repayment suggestions are exact; settlements
-record external payments and preserve voided history.
+## P1 — First engineering contribution: native unsent draft restart coverage
 
-The functional sprint adds checked allocation/range arithmetic, direct-mutation
-protections, persisted manual retry/reconciliation, session-generation guards,
-nested navigation, complete cursor history with expense filters, saved expense
-drafts, CSV/personal JSON exports, profile editing and a trusted account-deletion
-component. Forward migrations, adversarial pgTAP, real local Auth/PostgREST
-concurrency and non-empty upgrade validation are implemented and executed.
-Sprint II adds audited reopen/ownerless operator recovery, immutable categories,
-complete settlement filters, consistent ledger snapshots, private native file
-sharing, reviewed reusable templates, a private activity inbox and account/device
-currency and cleanup settings. See [Sprint II](SPRINT_II_REPORT.md).
-See [the completion report](FUNCTIONAL_COMPLETION_REPORT.md) for precise evidence.
+**Local engineering; no hosted approval required.** This is the recommended first
+contribution because it exercises existing architecture without adding a feature.
 
-## Next: native and beta release gates
+- **Motivation/current:** real-process tests cover pending financial operations;
+  unsent draft save/restore has unit/widget coverage but no actual restart probe.
+- **Expected:** save an unsent expense draft through the real secure store,
+  terminate/relaunch the emulator app, explicitly restore it and retain fields,
+  category and active participants. Never post merely by saving/restoring.
+- **Files:** `mobile/integration_test/recovery_probe_app.dart`,
+  `scripts/test-android-recovery.mjs`,
+  `mobile/lib/features/expenses/data/expense_draft_store.dart`, relevant existing
+  draft widget tests. Change production source only if the test finds a defect.
+- **Dependencies:** Android/JDK/ADB + disposable local Supabase, or the existing
+  native CI workflow; independent branch `test/native-draft-restart` from the
+  handover branch. Use new sanitized markers, never log the draft/personal data.
+- **Acceptance:** bounded before/restart/restore checkpoints, exactly zero new
+  expenses before explicit posting, account B cannot restore A's draft, inactive
+  participants handled, pending operations unaffected. Existing native four
+  checkpoints and levels 1–4 remain passing; update HANDOFF with real evidence.
 
-1. Android debug compilation, the API35 native multi-account journey and actual
-   process termination/secure-store recovery before send and after commit passed
-   GitHub CI. Next exercise physical Keystore, draft restoration, account switching,
-   system back, callbacks, large text and TalkBack on a physical device.
-2. Build on macOS/Xcode and validate iOS Keychain, signing, callbacks, VoiceOver
-   and equivalent account/financial journeys.
-3. Configure reviewed beta infrastructure and email delivery, apply migrations
-   after backup/rehearsal, deploy the trusted deletion Edge function and test
-   its actual gateway, blockers, identity validation and retained records.
-4. Publish privacy/retention/support information, select crash reporting or a
-   staffed manual process, rehearse recovery and record release/test owners.
-5. Review exact-head CI and complete the private-beta checklist before any
-   distribution. Local tests and plain functional screens are not release proof.
+## P0 — Gates before distributing a beta
 
-## Functional follow-up
+These tasks require hardware, credentials or operator decisions. Preparing code/
+checklists locally is allowed; provisioning, deployment and release require the
+owner's explicit authorization. Never infer authorization from this backlog.
 
-- Exercise live-owner reopen and the documented trusted ownerless recovery
-  procedure with support staff; deletion remains blocked until balances settle.
-- Test large-group UI memory/scrolling and whole JSON snapshots on devices;
-  local SQL scale observations are recorded in [performance](performance.md).
-- Test native export destination import/cancellation on Android and iOS.
-  Localization, scheduled recurrence and private receipt storage remain absent.
-- Revisit unknown-email invitation delivery with an explicit verified identity
-  model; current requests remain unbound until revoked/resubmitted after signup.
+| Task | Current → expected / motivation | Files / dependencies | Verification |
+| --- | --- | --- | --- |
+| Physical Android acceptance | Emulator passes; hardware Keystore, network handoff, account switch, callbacks, shares and accessibility unverified → recorded device results | `mobile/android/`, `core/operations/`, [test plan](private-beta-test-plan.md); Android phone/SDK/JDK, signing access for release variant | Restart/lost response preserves same ID; draft restoration; airplane/Wi-Fi transitions; share destination and cancellation; back/deep links; large text/TalkBack; controlled signed build |
+| iOS acceptance | No local Xcode/Keychain execution → equivalent iOS evidence | `mobile/ios/`, export/secure-store code, [native testing](native-recovery-testing.md); macOS/Xcode, device, Apple signing | Build, simulator then physical restart/account isolation; Keychain, iPad share origin/cancellation, callbacks and VoiceOver; record build/OS/commit |
+| Approved beta backend/lifecycle | No hosted target/SMTP/Edge validation → tested approved beta, never production reset | `supabase/functions/delete-account/`, ordered migrations, [hosted runbook](hosted-beta-environments.md), [auth redirects](auth-redirects.md); owner approval, operator account/secrets | Backup and restore rehearsal before migrations; email verification/reset links; deployed gateway wrong-password/blocker/exact-user deletion and retained-history/old-token denial |
+| Staff operational processes | Privacy/support/consent/incident values unconfigured → named owners and reviewed notices | [operations](private-beta-operations.md), [release checklist](private-beta-release-checklist.md), [account lifecycle](account-lifecycle.md); owner/legal/support decisions | Published retention/data-use expectations, staffed ownerless recovery case procedure, tester consent, incident/crash-reporting and backup owners; checklist evidence before distribution |
 
-## Later product decisions
+Use [testing level 5](testing.md) and the release checklist; a local green test
+suite does not complete any of these gates. No public beta/store readiness claimed.
 
-Full offline synchronization, receipt scanning, analytics, subscriptions,
-AI assistance, bank/payment integrations and currency conversion require their
-own correctness/privacy/scope decisions. No placeholder feature is counted as
-implemented. Presentation design may proceed independently using
-[the neutral functional handoff](DESIGN_HANDOFF.md).
+## P1 — Large-group resource validation
+
+**Local engineering plus later device checks.** SQL fixtures pass up to 1,000
+members/2,000 expenses/1,000 settlements; canonical balances take about 1.7 s locally.
+Whole memberships, balances and exports still materialize in memory. Expected:
+measure network payload, memory, scrolling and reconciliation latency before
+setting supported limits or optimizing. Files: `scripts/benchmark-local.mjs`,
+`expenses/data`, `balances/data`, group/history widgets and `core/operations/export_sharing.dart`
+under `mobile/lib/`; [existing observations](performance.md). Requires local Docker,
+then Android/iOS profiling hardware. Accept only invariant-preserving changes;
+compare EXPLAIN/complete counts, exact balances and multi-page traversal plus
+actual device measurements. No timing target should be invented from one SQL run.
+
+## P2 — Optional product work, independently scoped
+
+| Task | Current → expected / motivation | Relevant files / dependencies | Acceptance |
+| --- | --- | --- | --- |
+| Secure receipts | No attachment feature; Storage disabled → private authorized image/PDF workflow | New ordered migration and storage tests; `supabase/config.toml`, expense feature; reviewed local Storage/retention model before hosted setup | Unauthorized/cross-group/removed access denied, bounded MIME/size/path, orphan cleanup, archive/void/delete/export behavior tested; no public URLs or service role in app |
+| Scheduled recurring drafts | Reviewed reusable templates only → deterministic due drafts that never auto-post | Expense template domain/repository, new schedule migration if needed; explicit timezone/member/archive policy | Month end, DST/timezone, missed periods, edits/pause/cancel, concurrent/open-repeat dedupe and explicit financial confirmation |
+| Localization | English labels only → reviewed locale/currency/date presentation | `mobile/lib/` presentation and supported currencies; product locale decisions | Exact parsing/formatting unchanged, long text/layout, semantics and locale tests |
+| Broader offline support | Secure unsent drafts/manual uncertain-operation recovery → clear stale/offline reads and controlled unposted intentions | Auth/session controllers, repositories, operations/draft stores; scope/retention decision | Account isolation, reconnect revalidation, no silent loss or automatic financial posting; never replace authoritative balance with speculative success |
+| Notification delivery | Manual-refresh private inbox only → explicitly opted-in delivery | Notification feature/current authorization RPCs; delivery provider/credentials and owner approval | No unknown-email enumeration, removed-user details or duplicate delivery; current source authorization, opt-out/privacy tested |
+
+Unknown-email requests intentionally remain unbound. Revoke/resend after signup;
+any future pre-registration delivery model needs a reviewed identity/privacy model.
+Do not add an identity directory or weaken source authorization as a shortcut.
+
+## Visual design boundary
+
+Existing routes and domain/repository contracts are stable enough for a separately
+scoped presentation phase. [DESIGN_HANDOFF](DESIGN_HANDOFF.md) is the neutral screen/
+state reference. Preserve exact amounts, durable identities, permissions, explicit
+posting/void confirmations, readable errors, pending/unknown recovery states and
+account/session guards. Design work must not claim missing native/hosted release
+evidence, hide uncertainty or silently edit financial history. No aesthetic choice
+is prescribed by this handover.

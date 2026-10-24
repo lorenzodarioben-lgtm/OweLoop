@@ -6,6 +6,10 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+$windowsHost = $env:OS -eq 'Windows_NT'
+$npmCommand = if ($windowsHost) { 'npm.cmd' } else { 'npm' }
+$npxCommand = if ($windowsHost) { 'npx.cmd' } else { 'npx' }
+$flutterCommand = if ($windowsHost) { 'flutter.bat' } else { 'flutter' }
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $projectId = 'oweloop-check-' + [guid]::NewGuid().ToString('N').Substring(0, 10)
 $validationRoot = Join-Path ([IO.Path]::GetTempPath()) $projectId
@@ -21,7 +25,7 @@ function Invoke-Checked {
 }
 Push-Location $repositoryRoot
 try {
-    if (-not $SkipInstall) { Invoke-Checked 'npm.cmd' @('ci') }
+    if (-not $SkipInstall) { Invoke-Checked $npmCommand @('ci') }
     New-Item -ItemType Directory -Path $validationSupabase | Out-Null
     foreach ($directory in @('migrations','tests','functions')) {
         Copy-Item -LiteralPath (Join-Path $repositoryRoot "supabase/$directory") -Destination $validationSupabase -Recurse
@@ -32,14 +36,14 @@ try {
     $config = $config.Replace('sql_paths = ["./seed.sql"]', 'sql_paths = []')
     Set-Content -LiteralPath (Join-Path $validationSupabase 'config.toml') -Value $config
     Write-Host "Disposable validation project: $projectId (API $($PortBase + 1), DB $($PortBase + 2))"
-    $startOutput = & npx.cmd supabase start --workdir $validationRoot 2>&1
+    $startOutput = & $npxCommand supabase start --workdir $validationRoot 2>&1
     $startResult = $LASTEXITCODE
     $startOutput | Where-Object { $_.ToString() -notmatch '(?i)ANON_KEY|SERVICE_ROLE_KEY|SECRET_KEY|JWT_SECRET|PUBLISHABLE_KEY|DB_URL|postgresql://' } | ForEach-Object { Write-Host $_ }
     if ($startResult -ne 0) { throw 'Disposable Supabase startup failed; check port availability.' }
-    Invoke-Checked 'npx.cmd' @('supabase','db','reset','--local','--workdir',$validationRoot)
-    Invoke-Checked 'npx.cmd' @('supabase','test','db','--workdir',$validationRoot)
-    Invoke-Checked 'npx.cmd' @('supabase','db','lint','--local','--level','warning','--fail-on','error','--workdir',$validationRoot)
-    $statusJson = & npx.cmd supabase status -o json --workdir $validationRoot 2>$null
+    Invoke-Checked $npxCommand @('supabase','db','reset','--local','--workdir',$validationRoot)
+    Invoke-Checked $npxCommand @('supabase','test','db','--workdir',$validationRoot)
+    Invoke-Checked $npxCommand @('supabase','db','lint','--local','--level','warning','--fail-on','error','--workdir',$validationRoot)
+    $statusJson = & $npxCommand supabase status -o json --workdir $validationRoot 2>$null
     if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect disposable local stack.' }
     $status = ($statusJson -join "`n") | ConvertFrom-Json
     $env:SUPABASE_URL = $status.API_URL
@@ -53,8 +57,9 @@ try {
         Push-Location (Join-Path $repositoryRoot 'mobile')
         try {
             if ($env:FLUTTER_ROOT) {
-                Invoke-Checked (Join-Path $env:FLUTTER_ROOT 'bin/cache/dart-sdk/bin/dart.exe') @((Join-Path $env:FLUTTER_ROOT 'bin/cache/flutter_tools.snapshot'),'--suppress-analytics','test','test/live/financial_transport_test.dart')
-            } else { Invoke-Checked 'flutter.bat' @('test','test/live/financial_transport_test.dart') }
+                $dartBinary = if ($windowsHost) { 'bin/cache/dart-sdk/bin/dart.exe' } else { 'bin/cache/dart-sdk/bin/dart' }
+                Invoke-Checked (Join-Path $env:FLUTTER_ROOT $dartBinary) @((Join-Path $env:FLUTTER_ROOT 'bin/cache/flutter_tools.snapshot'),'--suppress-analytics','test','test/live/financial_transport_test.dart')
+            } else { Invoke-Checked $flutterCommand @('test','test/live/financial_transport_test.dart') }
         } finally { Pop-Location }
     }
     if ($Benchmark) { Invoke-Checked 'node' @('scripts/benchmark-local.mjs') }
@@ -64,7 +69,7 @@ finally {
     if (Test-Path -LiteralPath (Join-Path $validationSupabase 'config.toml')) {
         # This config belongs to a newly generated project only. Never target the
         # developer's regular stack or a linked hosted project for cleanup.
-        & npx.cmd supabase stop --no-backup --workdir $validationRoot
+        & $npxCommand supabase stop --no-backup --workdir $validationRoot
     }
     foreach ($entry in $previousEnvironment.GetEnumerator()) { [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, 'Process') }
     Pop-Location

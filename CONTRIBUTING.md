@@ -1,98 +1,105 @@
 # Contributing to OweLoop
 
-Thanks for helping build OweLoop. The repository contains a working shared-expense core, so please read [AGENTS.md](AGENTS.md), the [architecture](docs/architecture.md), and the [roadmap](docs/roadmap.md) before starting work.
+Start with [START_HERE.md](START_HERE.md), [AGENTS.md](AGENTS.md) and
+[HANDOFF.md](HANDOFF.md). Use Flutter 3.44.2/Dart 3.12.2, Node 22/npm and local
+Docker Linux. [Setup](docs/development-setup.md) and [testing levels](docs/testing.md)
+contain the executable commands. Each human uses their own existing Git identity;
+check it with `git var GIT_AUTHOR_IDENT`. Never copy another contributor's identity.
 
-## Required software
+## Choose the correct base
 
-- Git.
-- The current stable Flutter SDK.
-- Node.js 20 or newer and npm for the project-local Supabase CLI.
-- Docker Desktop with its Linux engine running for local Supabase development.
-- An Android SDK and emulator or physical Android device for Android development.
-- Xcode for iOS development on macOS only.
+PR #8 is the unmerged functional baseline. Until it merges, **branch from and open
+PRs against `codex/functional-completion`**. Do not commit directly to `master` or
+the handover branch. After PR #8 merges, fetch and start new work from `origin/master`;
+retarget existing stacked PRs deliberately and resolve conflicts without discarding
+work. No force pushes, shared-history rewrites, AI authors or co-author trailers.
 
-You may use any editor or IDE that works well with Flutter; none is required by this project.
-
-## Get started
-
-Clone the repository and enter it:
-
-```sh
-git clone https://github.com/lorenzodarioben-lgtm/OweLoop.git
-cd OweLoop
-```
-
-Create local mobile configuration from the example. On macOS or Linux:
-
-```sh
-cp mobile/.env.example mobile/.env
-```
-
-On Windows PowerShell:
+With collaborator write access, from a clean checkout:
 
 ```powershell
-Copy-Item mobile/.env.example mobile/.env
+git status --short
+git fetch origin
+git switch -c test/native-draft-restart origin/codex/functional-completion
 ```
 
-Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` to development-project values. Never put a Supabase service-role key, password, token, or other secret in source control.
+Without write access, use GitHub's **Fork** action first. In the checkout created
+by START_HERE (whose `origin` points to the source repository), preserve the source
+as `upstream` and add your own fork. Enter your actual login when prompted:
 
-Install dependencies and run the application:
-
-```sh
-cd mobile
-flutter pub get
-flutter run
+```powershell
+$githubLogin = Read-Host 'Your GitHub login'
+git remote rename origin upstream
+git remote add origin "https://github.com/$githubLogin/OweLoop.git"
+git fetch upstream
+git switch -c test/native-draft-restart upstream/codex/functional-completion
 ```
 
-Run checks from `mobile/`:
+On macOS/Linux set `githubLogin` with `read -r githubLogin` and use the same Git
+commands with shell variable expansion. A fresh clone of your fork also works;
+add the source as `upstream`, fetch it, then branch from its handover ref.
+No collaborator permission or access token is created by these instructions.
 
-```sh
-dart format --set-exit-if-changed .
-flutter analyze
-flutter test
+## One focused change
+
+The recommended first task is [P1 draft restart coverage](docs/roadmap.md).
+Change only the files needed for the selected task. Existing issues or a concrete
+roadmap item define scope. Keep domain logic outside widgets; retain exact money,
+deterministic allocations, immutable audit history and guarded authorization.
+Unknown outcomes must retain the original operation ID/payload. No service role in
+Flutter, direct DML escape hatch or automatic financial posting.
+
+For SQL, add the next ordered UTC `YYYYMMDDHHMMSS_description.sql` under
+`supabase/migrations/`; never modify an applied migration. Update RLS/grants and
+adversarial pgTAP when a data surface changes. Use the [ADR process](docs/decisions/README.md)
+for significant decisions. Update HANDOFF.md after significant work and keep
+product/setup/design contracts current. Styling remains independent of domain code.
+
+## Verify, commit and submit
+
+After editing, run the relevant [test levels](docs/testing.md). For Flutter changes:
+
+```powershell
+.\scripts\check.ps1
 ```
 
-Or run all checks from the repository root with `./scripts/check.sh` on macOS/Linux or `.\scripts\check.ps1` in Windows PowerShell.
+For SQL/backend changes (Docker running):
 
-## Local database workflow
-
-The repository pins the Supabase CLI in its root npm lockfile; do not install it globally. With Docker Desktop running, run from the repository root:
-
-```sh
-npm ci
-npm run db:start
-npm run check:db
-npm run db:stop
+```powershell
+.\scripts\check-local.ps1 -SkipInstall -DartIntegration
 ```
 
-`npm run db:reset` applies local migrations, `npm run db:test` runs pgTAP, and `npm run db:lint` runs the schema linter. Keep this workflow local: do not run `supabase link`, target a hosted project, or use production credentials for routine development checks.
+Then review/stage only actual changed paths (the example file below is for the
+recommended first task):
 
-## Branches and commits
-
-Use one focused task per branch where practical. Suggested branch names include:
-
-- `feature/group-creation`
-- `fix/balance-rounding`
-- `docs/database-design`
-- `test/expense-calculator`
-
-Use conventional commit-style messages, for example:
-
-```text
-feat: add group creation form
-fix: preserve cents in balance calculation
-docs: document database migration workflow
-test: cover equal expense split
+```powershell
+git diff --check
+git diff
+git add mobile/integration_test/recovery_probe_app.dart scripts/test-android-recovery.mjs
+git diff --cached
+git commit -m 'test: verify unsent drafts survive native restart'
+git push -u origin test/native-draft-restart
 ```
 
-Each human contributor must configure and use their own Git name and email. Do not use another person's identity, and do not add AI tools as authors or co-authors.
+The commit example is a name for your completed work, not an instruction to make
+an empty or artificial commit. Use conventional messages and cohesive changes.
+Open a PR on GitHub from your pushed branch/fork into the source repository's
+`codex/functional-completion`. With authenticated optional GitHub CLI:
 
-## Pull requests
+```powershell
+gh pr create --repo lorenzodarioben-lgtm/OweLoop --base codex/functional-completion --web
+```
 
-Before opening a pull request, keep the scope tied to a GitHub issue or documented task, run the relevant checks, review your diff, and update documentation when behaviour or architecture changes. Describe the scope, testing, risks, and any follow-up work in the pull request template.
+For fork PRs select your fork and branch in the browser comparison. Use the
+[PR template](.github/pull_request_template.md); explain problem/result, scope,
+commands and real outcomes, risks and follow-up. Include skipped/unavailable
+checks with their reason; written tests are not execution evidence. Attach
+screenshots only when useful. Inspect Mobile CI (format/analyze/tests/debug APK),
+Database CI (pgTAP/lint/handler/upgrade/HTTP) and the separate native workflow when
+its paths change. Repository branch-protection settings may impose additional
+checks; do not assume permissions or a particular protection configuration.
 
-Avoid unrelated formatting changes. Do not delete or overwrite another contributor's work to simplify your own changes. When people or agents are working in parallel, coordinate file ownership early and resolve merge conflicts deliberately.
-
-## Secret handling
-
-`mobile/.env` is local-only and ignored by Git; `mobile/.env.example` is the tracked template. Never commit `.env` files, service-role keys, Android signing keys, Apple certificates, provisioning profiles, passwords, access tokens, or generated build output.
+Keep `.env`, `.local-dev`, generated output, signing keys, Apple certificates and
+credentials untracked. Never link routine checks to hosted data. Coordinate file
+ownership before parallel work, preserve others' changes, and resolve conflicts
+explicitly. PR review and owner-approved beta/release work are separate; do not
+merge or deploy as part of an ordinary contribution.

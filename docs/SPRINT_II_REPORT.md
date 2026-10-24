@@ -1,5 +1,8 @@
 # Sprint II engineering record
 
+Historical functional sprint evidence through `c56b433`. The subsequent
+developer-onboarding pass is recorded separately in [HANDOFF](../HANDOFF.md).
+
 2026-10-25, Australia/Sydney. Continued `codex/functional-completion` from clean,
 synchronized `280b86dd9f67a1fecd25de97c185d9febd856ceb`. Base master remains
 `9fe698836488288fac704801f13683d3844bf4cc`. Draft [PR8](https://github.com/lorenzodarioben-lgtm/OweLoop/pull/8)

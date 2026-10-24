@@ -1,5 +1,9 @@
 # Functional completion report
 
+Historical functional-delivery snapshot through `c56b433` (2026-10-25).
+Later onboarding changes/evidence are in [START_HERE](../START_HERE.md) and
+[HANDOFF](../HANDOFF.md); unchanged source is not a newly executed result.
+
 Updated 2026-10-25, Australia/Sydney. Branch: `codex/functional-completion`.
 Base master: `9fe698836488288fac704801f13683d3844bf4cc`.
 Draft [PR #8](https://github.com/lorenzodarioben-lgtm/OweLoop/pull/8).
@@ -121,8 +125,8 @@ beta/store readiness is not claimed. PR8 remains draft and unmerged.
 
 ## Changed-file manifest
 
-[Every path changed from master](changed-files.txt) includes both sprints,
+[The 160-path functional checkpoint manifest](changed-files.txt) includes both sprints,
 source/tests, all forward migrations, tooling/CI and handoff documentation.
-Generated from `git diff --name-only` plus nonignored new files; it is the full
-inventory rather than a hand-selected screen list. Use
+It is preserved at `c56b433`, before the final onboarding pass. For the current
+inventory, including later onboarding files, use
 `git diff --stat 9fe698836488288fac704801f13683d3844bf4cc..HEAD` for review size.

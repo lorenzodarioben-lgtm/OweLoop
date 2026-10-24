@@ -15,6 +15,11 @@ jobs:
         working-directory: mobile
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Verify documentation file links
+        run: node ../scripts/check-doc-links.mjs
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
