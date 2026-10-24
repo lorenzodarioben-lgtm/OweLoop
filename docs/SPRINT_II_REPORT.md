@@ -22,6 +22,15 @@ first-sprint commit is rewritten.
 
 ## Evidence so far
 
+The second milestone adds server-side settlement date/payer/receiver/amount/
+void-state filtering and stable oldest/newest cursors; transactionally consistent
+ledger export snapshots including allocation JSON; explicit private CSV/JSON
+sharing; and reusable group templates with optimistic edits and no financial
+posting. New workflow tests bring Flutter to 175 passing tests with clean
+analysis. Fresh initialization and twenty-plus-five migration upgrade passed,
+as did all pgTAP files, schema lint, six handler tests and the existing HTTP
+journey. ADR 0013 records the new persistence and export contracts.
+
 Before changes: 167 Flutter tests and the full disposable backend baseline passed
 (303 pgTAP assertions, six handler tests, 32 HTTP assertions, twelve-plus-eight
 migration upgrade). Recovery/category iteration: existing Flutter suite plus

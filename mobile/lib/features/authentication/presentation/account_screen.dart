@@ -7,6 +7,7 @@ import '../state/authentication_providers.dart';
 import '../validation/auth_validators.dart';
 import '../../../core/operations/financial_operations_providers.dart';
 import '../../expenses/data/expense_draft_store.dart';
+import '../../../core/operations/export_sharing.dart';
 
 class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key});
@@ -34,6 +35,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
   }
 
   Future<void> _export() async {
+    final accountId = ref.read(authenticationControllerProvider).state.user?.id;
+    if (accountId == null) return;
     setState(() => _busy = true);
     try {
       final data = await ref
@@ -55,13 +58,56 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       }
 
       final text = const JsonEncoder.withIndent('  ').convert(exact(data));
-      if (mounted) {
+      if (mounted &&
+          ref.read(authenticationControllerProvider).state.user?.id ==
+              accountId) {
         await Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (context) => Scaffold(
               appBar: AppBar(
                 title: const Text('Personal data export'),
                 actions: [
+                  Builder(
+                    builder: (buttonContext) => IconButton(
+                      tooltip: 'Share JSON file',
+                      icon: const Icon(Icons.share),
+                      onPressed: () async {
+                        final box =
+                            buttonContext.findRenderObject()! as RenderBox;
+                        try {
+                          final result = await ref
+                              .read(exportSharingProvider)
+                              .share(
+                                accountId: accountId,
+                                document: ExportDocument(
+                                  kind: 'personal-data',
+                                  text: text,
+                                  isJson: true,
+                                ),
+                                origin:
+                                    box.localToGlobal(Offset.zero) & box.size,
+                              );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(shareOutcomeMessage(result)),
+                              ),
+                            );
+                          }
+                        } catch (_) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Sharing could not complete. No save is confirmed.',
+                                ),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ),
                   IconButton(
                     tooltip: 'Copy JSON export',
                     onPressed: () async {
@@ -121,6 +167,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
       try {
         await ref.read(financialOperationStoreProvider).write(accountId, []);
         await ref.read(expenseDraftStoreProvider).deleteAccount(accountId);
+        await ref.read(exportSharingProvider).clearAccount(accountId);
       } catch (_) {
         /* encrypted data remains inaccessible to other accounts */
       }

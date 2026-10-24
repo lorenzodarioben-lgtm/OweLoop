@@ -1,5 +1,8 @@
 import 'package:oweloop/features/expenses/data/expense_draft_store.dart';
 import '../../fakes/expense_drafts_fakes.dart';
+import '../../fakes/expense_templates_fakes.dart';
+import 'package:oweloop/features/expenses/data/expense_templates_repository.dart';
+import 'package:oweloop/features/expenses/domain/expense_template.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async';
 
@@ -24,8 +27,10 @@ import '../../fakes/settlements_fakes.dart';
 
 void main() {
   late MemoryExpenseDraftStore drafts;
+  late FakeExpenseTemplatesRepository templates;
   setUp(() {
     drafts = MemoryExpenseDraftStore();
+    templates = FakeExpenseTemplatesRepository();
   });
   FakeGroupsRepository groupRepository() {
     return FakeGroupsRepository(groups: const [testGroup])
@@ -43,6 +48,7 @@ void main() {
   }) {
     return ProviderScope(
       overrides: [
+        expenseTemplatesRepositoryProvider.overrideWithValue(templates),
         expenseDraftStoreProvider.overrideWithValue(drafts),
         authRepositoryProvider.overrideWithValue(
           FakeAuthRepository(restoredUser: testUser),
@@ -131,6 +137,70 @@ void main() {
     expect(find.text('No posted expenses yet.'), findsOneWidget);
     expect(find.text('Add expense'), findsWidgets);
   });
+
+  testWidgets('saving a reusable configuration never posts an expense', (
+    tester,
+  ) async {
+    final expenses = FakeExpensesRepository();
+    await openExpenseForm(
+      tester,
+      groupsRepository: groupRepository(),
+      expensesRepository: expenses,
+    );
+    await enterValidExpense(tester);
+    await tester.tap(find.byTooltip('Unsent draft'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save group template'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Template name'),
+      'Shared dinner',
+    );
+    await tester.tap(find.text('Save template'));
+    await tester.pumpAndSettle();
+    expect(templates.savedName, 'Shared dinner');
+    expect(templates.savedFields!['description'], 'Dinner');
+    expect(templates.savedFields!.containsKey('operation_id'), isFalse);
+    expect(expenses.lastCreationInput, isNull);
+    expect(find.text('Template saved. No expense was posted.'), findsOneWidget);
+  });
+  testWidgets(
+    'template review excludes inactive identities without auto posting',
+    (tester) async {
+      final expenses = FakeExpensesRepository();
+      templates.templates = [
+        ExpenseTemplate(
+          id: 'template',
+          name: 'Old participants',
+          fields: {
+            'description': 'Review dinner',
+            'amount': '10.00',
+            'split_method': 'equal',
+            'single_payer': 'inactive',
+            'participant_ids': [testOwnerMember.id, 'inactive'],
+            'payer_ids': ['inactive'],
+          },
+          updatedAt: DateTime.utc(2026),
+          canEdit: true,
+        ),
+      ];
+      await openGroup(
+        tester,
+        groupsRepository: groupRepository(),
+        expensesRepository: expenses,
+      );
+      await tester.tap(find.byTooltip('Expense templates'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Review / use'));
+      await tester.pumpAndSettle();
+      expect(
+        find.widgetWithText(TextFormField, 'Review dinner'),
+        findsOneWidget,
+      );
+      expect(expenses.lastCreationInput, isNull);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('renders expense history and accessible expense details', (
     tester,

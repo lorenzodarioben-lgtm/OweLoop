@@ -1,4 +1,5 @@
 import 'expense_models.dart';
+import 'dart:convert';
 import '../../settlements/domain/settlement_models.dart';
 
 abstract final class LedgerCsv {
@@ -20,6 +21,8 @@ abstract final class LedgerCsv {
       'currency',
       'amount_minor',
       'status',
+      'payers_json',
+      'splits_json',
     ],
     ...expenses.map(
       (expense) => [
@@ -30,6 +33,22 @@ abstract final class LedgerCsv {
         expense.total.currencyCode,
         expense.total.minorUnits.toString(),
         expense.status.name,
+        jsonEncode([
+          for (final payer in expense.payers)
+            {
+              'member_id': payer.memberId,
+              'name': payer.displayName,
+              'amount_minor': payer.amount.minorUnits.toString(),
+            },
+        ]),
+        jsonEncode([
+          for (final split in expense.splits)
+            {
+              'member_id': split.memberId,
+              'name': split.displayName,
+              'amount_minor': split.amount.minorUnits.toString(),
+            },
+        ]),
       ],
     ),
   ]);

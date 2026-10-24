@@ -19,6 +19,8 @@ import '../features/expenses/presentation/expense_history_screen.dart';
 import '../features/settlements/presentation/settlement_history_screen.dart';
 import '../features/expenses/presentation/expense_detail_screen.dart';
 import '../features/expenses/domain/expense_models.dart';
+import '../features/expenses/domain/expense_template.dart';
+import '../features/expenses/presentation/expense_templates_screen.dart';
 import '../features/groups/presentation/create_group_screen.dart';
 import '../features/groups/presentation/group_export_screen.dart';
 import '../features/groups/presentation/group_detail_screen.dart';
@@ -68,6 +70,8 @@ abstract final class AppRoutes {
   static String settlementHistoryPath(String groupId) =>
       '/groups/$groupId/settlements';
   static String groupExportPath(String groupId) => '/groups/$groupId/exports';
+  static String expenseTemplatesPath(String groupId) =>
+      '/groups/$groupId/templates';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -148,6 +152,12 @@ GoRouter createAppRouter(AuthenticationController controller) {
                 GroupDetailScreen(groupId: state.pathParameters['groupId']!),
             routes: [
               GoRoute(
+                path: 'templates',
+                builder: (context, state) => ExpenseTemplatesScreen(
+                  groupId: state.pathParameters['groupId']!,
+                ),
+              ),
+              GoRoute(
                 path: 'exports',
                 builder: (context, state) => GroupExportScreen(
                   groupId: state.pathParameters['groupId']!,
@@ -175,6 +185,9 @@ GoRouter createAppRouter(AuthenticationController controller) {
                 path: 'expenses/new',
                 builder: (context, state) => AddExpenseScreen(
                   groupId: state.pathParameters['groupId']!,
+                  template: state.extra is ExpenseTemplate
+                      ? state.extra! as ExpenseTemplate
+                      : null,
                   draft: state.extra is ExpenseRecord
                       ? state.extra! as ExpenseRecord
                       : null,

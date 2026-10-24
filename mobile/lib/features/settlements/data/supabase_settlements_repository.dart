@@ -15,12 +15,14 @@ class SupabaseSettlementsRepository implements PagedSettlementsRepository {
     required String groupId,
     required String currencyCode,
     HistoryCursor? before,
+    SettlementHistoryFilter filter = const SettlementHistoryFilter(),
   }) async {
     final rows = await _client.rpc(
-      'get_settlement_page',
+      'get_filtered_settlement_page',
       params: {
         'p_group_id': groupId,
         'p_limit': 50,
+        ...filter.params,
         ...?before?.params('p_before_settled_at'),
       },
     );
@@ -56,18 +58,19 @@ class SupabaseSettlementsRepository implements PagedSettlementsRepository {
     required String groupId,
     required String currencyCode,
   }) async {
-    final items = <SettlementRecord>[];
-    HistoryCursor? cursor;
-    do {
-      final page = await loadSettlementPage(
-        groupId: groupId,
-        currencyCode: currencyCode,
-        before: cursor,
-      );
-      items.addAll(page.items);
-      cursor = page.next;
-    } while (cursor != null);
-    return items;
+    final rows = await _client.rpc(
+      'get_group_settlement_export_snapshot',
+      params: {'p_group_id': groupId},
+    );
+    return (rows as List)
+        .map(
+          (dynamic row) => SettlementRecord.fromMap(
+            Map<String, dynamic>.from(row as Map),
+            groupId: groupId,
+            currencyCode: currencyCode,
+          ),
+        )
+        .toList();
   }
 
   @override

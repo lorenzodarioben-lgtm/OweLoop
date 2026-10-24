@@ -30,6 +30,12 @@ class GroupDetailScreen extends ConsumerWidget {
         actions: state.status == GroupDetailStatus.ready
             ? [
                 IconButton(
+                  tooltip: 'Expense templates',
+                  onPressed: () =>
+                      context.push(AppRoutes.expenseTemplatesPath(groupId)),
+                  icon: const Icon(Icons.bookmark_outline),
+                ),
+                IconButton(
                   tooltip: 'Export group ledger',
                   onPressed: () =>
                       context.go(AppRoutes.groupExportPath(groupId)),

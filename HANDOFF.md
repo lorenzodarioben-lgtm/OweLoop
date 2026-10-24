@@ -6,7 +6,10 @@ Sprint II began from the clean first-sprint head `280b86d` on 2026-10-25.
 Read [the Sprint II record](docs/SPRINT_II_REPORT.md) for current milestones and
 new evidence; the first-sprint snapshot below remains historical context until
 the combined final inventory is refreshed. Archive recovery and optional
-categories are implemented; additional feature and native-harness work continues.
+categories are implemented. Settlement filters, consistent export snapshots,
+private native sharing and reusable group templates are also implemented and
+locally verified (175 Flutter tests; twenty-plus-five migration upgrade). Native
+harness and further product work continue; see the Sprint II record for evidence.
 
 ## Repository state
 

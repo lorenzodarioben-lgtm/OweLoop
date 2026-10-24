@@ -6,6 +6,7 @@ import '../../expenses/domain/ledger_csv.dart';
 import '../../expenses/state/expenses_providers.dart';
 import '../../settlements/state/settlements_providers.dart';
 import '../state/groups_providers.dart';
+import '../../../core/operations/export_sharing.dart';
 
 class GroupExportScreen extends ConsumerStatefulWidget {
   const GroupExportScreen({required this.groupId, super.key});
@@ -17,6 +18,7 @@ class GroupExportScreen extends ConsumerStatefulWidget {
 class _GroupExportScreenState extends ConsumerState<GroupExportScreen> {
   bool _busy = false;
   String? _csv, _message;
+  String _kind = 'expenses';
   Future<void> _export(bool settlements) async {
     final accountId = ref.read(authenticationControllerProvider).state.user?.id;
     final group = ref
@@ -28,6 +30,7 @@ class _GroupExportScreenState extends ConsumerState<GroupExportScreen> {
       _busy = true;
       _message = null;
       _csv = null;
+      _kind = settlements ? 'settlements' : 'expenses';
     });
     try {
       final text = settlements
@@ -69,7 +72,7 @@ class _GroupExportScreenState extends ConsumerState<GroupExportScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           const Text(
-            'Exports include all accessible pages, including voided records. Amounts are exact integer minor units; currency is recorded separately. CSV text can be copied into a private file. Participant names beginning with spreadsheet formulas are escaped.',
+            'Each export reads one complete server snapshot, including voided records. Amounts are exact integer minor units; currency and allocations are included. Copy the CSV or share a temporary private file using your device. Spreadsheet formulas are escaped.',
           ),
           Wrap(
             spacing: 12,
@@ -87,6 +90,53 @@ class _GroupExportScreenState extends ConsumerState<GroupExportScreen> {
           if (_busy) const Center(child: CircularProgressIndicator()),
           if (_message != null) Text(_message!),
           if (_csv != null) ...[
+            Builder(
+              builder: (buttonContext) => TextButton.icon(
+                onPressed: _busy
+                    ? null
+                    : () async {
+                        final account = ref
+                            .read(authenticationControllerProvider)
+                            .state
+                            .user
+                            ?.id;
+                        if (account == null) return;
+                        final box =
+                            buttonContext.findRenderObject()! as RenderBox;
+                        setState(() => _busy = true);
+                        try {
+                          final result = await ref
+                              .read(exportSharingProvider)
+                              .share(
+                                accountId: account,
+                                document: ExportDocument(
+                                  kind: _kind,
+                                  text: _csv!,
+                                  isJson: false,
+                                ),
+                                origin:
+                                    box.localToGlobal(Offset.zero) & box.size,
+                              );
+                          if (mounted) {
+                            setState(
+                              () => _message = shareOutcomeMessage(result),
+                            );
+                          }
+                        } catch (_) {
+                          if (mounted) {
+                            setState(
+                              () => _message =
+                                  'Sharing could not complete. No destination save is confirmed.',
+                            );
+                          }
+                        } finally {
+                          if (mounted) setState(() => _busy = false);
+                        }
+                      },
+                icon: const Icon(Icons.share),
+                label: const Text('Share CSV file'),
+              ),
+            ),
             TextButton.icon(
               onPressed: () async {
                 await Clipboard.setData(ClipboardData(text: _csv!));

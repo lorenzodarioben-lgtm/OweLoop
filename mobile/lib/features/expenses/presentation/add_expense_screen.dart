@@ -16,12 +16,20 @@ import '../domain/expense_category.dart';
 import '../state/expenses_providers.dart';
 import '../validation/expense_validators.dart';
 import 'expense_feedback.dart';
+import '../domain/expense_template.dart';
+import '../data/expense_templates_repository.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
-  const AddExpenseScreen({required this.groupId, this.draft, super.key});
+  const AddExpenseScreen({
+    required this.groupId,
+    this.draft,
+    this.template,
+    super.key,
+  });
 
   final String groupId;
   final ExpenseRecord? draft;
+  final ExpenseTemplate? template;
 
   @override
   ConsumerState<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -44,8 +52,150 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   String? _splitMessage;
   String? _operationId;
   ExpenseCategory? _category;
+  bool _templateBusy = false;
+
+  Future<void> _saveTemplate({required bool update}) async {
+    if (_templateBusy || !_hasInitializedMembers) return;
+    final account = ref.read(authenticationControllerProvider).state.user?.id;
+    if (account == null) return;
+    var name = update ? widget.template!.name : '';
+    final form = GlobalKey<FormState>();
+    final chosen = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(update ? 'Update group template' : 'Save group template'),
+        content: Form(
+          key: form,
+          child: TextFormField(
+            initialValue: name,
+            maxLength: 80,
+            decoration: const InputDecoration(labelText: 'Template name'),
+            onChanged: (value) => name = value,
+            validator: (value) => (value?.trim().isEmpty ?? true)
+                ? 'Enter a template name.'
+                : null,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (form.currentState!.validate()) {
+                Navigator.pop(dialogContext, name.trim());
+              }
+            },
+            child: const Text('Save template'),
+          ),
+        ],
+      ),
+    );
+    if (chosen == null ||
+        !mounted ||
+        ref.read(authenticationControllerProvider).state.user?.id != account) {
+      return;
+    }
+    setState(() => _templateBusy = true);
+    try {
+      await ref
+          .read(expenseTemplatesRepositoryProvider)
+          .save(
+            groupId: widget.groupId,
+            name: chosen,
+            fields: _formFields(),
+            previous: update ? widget.template : null,
+          );
+      ref.invalidate(expenseTemplatesProvider(widget.groupId));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Template saved. No expense was posted.'),
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(templateErrorMessage(error))));
+      }
+    } finally {
+      if (mounted) setState(() => _templateBusy = false);
+    }
+  }
+
+  Map<String, dynamic> _formFields() => {
+    'description': _descriptionController.text,
+    'category_key': _category?.name,
+    'amount': _amountController.text,
+    'occurred_on': _occurredOn.toIso8601String(),
+    'split_method': _splitMethod.name,
+    'multiple_payers': _multiplePayers,
+    'single_payer': _singlePayerMemberId,
+    'payer_ids': _payerIds.toList(),
+    'participant_ids': _participantIds.toList(),
+    'payer_amounts': {
+      for (final entry in _payerAmountControllers.entries)
+        entry.key: entry.value.text,
+    },
+    'split_values': {
+      for (final entry in _splitValueControllers.entries)
+        entry.key: entry.value.text,
+    },
+  };
+
+  void _applyFields(
+    Map<String, dynamic> fields,
+    List<GroupMember> members, {
+    bool restoreDate = false,
+  }) {
+    final active = members
+        .where((member) => !member.isRemoved)
+        .map((member) => member.id)
+        .toSet();
+
+    _descriptionController.text = fields['description'] as String? ?? '';
+    _category = ExpenseCategory.fromKey(fields['category_key']);
+    _amountController.text = fields['amount'] as String? ?? '';
+    if (restoreDate) {
+      _occurredOn =
+          DateTime.tryParse(fields['occurred_on'] as String? ?? '') ??
+          DateTime.now();
+    }
+    _splitMethod = SplitMethod.values.firstWhere(
+      (method) => method.name == fields['split_method'],
+      orElse: () => SplitMethod.equal,
+    );
+    _multiplePayers = fields['multiple_payers'] as bool? ?? false;
+    final savedPayer = fields['single_payer'] as String?;
+    _singlePayerMemberId = active.contains(savedPayer) ? savedPayer : null;
+    _payerIds = (fields['payer_ids'] as List? ?? [])
+        .cast<String>()
+        .where(active.contains)
+        .toSet();
+    _participantIds = (fields['participant_ids'] as List? ?? [])
+        .cast<String>()
+        .where(active.contains)
+        .toSet();
+    for (final entry in _payerAmountControllers.entries) {
+      entry.value.text =
+          (fields['payer_amounts'] as Map?)?[entry.key] as String? ?? '';
+    }
+    for (final entry in _splitValueControllers.entries) {
+      entry.value.text =
+          (fields['split_values'] as Map?)?[entry.key] as String? ?? '';
+    }
+    _operationId = null;
+  }
 
   Future<void> _draftAction(String action) async {
+    if (action.startsWith('template')) {
+      await _saveTemplate(update: action == 'template_update');
+      return;
+    }
+
     final accountId = ref.read(authenticationControllerProvider).state.user?.id;
     final members = ref
         .read(groupDetailControllerProvider(widget.groupId))
@@ -55,25 +205,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     final store = ref.read(expenseDraftStoreProvider);
     try {
       if (action == 'save') {
-        await store.write(accountId, widget.groupId, {
-          'description': _descriptionController.text,
-          'category_key': _category?.name,
-          'amount': _amountController.text,
-          'occurred_on': _occurredOn.toIso8601String(),
-          'split_method': _splitMethod.name,
-          'multiple_payers': _multiplePayers,
-          'single_payer': _singlePayerMemberId,
-          'payer_ids': _payerIds.toList(),
-          'participant_ids': _participantIds.toList(),
-          'payer_amounts': {
-            for (final entry in _payerAmountControllers.entries)
-              entry.key: entry.value.text,
-          },
-          'split_values': {
-            for (final entry in _splitValueControllers.entries)
-              entry.key: entry.value.text,
-          },
-        });
+        await store.write(accountId, widget.groupId, _formFields());
       } else if (action == 'discard') {
         await store.delete(accountId, widget.groupId);
       } else {
@@ -93,41 +225,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           );
           return;
         }
-        final active = members.map((member) => member.id).toSet();
-        setState(() {
-          _descriptionController.text = fields['description'] as String? ?? '';
-          _category = ExpenseCategory.fromKey(fields['category_key']);
-          _amountController.text = fields['amount'] as String? ?? '';
-          _occurredOn =
-              DateTime.tryParse(fields['occurred_on'] as String? ?? '') ??
-              DateTime.now();
-          _splitMethod = SplitMethod.values.firstWhere(
-            (method) => method.name == fields['split_method'],
-            orElse: () => SplitMethod.equal,
-          );
-          _multiplePayers = fields['multiple_payers'] as bool? ?? false;
-          final savedPayer = fields['single_payer'] as String?;
-          _singlePayerMemberId = active.contains(savedPayer)
-              ? savedPayer
-              : members.first.id;
-          _payerIds = (fields['payer_ids'] as List? ?? [])
-              .cast<String>()
-              .where(active.contains)
-              .toSet();
-          _participantIds = (fields['participant_ids'] as List? ?? [])
-              .cast<String>()
-              .where(active.contains)
-              .toSet();
-          for (final entry in _payerAmountControllers.entries) {
-            entry.value.text =
-                (fields['payer_amounts'] as Map?)?[entry.key] as String? ?? '';
-          }
-          for (final entry in _splitValueControllers.entries) {
-            entry.value.text =
-                (fields['split_values'] as Map?)?[entry.key] as String? ?? '';
-          }
-          _operationId = null;
-        });
+        setState(() => _applyFields(fields, members, restoreDate: true));
       }
       if (mounted &&
           ref.read(authenticationControllerProvider).state.user?.id ==
@@ -217,6 +315,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               split.amount,
             );
           }
+        }
+        if (widget.template != null) {
+          _applyFields(widget.template!.fields, members);
         }
         _hasInitializedMembers = true;
       });
@@ -492,11 +593,24 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           PopupMenuButton<String>(
             tooltip: 'Unsent draft',
             onSelected: _draftAction,
-            enabled: !ref
-                .watch(expenseCreationControllerProvider)
-                .state
-                .isSubmitting,
+            enabled:
+                !_templateBusy &&
+                !ref
+                    .watch(expenseCreationControllerProvider)
+                    .state
+                    .isSubmitting,
             itemBuilder: (_) => [
+              if (groupState.group?.isArchived == false)
+                const PopupMenuItem(
+                  value: 'template_save',
+                  child: Text('Save group template'),
+                ),
+              if (groupState.group?.isArchived == false &&
+                  widget.template?.canEdit == true)
+                const PopupMenuItem(
+                  value: 'template_update',
+                  child: Text('Update this template'),
+                ),
               const PopupMenuItem(
                 value: 'save',
                 child: Text('Save unsent draft'),

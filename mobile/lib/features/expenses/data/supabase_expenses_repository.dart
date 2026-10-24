@@ -13,14 +13,16 @@ class SupabaseExpensesRepository implements PagedExpensesRepository {
 
   @override
   Future<List<ExpenseRecord>> loadPostedExpenses(String groupId) async {
-    final items = <ExpenseRecord>[];
-    HistoryCursor? cursor;
-    do {
-      final page = await loadExpensePage(groupId, before: cursor);
-      items.addAll(page.items);
-      cursor = page.next;
-    } while (cursor != null);
-    return items;
+    final rows = await _client.rpc(
+      'get_group_expense_export_snapshot',
+      params: {'p_group_id': groupId},
+    );
+    return (rows as List)
+        .map(
+          (dynamic row) =>
+              ExpenseRecord.fromMap(Map<String, dynamic>.from(row as Map)),
+        )
+        .toList();
   }
 
   @override

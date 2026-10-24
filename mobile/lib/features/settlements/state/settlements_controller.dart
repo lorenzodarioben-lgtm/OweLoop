@@ -20,6 +20,13 @@ class SettlementHistoryController extends ChangeNotifier {
   bool _isDisposed = false;
   int _sessionGeneration = 0;
   HistoryCursor? _next;
+  SettlementHistoryFilter _filter = const SettlementHistoryFilter();
+  Future<void> filter(SettlementHistoryFilter filter) async {
+    _filter = filter;
+    _next = null;
+    _setState(const SettlementHistoryState.loading());
+    await load();
+  }
 
   SettlementHistoryState get state => _state;
 
@@ -37,6 +44,7 @@ class SettlementHistoryController extends ChangeNotifier {
           ? await source.loadSettlementPage(
               groupId: groupId,
               currencyCode: currencyCode,
+              filter: _filter,
             )
           : HistoryPage(
               items: await source.loadGroupSettlements(
@@ -82,6 +90,7 @@ class SettlementHistoryController extends ChangeNotifier {
         groupId: groupId,
         currencyCode: currencyCode,
         before: _next,
+        filter: _filter,
       );
       if (generation != _sessionGeneration) return;
       final ids = _state.settlements.map((entry) => entry.id).toSet();

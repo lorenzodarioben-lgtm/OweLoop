@@ -45,6 +45,33 @@ final settlementHistoryControllerProvider = ChangeNotifierProvider.autoDispose
       return controller;
     });
 
+final allSettlementHistoryControllerProvider = ChangeNotifierProvider
+    .autoDispose
+    .family<
+      SettlementHistoryController,
+      ({String groupId, String currencyCode})
+    >((ref, request) {
+      final controller = SettlementHistoryController(
+        groupId: request.groupId,
+        currencyCode: request.currencyCode,
+        repository: ref.watch(settlementsRepositoryProvider),
+      );
+      ref.listen<AuthenticationState>(
+        authenticationControllerProvider.select(
+          (AuthenticationController controller) => controller.state,
+        ),
+        (_, next) {
+          if (next.status == AuthenticationStatus.authenticated) {
+            unawaited(controller.load());
+          } else {
+            controller.clear();
+          }
+        },
+        fireImmediately: true,
+      );
+      return controller;
+    });
+
 final settlementCreationControllerProvider =
     ChangeNotifierProvider.autoDispose<SettlementCreationController>((ref) {
       final controller = SettlementCreationController(

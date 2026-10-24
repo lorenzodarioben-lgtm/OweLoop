@@ -7,6 +7,7 @@ abstract interface class PagedSettlementsRepository
     required String groupId,
     required String currencyCode,
     HistoryCursor? before,
+    SettlementHistoryFilter filter = const SettlementHistoryFilter(),
   });
 }
 
