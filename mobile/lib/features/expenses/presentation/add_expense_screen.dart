@@ -283,11 +283,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         'Each payer amount must be positive.',
       );
     }
-    final paidTotal = allocations.fold(
-      0,
-      (sum, allocation) => sum + allocation.amountMinor,
+    final paidTotal = MoneyMath.sum(
+      allocations.map((allocation) => allocation.amountMinor),
     );
-    if (paidTotal != total.minorUnits) {
+    if (paidTotal != BigInt.from(total.minorUnits)) {
       throw const SplitAllocationException(
         'Payer amounts must equal the expense total.',
       );

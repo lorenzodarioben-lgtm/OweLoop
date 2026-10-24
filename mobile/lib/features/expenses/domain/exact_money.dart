@@ -1,3 +1,20 @@
+/// PostgreSQL bigint's positive limit on the supported native mobile targets.
+/// Use BigInt for intermediate arithmetic, then check before converting to int.
+abstract final class MoneyMath {
+  static const maxMinorUnits = 9223372036854775807;
+  static final maximum = BigInt.parse('9223372036854775807');
+
+  static BigInt sum(Iterable<int> amounts) =>
+      amounts.fold(BigInt.zero, (sum, amount) => sum + BigInt.from(amount));
+
+  static int checked(BigInt amount) {
+    if (amount < -maximum || amount > maximum) {
+      throw const FormatException('The amount exceeds the supported range.');
+    }
+    return amount.toInt();
+  }
+}
+
 class CurrencyRules {
   const CurrencyRules._();
 
@@ -39,10 +56,13 @@ class ExactMoney {
       if (!RegExp(r'^\d+$').hasMatch(normalized)) {
         return null;
       }
-      final minorUnits = int.tryParse(normalized);
-      return minorUnits == null
+      final minorUnits = BigInt.tryParse(normalized);
+      return minorUnits == null || minorUnits > MoneyMath.maximum
           ? null
-          : ExactMoney(currencyCode: currencyCode, minorUnits: minorUnits);
+          : ExactMoney(
+              currencyCode: currencyCode,
+              minorUnits: minorUnits.toInt(),
+            );
     }
 
     final match = RegExp(
@@ -52,18 +72,17 @@ class ExactMoney {
       return null;
     }
 
-    final wholeUnits = int.tryParse(match.group(1)!);
+    final wholeUnits = BigInt.tryParse(match.group(1)!);
     final fractionText = (match.group(2) ?? '').padRight(fractionDigits, '0');
-    final fractionUnits = int.tryParse(fractionText);
+    final fractionUnits = BigInt.tryParse(fractionText);
     if (wholeUnits == null || fractionUnits == null) {
       return null;
     }
 
     final scale = _scaleFor(fractionDigits);
-    return ExactMoney(
-      currencyCode: currencyCode,
-      minorUnits: wholeUnits * scale + fractionUnits,
-    );
+    final amount = wholeUnits * BigInt.from(scale) + fractionUnits;
+    if (amount > MoneyMath.maximum) return null;
+    return ExactMoney(currencyCode: currencyCode, minorUnits: amount.toInt());
   }
 
   static String formatMinor({
@@ -76,12 +95,12 @@ class ExactMoney {
     }
 
     final sign = minorUnits < 0 ? '-' : '';
-    final absoluteMinorUnits = minorUnits.abs();
+    final absoluteMinorUnits = BigInt.from(minorUnits).abs();
     if (fractionDigits == 0) {
       return '$currencyCode $sign$absoluteMinorUnits';
     }
 
-    final scale = _scaleFor(fractionDigits);
+    final scale = BigInt.from(_scaleFor(fractionDigits));
     final wholeUnits = absoluteMinorUnits ~/ scale;
     final fractionUnits = (absoluteMinorUnits % scale).toString().padLeft(
       fractionDigits,

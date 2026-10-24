@@ -4,6 +4,9 @@ begin;
 -- validation paths. These temporary test-only grants and compatibility
 -- wrappers are rolled back with the test transaction; production callers can
 -- only use the idempotent public RPCs introduced by the latest migration.
+-- The current production privilege boundary is independently exercised in 005.
+grant update (name, currency_code, archived_at) on public.groups to authenticated;
+grant update (display_name, removed_at) on public.group_members to authenticated;
 grant insert, update, delete on table public.expenses to authenticated;
 grant insert, update, delete on table public.expense_payers to authenticated;
 grant insert, update, delete on table public.expense_splits to authenticated;

@@ -236,12 +236,17 @@ class SplitAllocationCalculator {
   static List<ExpenseAllocation> equal({
     required int totalMinor,
     required Iterable<String> memberIds,
-  }) => _proportional(
-    totalMinor: totalMinor,
-    valuesByMemberId: {for (final memberId in memberIds) memberId: 1},
-    denominator: memberIds.length,
-    label: 'participants',
-  );
+  }) {
+    final ids = memberIds.toList();
+    if (ids.toSet().length != ids.length) {
+      throw const SplitAllocationException('Participants must be unique.');
+    }
+    return _proportional(
+      totalMinor: totalMinor,
+      valuesByMemberId: {for (final memberId in ids) memberId: 1},
+      label: 'participants',
+    );
+  }
 
   static List<ExpenseAllocation> exact({
     required int totalMinor,
@@ -251,11 +256,11 @@ class SplitAllocationCalculator {
     if (amountsByMemberId.isEmpty) {
       throw const SplitAllocationException('Select at least one participant.');
     }
-    final total = amountsByMemberId.values.fold(0, (sum, value) => sum + value);
+    final total = MoneyMath.sum(amountsByMemberId.values);
     if (amountsByMemberId.values.any((value) => value < 0)) {
       throw const SplitAllocationException('Split amounts cannot be negative.');
     }
-    if (total != totalMinor) {
+    if (total != BigInt.from(totalMinor)) {
       throw const SplitAllocationException(
         'Split amounts must equal the expense total.',
       );
@@ -267,14 +272,11 @@ class SplitAllocationCalculator {
     required int totalMinor,
     required Map<String, int> basisPointsByMemberId,
   }) {
-    final totalBasisPoints = basisPointsByMemberId.values.fold(
-      0,
-      (sum, value) => sum + value,
-    );
+    final totalBasisPoints = MoneyMath.sum(basisPointsByMemberId.values);
     if (basisPointsByMemberId.values.any((value) => value < 0)) {
       throw const SplitAllocationException('Percentages cannot be negative.');
     }
-    if (totalBasisPoints != 10000) {
+    if (totalBasisPoints != BigInt.from(10000)) {
       throw const SplitAllocationException(
         'Percentages must total exactly 100.00%.',
       );
@@ -282,7 +284,6 @@ class SplitAllocationCalculator {
     return _proportional(
       totalMinor: totalMinor,
       valuesByMemberId: basisPointsByMemberId,
-      denominator: 10000,
       label: 'percentages',
     );
   }
@@ -296,14 +297,9 @@ class SplitAllocationCalculator {
         'Each selected member needs at least one share.',
       );
     }
-    final totalShares = sharesByMemberId.values.fold(
-      0,
-      (sum, value) => sum + value,
-    );
     return _proportional(
       totalMinor: totalMinor,
       valuesByMemberId: sharesByMemberId,
-      denominator: totalShares,
       label: 'shares',
     );
   }
@@ -311,28 +307,39 @@ class SplitAllocationCalculator {
   static List<ExpenseAllocation> _proportional({
     required int totalMinor,
     required Map<String, int> valuesByMemberId,
-    required int denominator,
     required String label,
   }) {
     _requirePositiveTotal(totalMinor);
-    if (valuesByMemberId.isEmpty || denominator <= 0) {
+    final denominator = MoneyMath.sum(valuesByMemberId.values);
+    if (valuesByMemberId.isEmpty ||
+        denominator <= BigInt.zero ||
+        valuesByMemberId.values.any((value) => value < 0) ||
+        valuesByMemberId.keys.any((id) => id.trim().isEmpty)) {
       throw SplitAllocationException('Select valid $label.');
     }
     final orderedIds = valuesByMemberId.keys.toList()..sort();
-    if (orderedIds.length != valuesByMemberId.length) {
-      throw SplitAllocationException('Selected $label must be unique.');
-    }
+    final numerators = <String, BigInt>{
+      for (final id in orderedIds)
+        id: BigInt.from(totalMinor) * BigInt.from(valuesByMemberId[id]!),
+    };
     final initialAmounts = <String, int>{
       for (final memberId in orderedIds)
-        memberId: totalMinor * valuesByMemberId[memberId]! ~/ denominator,
+        memberId: (numerators[memberId]! ~/ denominator).toInt(),
     };
-    final allocated = initialAmounts.values.fold(
-      0,
-      (sum, value) => sum + value,
-    );
-    final remainder = totalMinor - allocated;
+    final allocated = MoneyMath.sum(initialAmounts.values);
+    final remainder = (BigInt.from(totalMinor) - allocated).toInt();
+    // Hamilton/largest remainder: zero weights never receive a remainder.
+    // Equal fractional remainders are resolved by durable member ID.
+    final remainderIds =
+        orderedIds.where((id) => valuesByMemberId[id]! > 0).toList()
+          ..sort((a, b) {
+            final order = (numerators[b]! % denominator).compareTo(
+              numerators[a]! % denominator,
+            );
+            return order == 0 ? a.compareTo(b) : order;
+          });
     for (var index = 0; index < remainder; index += 1) {
-      final memberId = orderedIds[index % orderedIds.length];
+      final memberId = remainderIds[index];
       initialAmounts[memberId] = initialAmounts[memberId]! + 1;
     }
     return _ordered(initialAmounts);
