@@ -69,10 +69,33 @@ Android emulators use `10.0.2.2` for the host; iOS simulators can use loopback.
 Use a disposable stack with local email confirmations disabled. The test now
 registers a disposable account, uses the real repositories/secure storage, and
 exercises group/guest/expense entry, exact balances, history and back navigation.
-It is skipped when test URL/key are absent, and refuses hosted endpoints. It was
-not executed on a native device during this sprint. The separate Node journey
-covers the multi-account and concurrent backend scenarios without a device.
+It is skipped when test URL/key are absent, and refuses hosted endpoints. Actual
+run status is recorded in [the Sprint II report](SPRINT_II_REPORT.md). The
+separate Node journey covers multi-account/concurrent backend scenarios without
+a device. The Android harness and force-stop probe are documented in
+[native recovery testing](native-recovery-testing.md).
 
 Physical restart, Keychain/Keystore behavior, TalkBack/VoiceOver, email callbacks,
 release signing and macOS/Xcode builds remain explicit release gates. No widget
 or service test substitutes for those checks.
+
+## Sprint II SDK and scale checks
+
+```powershell
+$env:FLUTTER_ROOT='C:\path\to\flutter'
+.\scripts\check-local.ps1 -SkipInstall -DartIntegration
+.\scripts\check-local.ps1 -SkipInstall -Benchmark
+```
+
+`-DartIntegration` supplies only the disposable URL/anon key to the real Dart
+SDK adapter tests. They check absent operation lookup and a committed response
+loss followed by exactly-once reconciliation. The ordinary unit suite skips
+these two explicitly configured live tests. The test-only independent Auth
+clients use implicit signup because they do not supply Flutter PKCE storage;
+the application Auth configuration is unchanged. No hosted endpoints accepted.
+
+`-Benchmark` runs rollback-only SQL fixtures at four scales. Results and limits
+are in [performance](performance.md). Both flags are optional and leave the
+ordinary pgTAP, lint, upgrade, handler and HTTP checks enabled. The upgrade now
+preserves all twenty first-sprint migrations while applying six Sprint II
+migrations, comparing existing column values and canonical balances.

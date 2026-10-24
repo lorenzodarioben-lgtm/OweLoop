@@ -68,8 +68,9 @@ coordination watches live notifier identities and is disposed with its view.
 History uses repository page capabilities, separate full-expense-history state,
 keyset cursors and lazy list rendering. Group previews show five records. Scalar
 JSON snapshots keep balances, memberships, current groups and safe activity
-complete beyond API row limits. Personal and ledger exports are explicit
-copyable text; exact monetary fields do not pass through floating-point math.
+complete beyond API row limits. Ledger export uses one STABLE SQL snapshot;
+personal and ledger exports offer explicit clipboard and private native file
+sharing. Exact monetary fields do not pass through floating-point math.
 
 The trusted deletion handler is outside Flutter. PostgreSQL enforces deletion
 prerequisites and historical de-identification even for Admin API deletion.
@@ -82,3 +83,13 @@ Additional feature directories include `activity`, `balances`, `repayments`,
 `invitations` and `guest_claims`. Balances, current groups/members and safe activity
 use complete scalar JSON snapshots; history uses paged RPCs. These extend the
 original directory sketch above rather than a second application architecture.
+
+Sprint II adds expense template domain/repository/form support under `expenses`,
+the `notifications` feature (current authorized source projection/private read
+state), `core/operations/export_sharing.dart` (private files/cleanup) and
+`authentication/data/device_preferences.dart` (account/device settings).
+Full settlement history has independent controller
+state so filters cannot change the group preview. Categories are immutable
+metadata carried through forms, drafts, templates, RPC fingerprints and exports.
+Owner reopen and trusted ownerless recovery use narrow server functions and
+immutable lifecycle events. ADRs 0012-0014 describe the boundaries.

@@ -62,8 +62,23 @@ to administrators. There is no public directory or email notification.
 
 Personal export returns the caller's private data and readable shared ledgers.
 CSV quotes values and neutralizes spreadsheet formulas; monetary fields stay
-integer text. Exports are explicit clipboard operations; users control where
-that financial text is shared.
+integer text. Exports require explicit copy/share. Files use account-scoped
+private temporary directories, explicit MIME, a 20 MiB cap, cancellation/error
+cleanup and 24-hour expiry on the next share. Account changes block sharing
+the prior account's document. Destination-app import needs device verification.
+
+Template configuration is group-readable, creator/admin-writable and validated
+against current same-group members; it has no posting authority. Posted category
+metadata is immutable. Notification source access is reevaluated on every page
+and mark-read call; markers are private and cascade with Auth deletion. Unknown
+emails do not become discoverable through the inbox. Local draft/export cleanup
+does not delete pending/unknown operations.
+
+Reopen requires the current live owner. Ownerless archived recovery requires a
+service-role-only function, an existing active registered successor and a
+recorded reason. Client callers have no access to transaction guard tables,
+unchecked allocation helpers or internal export helpers. These recovery paths
+never erase debt or alter immutable financial history.
 
 The trusted deletion handler validates the bearer session online, reauthenticates
 the server-verified email/password, checks blockers and invokes Admin deletion

@@ -39,3 +39,10 @@ still commit. Server fingerprints and advisory locks remain the final duplicate
 and payload-mismatch boundary. Clearing application storage or losing the device
 loses local recovery data; users must inspect authoritative history before
 re-entering an uncertain transaction on another installation.
+
+Sprint II runtime verification found that `.maybeSingle()` on a POST RPC can
+return PGRST116/406 for zero rows through the pinned Dart SDK. The adapter now
+reads table JSON, returns null only for an empty list and rejects malformed or
+multiple results. Four HTTP-wire regressions and two explicitly configured real
+Dart SDK checks cover this contract. This changes no financial rejection rule;
+absence still requires a deliberate same-ID retry or later reconciliation.

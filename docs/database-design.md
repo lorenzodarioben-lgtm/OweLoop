@@ -2,7 +2,8 @@
 
 PostgreSQL owns authorization, transaction boundaries and financial consistency.
 The original twelve migrations remain unchanged. Eight forward migrations dated
-`20261024` extend that baseline; new environments apply all twenty in order.
+`20261024` extend that baseline; six `20261025` migrations add Sprint II.
+New environments apply all twenty-six in order. Released files are unchanged.
 
 ## Authoritative records
 
@@ -88,8 +89,11 @@ creation timestamp and ID cursors. Limits are 1-100 plus one lookahead row.
 All three cursor values are required together. Expense description substring,
 date, member and void-state filters apply before the limit. Clients deduplicate
 boundaries and discard stale results when filters or sessions change.
-Keyset pages are not a frozen multi-request snapshot if records change during
-an export; refresh and re-export after concurrent ledger edits.
+History pages remain live views across requests. Ledger exports instead use
+single-statement STABLE scalar JSON snapshots with exact allocations, names,
+categories and void state; their consistency does not depend on page traversal.
+Categorized expense history and settlement filters preserve legacy RPCs while
+adding stable filter-aware cursors in both supported settlement directions.
 
 Scalar JSON snapshots expose complete current groups, memberships, canonical
 balances and safe expense activity beyond PostgREST's default row cap. These
@@ -109,9 +113,27 @@ the account owns an active group. A trusted trigger locks affected groups in
 stable order, de-identifies memberships and clears Auth-linked references while
 preserving shared amounts, IDs and audit history. Its private transaction guard
 cannot be set by clients and is removed after FK actions. See
-[account lifecycle](account-lifecycle.md). Archived groups with outstanding
-balances require operator review: there is no unarchive or archived-settlement
-workflow in the app.
+[account lifecycle](account-lifecycle.md). Live owners can reopen archived groups
+through an audited guarded RPC. Ownerless recovery requires a service-role-only
+operator RPC, an existing active registered successor and a recorded reason.
+
+## Sprint II configuration and private state
+
+`expense_templates` contains validated group-scoped JSON configuration, never
+financial records or saved operation IDs. Creator/admin edits use optimistic
+timestamps; archived groups are read-only. Removed/inactive participants are
+filtered on form review and SQL validates them again at posting.
+
+`group_lifecycle_events` is append-only through guarded lifecycle functions.
+`app_private.group_reopen_guards` is transaction-only and inaccessible to clients.
+Expense category keys are optional and immutable after posting. Categorized
+request fingerprints include the key; existing uncategorized payloads/RPCs work.
+
+`notification_reads` has RLS, no direct client table access and an Auth cascade
+for private read markers. Inbox functions project current authorized financial,
+lifecycle and recipient-bound collaboration sources. Removed members immediately
+lose source access; unknown emails remain unbound. An internal personal-export
+helper has client execution revoked; the public wrapper adds templates/markers.
 
 ## Validation
 

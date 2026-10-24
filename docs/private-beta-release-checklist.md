@@ -29,6 +29,15 @@ Complete and record every applicable item before distributing a build.
 - [ ] Complete every scenario in [the two-account test plan](private-beta-test-plan.md).
 - [ ] Verify financial retry idempotency after an uncertain response.
 - [ ] Verify archived history remains read-only.
+- [ ] Reopen as live owner, reject member/admin reopen, and rehearse audited
+  ownerless recovery with a trusted operator. Verify unchanged balances/history.
+- [ ] Review template defaults after a participant leaves; save/update/delete
+  without posting, then explicitly post with a fresh operation ID.
+- [ ] Exercise category and settlement filters across multiple pages.
+- [ ] Share CSV/JSON to real destinations and cancel shares on both platforms;
+  check exact values, formula protection, private file cleanup and account switch.
+- [ ] Verify private inbox/read state after removal and account switching;
+  clear drafts/temporary exports without removing unknown submissions.
 - [ ] Verify in-app invitations and explicit guest claims with separate users.
 - [ ] Verify restart/session restoration and timeout/offline error feedback.
 - [ ] Verify pending requests and drafts after physical process termination,

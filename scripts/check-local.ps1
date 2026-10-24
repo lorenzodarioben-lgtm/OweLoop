@@ -1,6 +1,8 @@
 param(
     [ValidateRange(1024, 65520)][int]$PortBase = 60420,
-    [switch]$SkipInstall
+    [switch]$SkipInstall,
+    [switch]$Benchmark,
+    [switch]$DartIntegration
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -47,6 +49,15 @@ try {
     Invoke-Checked 'node' @('--test','scripts/delete-account.test.mjs')
     Invoke-Checked 'node' @('scripts/test-migration-upgrade.mjs')
     Invoke-Checked 'node' @('scripts/test-local-integration.mjs')
+    if ($DartIntegration) {
+        Push-Location (Join-Path $repositoryRoot 'mobile')
+        try {
+            if ($env:FLUTTER_ROOT) {
+                Invoke-Checked (Join-Path $env:FLUTTER_ROOT 'bin/cache/dart-sdk/bin/dart.exe') @((Join-Path $env:FLUTTER_ROOT 'bin/cache/flutter_tools.snapshot'),'--suppress-analytics','test','test/live/financial_transport_test.dart')
+            } else { Invoke-Checked 'flutter.bat' @('test','test/live/financial_transport_test.dart') }
+        } finally { Pop-Location }
+    }
+    if ($Benchmark) { Invoke-Checked 'node' @('scripts/benchmark-local.mjs') }
     Write-Host 'PASS: isolated database, security, upgrade, and real-service checks.'
 }
 finally {

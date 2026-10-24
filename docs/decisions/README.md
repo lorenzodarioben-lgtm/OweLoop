@@ -11,3 +11,7 @@ Current financial and workflow decisions include [integer minor units](0001-inte
 The functional sprint adds [checked allocation and money range](0009-exact-allocation-and-native-money-range.md),
 [durable financial submissions](0010-durable-financial-submissions.md), and
 [history/account lifecycle](0011-history-and-account-lifecycle.md).
+
+Sprint II adds [audited archive recovery](0012-audited-archive-recovery.md),
+[templates and consistent exports](0013-templates-and-export-snapshots.md), and
+[private inbox and device preferences](0014-private-inbox-and-device-preferences.md).

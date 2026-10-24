@@ -33,6 +33,20 @@ Expense correction preserves the original record. A posted expense can be voided
 
 Owners and administrators can rename active groups, archive them, remove members while preserving historical records, and use the existing owner-only role and ownership-transfer controls. Archived groups retain readable history but reject future financial and membership writes. Repayment suggestions are deterministic, read-only simplifications of reconciled current balances; they can prefill a settlement record for active members but never transfer money automatically.
 
+Sprint II supports owner-confirmed audited reopening and trusted operator
+recovery of an ownerless archived ledger to an existing registered member.
+Financial history and debt never change merely because a group reopens.
+Expenses have optional immutable categories. Reusable group templates prefill
+an explicitly reviewed form; they do not schedule or automatically post money.
+Settlement history supports date, payer, receiver, exact amount, void-state and
+order filters. Ledger exports are consistent complete snapshots with private
+CSV sharing; personal JSON has the same explicit sharing option. A private
+in-app inbox shows currently authorized activity and recipient-bound requests,
+with account-specific read state. Device settings provide default currency and
+confirmed cleanup of unsent drafts/temporary exports while preserving unknown
+financial outcomes. Push/email, scheduled recurrence and receipts remain future
+scope. See ADRs 0012-0014 for contracts.
+
 The private-beta implementation also supports in-app invitations for registered users and explicit two-party guest account claims. Both are guarded server-side workflows: invitations can only create member roles, while claims preserve the original guest `group_members.id` and its financial history. Neither feature sends transactional email in this release or provides public account discovery.
 
 Hosted deployment, account deletion, receipt scanning, payment processing, offline synchronization, monitoring, and public-production configuration remain deliberately postponed or require an operator decision.

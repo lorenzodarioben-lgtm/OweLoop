@@ -3,9 +3,10 @@
 The repository includes a configuration-gated native test at
 `mobile/integration_test/private_beta_journey_test.dart`. It registers a local
 disposable account and exercises real repositories through the UI. Without
-local URL/key Dart defines it is skipped; it refuses hosted endpoints. It was
-not executed on a device here. See [testing](testing.md). The Node HTTP journey
-covers real local multi-account concurrency; it does not establish device results.
+local URL/key Dart defines it is skipped; it refuses hosted endpoints. Emulator
+attempts and their actual status are recorded in [Sprint II](SPRINT_II_REPORT.md)
+and [native testing](native-recovery-testing.md). Physical-device checks remain
+open. The Node HTTP journey establishes backend concurrency evidence separately.
 
 ## Controlled two-account journey
 
@@ -33,6 +34,18 @@ backend project, and the result of each step.
    only after reconnecting; verify generic account/invitation feedback.
 9. Archive a settled test group. Confirm history remains readable and new
    expenses, settlements, invitations, and membership changes are unavailable.
+10. Reopen as its live owner; member/admin attempts must fail. Verify a single
+    lifecycle event and unchanged balances. Separately rehearse trusted ownerless
+    recovery on a disposable fixture; never grant clients an override.
+11. Save a categorized unequal expense as a template without posting. Review
+    with an inactive member, correct missing defaults, and explicitly post once.
+    Race two edits and verify one optimistic conflict rather than lost updates.
+12. Traverse filtered expense/settlement history; export while another user voids
+    a record and verify internally consistent allocations/void state. Share CSV
+    and personal JSON to a destination app; exercise cancellation and cleanup.
+13. Read inbox activity as each account, mark one entry read, then remove a
+    member and verify source details disappear. Change default currency and
+    clear unsent drafts/private exports; pending unknown operations must remain.
 
 ## Execution prerequisite
 

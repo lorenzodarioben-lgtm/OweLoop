@@ -1,275 +1,129 @@
 # Functional completion report
 
-Date: 2026-10-24. Branch: `codex/functional-completion`. Base:
-`9fe698836488288fac704801f13683d3844bf4cc` (`master`, merged PR #7).
-Engineering checkpoint: `283cb79b40450bfd5d7a2c920ae7a5b1ca9e83ea`.
-Draft review: [PR #8](https://github.com/lorenzodarioben-lgtm/OweLoop/pull/8).
-Documentation commits follow that checkpoint; use `git rev-parse HEAD` for the
-checkout's exact delivery revision. No production deployment or release occurred.
+Updated 2026-10-25, Australia/Sydney. Branch: `codex/functional-completion`.
+Base master: `9fe698836488288fac704801f13683d3844bf4cc`.
+Draft [PR #8](https://github.com/lorenzodarioben-lgtm/OweLoop/pull/8).
+Sprint II extends `280b86dd9f67a1fecd25de97c185d9febd856ceb`; the five first-sprint
+commits and all twenty existing migrations are preserved. See [HANDOFF](../HANDOFF.md)
+for the next developer's starting point and [Sprint II](SPRINT_II_REPORT.md) for
+checkpoint/evidence details. Resolve exact delivery HEAD with `git rev-parse HEAD`;
+a tracked document cannot contain its own containing commit's hash.
 
-## Outcome and inventory
+## Delivered behavior
 
-The starting repository already implemented the Version 0.1 shared-expense
-core; it was not merely an application skeleton. The sprint preserves those
-features and addresses financial permission bypasses, allocation correctness,
-overflow, transient request IDs, stale async state, navigation and truncation.
-New interfaces use standard Material controls. This is substantially stronger
-application code, with explicit native/hosted release gates still open.
+The repository already had the Version 0.1 core. Both sprints strengthen and
+extend it with plain Material screens. No visual redesign, payment processing,
+production deployment, merge or release is included.
 
-| Area | Final implementation | Evidence / qualification |
+| Area | Implemented behavior | Evidence and practical limit |
 | --- | --- | --- |
-| Exact money | Checked parsing, BigInt intermediates, native bigint-compatible bounds | Boundary tests for eight currencies; no floating-point allocation |
-| Split modes | Equal, exact, percentage, weighted shares; zero weights remain zero | Deterministic Hamilton remainder tests and 500 generated allocations |
-| Database permissions | Direct group/member column and financial writes revoked; guarded RPCs | Adversarial pgTAP, including the removal bypass |
-| Financial posting | Atomic validated posting, immutable history, safe void/duplicate | Database invariants, concurrent HTTP idempotency replay |
-| Balances/repayments | Canonical zero-sum read; aggregate-before-join optimization; deterministic suggestions | pgTAP plus real-service balance checks; no payment processing |
-| Durable submissions | Persist-before-send encrypted account store, manual status/retry, payload matching | Lost-response/restart, storage-failure, double-submit and account-scope tests |
-| Authentication | Existing email flows plus generation guards, recovery preservation and profile editing | Auth/widget race tests; native email callbacks not executed |
-| Routing | Nested root/group routes with coherent form/back behavior | Widget navigation journeys; Android system back still needs device testing |
-| Groups | Atomic creation, guest entry, rename/archive, roles/ownership, settled removal/leave | Real HTTP create and leave; role/archive/ownership pgTAP |
-| Invitations/claims | Explicit recipient acceptance, generic sender records for unknown emails | Concurrent acceptance and privacy regressions; no email notifications |
-| Expense history | Keyset pages, lazy list, description/date/member/void filters | 1,105-record equal-date traversal without duplicate IDs; stale-page tests |
-| Settlement history | Keyset pages, details and authorized void | Existing settlement tests plus cursor validation; no filtering UI |
-| Complete reads | Scalar snapshots for memberships, groups, balances and safe activity | 1,107-member snapshots and real PostgREST snapshot assertions |
-| Drafts | Explicit secure Save/Restore/Discard, account/group scope | Widget restoration without RPC and isolation tests; no full offline sync |
-| Ledger export | Complete paged expense and settlement CSV, formula protection | Pure CSV and widget tests; copyable text, no native sharing |
-| Personal export | Caller-only JSON with monetary decimal strings | Account UI, pgTAP and real-service export checks |
-| Account deletion | Password-confirmed trusted handler; database de-identification guards | Real local Admin deletion, retained history and old-JWT denial; hosted Edge gateway unverified |
-| CI/tooling | Pinned Flutter, Android debug job, pgTAP/lint, handler/upgrade/HTTP checks | Local equivalents executed; remote run results recorded separately |
-| Native readiness | Android backup disabled, iOS Keychain entitlements, configured real native test | Android debug APK built in CI; local build blocked; iOS/device tests unexecuted |
+| Money/allocation | Checked native-bigint bounds, BigInt intermediates, equal/exact/percentage/weighted Hamilton allocation | Eight currencies, deterministic remainder/zero-weight and generated invariant tests; no floating point |
+| Financial integrity | Guarded atomic creation, immutable posted rows, authorized void/duplicate, canonical zero sum | SQL/adversarial/concurrent HTTP checks; no debt forgiveness |
+| Authorization | Direct mutation grants revoked; current caller, RLS, stable locks, durable member UUIDs | Owner/admin/member/removed/outsider/anonymous tests; server credentials absent from Flutter |
+| Financial recovery | Secure account-scoped persist-before-send, manual status/retry, original payload/ID, unknown states retained | Lost-response/storage/account-switch tests, real SDK transport tests; native runtime status below |
+| Auth/profile | Existing email/signup/verification/recovery flows, profile edit, generation guards | Delayed Auth/profile race tests; physical email callbacks and hosted SMTP unverified |
+| Navigation | Nested root/group/form/history/settings/export routes; sign-out removes protected content | Widget journeys and native harness; device system-back gate remains |
+| Groups | Atomic creation, guests, registered memberships, safe roles/ownership/removal/leave/archive | Real Auth/PostgREST and pgTAP; guests have no anonymous Auth authority |
+| Archive recovery | Owner-only idempotent audited reopen; service-role-only ownerless recovery to an existing active registered successor | Authorized/unauthorized/race/history-preservation checks; operator procedure must be staffed |
+| Collaboration | Recipient-bound invitations and explicit same-ID guest claims | Concurrent acceptance/privacy checks; unknown emails stay unbound, revoke/resend after signup |
+| Expenses | Multi-payer flexible exact splits, optional immutable category, details/audit/void/duplicate | Category across form/draft/template/history/CSV; legacy operation payloads/RPCs preserved |
+| History | Lazy keyset pages, expense search/category/date/member/void filters; settlement date/payer/receiver/amount/state/order filters | Equal-date/boundary and multi-page SQL tests, controller stale-page tests; full lists isolated from previews |
+| Drafts | Explicit account/group secure Save/Restore/Discard | Unsent restore never posts; cleanup copies key list and preserves another account/unknown operations; no full offline sync |
+| Templates | Shared validated defaults, review, save/update/delete, creator/admin authority and optimistic conflict | SQL/widget/HTTP checks; inactive participants filtered, inactive payer cleared; no recurrence or autopost |
+| Ledger exports | Complete single-statement snapshots with void state, categories and exact allocation JSON | Concurrent export/void and snapshot checks, formula protection; whole export materializes in memory |
+| Sharing | Explicit CSV/personal JSON native sharing with private account files, MIME, 20 MiB cap, cancellation/error/expiry cleanup | Real temporary-file and injected-share tests; destination import/device sheets unverified |
+| Personal export/deletion | Caller-only exact JSON, readable templates/read markers, password-confirmed trusted deletion and retained shared history | Real local Admin deletion and old-token denial plus six handler tests; hosted Edge gateway unverified |
+| Private inbox | Current authorized financial/lifecycle and recipient-bound request sources, pages, unread filter/read markers/source links | SQL isolation/removal/deletion/cursor tests and reachable widget test; manual refresh, no push/email |
+| Device settings | Secure account/device default currency and confirmed draft/export cleanup | Late-load/manual-selection race and persistence/isolation tests; not synchronized across devices |
+| CI/tooling | Mobile analysis/tests/debug APK, database/upgrade/HTTP, separate emulator and force-stop harness | SDK-pinned CI, Node24 actions; keep PR draft pending release gates |
+| Scale | Four rollback-only fixtures to 1,000 members/2,000 expenses/1,000 settlements | Actual SQL plans/timings in [performance](performance.md); UI/network/memory unprofiled |
 
-## Verification executed
+## Verification
 
-All automated backend work used disposable local PostgreSQL/Supabase, never a
-hosted reset. `scripts/check-local.ps1 -SkipInstall` completed successfully and
-stopped its uniquely named stack. Earlier `npm ci` succeeded with zero reported
-vulnerabilities. Public development keys were confined to process environment;
-no local privileged key was printed into the handoff or committed.
+All backend executions used uniquely named disposable local stacks. No routine
+check was linked to hosted data. Public/local privileged keys stayed in process
+environment; no credentials or raw financial recovery payloads are committed.
 
-| Check | Actual result |
+| Check | Executed result |
 | --- | --- |
-| Dart format | 156 Dart files formatted; final changed files conform |
-| Flutter analyze | No issues found (final local run: 25.9 seconds) |
-| Flutter unit/widget tests | 167 passed, zero failures (final local run: about 49 seconds) |
-| pgTAP | 303 assertions across 8 files, PASS (8 seconds) |
-| Schema lint | No schema errors found; no lint findings |
-| Trusted deletion handler | 6 Node tests passed, zero skipped/failures |
-| Real local HTTP integration | 32 assertions passed with real Auth/PostgREST and three disposable accounts |
-| Fresh migrations | All 20 migrations applied to a new disposable Supabase PostgreSQL 17 stack |
-| Non-empty upgrade | 12 released + 8 forward migrations; 9 table snapshots and canonical balances preserved |
-| Large synthetic balance read | 1,105 expenses / 1,107 members: 574.431 ms in one local timing diagnostic |
-| Diff/secrets review | No whitespace errors after cleanup; targeted credential-pattern and sensitive-file review |
-| Android local debug build | Attempted twice; failed before compilation: `java.io.IOException: Unable to establish loopback connection` |
-| Android CI debug build | PASS on Ubuntu/JDK17; produced `build/app/outputs/flutter-apk/app-debug.apk` |
-| iOS build/runtime | Not executed: no macOS/Xcode on this Windows host |
-| Native integration test | Implemented/configuration-gated; not executed on a device |
+| Dart format | 175 files checked, zero changes needed |
+| Flutter analyze | No issues found |
+| Ordinary Flutter unit/widget suite | 186 passed, two explicitly configured live tests skipped |
+| Real Dart SDK transport | Both live tests passed after fixing absent POST-RPC lookup; missing lookup and committed-response-loss recovery |
+| pgTAP | 404 assertions across 14 files passed |
+| Schema lint | No schema errors/findings |
+| Trusted deletion handler | Six passed |
+| Real local Auth/PostgREST | 44 assertions passed with three accounts and actual Admin deletion |
+| Fresh initialization | All26 ordered migrations applied |
+| Non-empty upgrade | Twenty first-sprint + six Sprint II migrations; nine ledger table snapshots/canonical balances preserved |
+| Rollback-only benchmark | Four fixture scales passed; largest balance 1,700.208ms, first history 1.298ms locally |
+| Mobile/Android debug CI | Passed at code checkpoint `806fdef`; links in Sprint II record |
+| Native Android runtime | Real APK compiled/installed; before-send barrier reached, resume failed; corrected run pending |
+| Local Android build | JDK21 attempt failed before app compilation at Gradle loopback initialization; no AVD/device |
+| iOS | Not executed: no macOS/Xcode/device |
 
-The earlier balance query was cancelled after more than 158 seconds on the same
-synthetic fixture. The new query preserves canonical validation and aggregates
-before joining members. The 574 ms observation is not a production performance
-guarantee. Large-group UI memory/scrolling and concurrent export snapshots still
-need broader testing.
+The real SDK regression reproduced PGRST116/406 when `.maybeSingle()` was used
+on a POST reconciliation RPC with zero rows. Lookup now requests table JSON,
+returns null only for an empty list and rejects malformed/ambiguous responses.
+Four wire-level tests cover absent, committed, malformed and multiple results.
+No absent lookup is treated as financial rejection. Independent test Auth
+clients use implicit signup rather than assuming Flutter PKCE storage exists;
+production Auth is unchanged. These are actual integration mismatches found by
+runtime work, not merely mock failure injection.
 
-GitHub also independently passed the Flutter format/analyze/test and Android
-debug jobs in [Mobile CI](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40094829981),
-and every backend step in [Database CI](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40094829985)
-at engineering checkpoint `283cb79b40450bfd5d7a2c920ae7a5b1ca9e83ea`.
-The debug APK build succeeded; no APK installation or release signing is implied.
-Final handoff and conservative retry revisions trigger their own PR checks; inspect PR #8
-for the exact current-head result before merging.
+The HTTP journey checks concurrent five-way expense/four-way settlement replay,
+conflicting payload rejection, invitation/claim races, exact categorized unequal
+posting, unauthorized void, reversal, export/void concurrency, template edit
+conflict, concurrent reopen and trusted ownerless recovery after real account
+deletion. SQL attempts direct writes, privileged lifecycle bypasses, foreign and
+removed memberships, unauthenticated access and caller-only data reads.
 
-## Failure injection and security evidence
+The first balance optimization reduced an earlier cancelled 158-second synthetic
+query to 574 ms on its fixture. Sprint II's separate reproducible fixture series
+adds bounded history plans and complete export/member assertions. These are
+local observations and do not establish a production capacity or device result.
 
-- Fake transport commits then loses its response; a reconstructed service reads
-  the saved operation, reconciles it or retries the same ID without a second
-  financial record. Missing lookup remains uncertain. Storage failure sends no
-  request. Changed payload and another account cannot reuse unresolved work.
-  Adapter regressions also verify damaged success/proxy exceptions remain
-  unknown and that an explicitly rejected retry cannot erase an earlier
-  committed-but-unknown outcome. Only known SQL rollback codes on a first
-  attempt allow rejection; permanently unavailable uncertain actions may need
-  support review rather than silently unlocking a new request.
-- Auth tests delay restoration/profile responses across sign-out/account change
-  and preserve legitimate password recovery through token/user events.
-- Real local HTTP sends five simultaneous expense retries, four settlement
-  retries and duplicate invitation/claim acceptance. Assertions verify one
-  durable result, conflicting-payload rejection and correct balances.
-- pgTAP attempts forbidden direct mutations, foreign/removed participation,
-  unauthorized reads, archived changes, unsafe owner/balance deletion and
-  cross-account operation inspection. Legacy trigger tests use temporary fixture
-  grants inside rollback-only transactions; production denial is tested separately.
-- Deleting a verified local account with a different target ID in the request
-  still deletes only the verified caller. Shared records survive; another user
-  remains and the old token loses access. Handler transport tests also cover
-  malformed bodies, wrong passwords, blockers and Admin API failure.
+## Database and dependencies
 
-These do not simulate physical process termination, Keychain loss, device network
-handoff, hosted JWT gateways, SMTP or restore-from-backup. No claim substitutes
-widget/service tests for those missing checks.
+Six new forward-only migrations are listed in [Sprint II](SPRINT_II_REPORT.md).
+Released SQL files are unchanged. New tables contain lifecycle audit, reusable
+configuration and private read state, with direct client DML revoked and narrow
+function authority. ADRs 0009-0014 explain money, durable submissions, account
+retention, archive recovery, templates/exports and private inbox/settings.
 
-## Changes and decisions
+`flutter_secure_storage` 11.2.0 was added in Sprint I. Sprint II adds
+`share_plus` 13.3.1 for maintained platform sharing and direct `path_provider`
+2.1.6 (already transitive) for private cache location. Dev-only `http` 1.6.0
+(already transitive) exercises real PostgREST wire behavior. No unrelated runtime
+package upgrade or service dependency is introduced.
 
-ADRs 0009-0011 record largest-remainder semantics, monetary bounds, maintained
-secure-storage dependency, persist-before-send recovery, pagination and account
-retention. The eight new migrations are forward-only: guarded mutations,
-cursor history, atomic group creation, account lifecycle, deletion audit/locking,
-complete snapshots, collaboration privacy and aggregate balances. None of the
-twelve released migration files was edited.
+## Remaining limitations and release gates
 
-The sole new direct mobile dependency is `flutter_secure_storage` 11.2.0. It
-backs pending operations and explicit drafts, not full offline sync. Server
-credentials remain outside Flutter. Pending records keep every unresolved
-request and the latest thirty outcomes. A single unresolved request per account/
-group/type prevents modified submissions from bypassing recovery.
+1. Complete the corrected Android emulator UI/process-death run, then physical
+   Keystore, account-switch, draft restart, network-loss, back/callback,
+   TalkBack/large-text and share-destination checks. Emulator evidence is narrower
+   than physical hardware, backup/restore or a release build.
+2. Build/run iOS on macOS, validate Keychain, iPad sharing origin, callbacks,
+   signing, VoiceOver and equivalent restart/recovery.
+3. Select reviewed beta infrastructure; rehearse backup/upgrade/restore; deploy
+   and test the actual deletion Edge gateway, SMTP and deep links. None deployed.
+4. Publish privacy/retention/support and consent information; staff ownerless
+   recovery and incident/crash-reporting ownership; complete the private-beta
+   checklist and exact-head CI review before any distribution.
+5. Whole exports/memberships/balances/personal JSON still materialize in memory.
+   Profile device/network behavior and large-group balance cost before size limits.
+6. Receipt storage remains absent: local Storage is disabled and no reviewed
+   private bucket/object policies exist. Recurrence uses the allowed robust
+   template fallback only. No schedules, localization, full offline sync,
+   push/email, analytics, bank/payment integrations or currency conversion.
 
-## Remaining work and release decision
-
-1. **Release blocker:** run the local native integration test plus physical
-   restart/secure-storage/back/link checks using the CI-built Android code.
-   Repair this host's Gradle loopback and missing Android command-line tools/
-   licences; a passing remote debug build does not replace runtime tests.
-2. **Release blocker:** on macOS build iOS and validate Keychain entitlement,
-   signing, callback and VoiceOver behavior. Configure only reviewed beta
-   infrastructure, SMTP and the deletion Edge function; verify the real gateway.
-3. **Release blocker:** establish privacy/retention notice, support contact,
-   backup/recovery rehearsal, incident owner, crash-reporting decision, signing
-   and tester consent. None was invented, deployed or published here.
-4. **Functional limitation:** archived nonzero-balance groups cannot be settled
-   or unarchived in the app and block account deletion. Operator review is
-   required; design a safe documented workflow before wider deletion use.
-5. **Scale/portability:** whole membership/safe activity/personal export snapshots
-   load into memory. CSV spans multiple requests, not a transaction snapshot;
-   concurrent inserts/voids can require refresh/re-export. Native file sharing,
-   settlement filters and very large-group UI performance remain improvements.
-6. **Collaboration limitation:** unknown-email requests stay unbound. Revoke and
-   resend after registration. No email/push notification or identity directory.
-7. **Missing secondary features:** categories, receipts/storage policies,
-   recurring expenses, preferences beyond profile, localization, notifications,
-   analytics and full offline synchronization. These were left absent rather
-   than introducing unverified storage/financial behavior during integrity work.
-
-The code is ready for review and a presentation design phase against these
-contracts. It is not verified for public beta or store distribution. First
-complete native/runtime and hosted lifecycle validation; keep the PR draft.
+The functional code is ready for review and later presentation design. Public
+beta/store readiness is not claimed. PR8 remains draft and unmerged.
 
 ## Changed-file manifest
 
-The list below covers every path changed from the master baseline, including
-new source, tests, migrations, CI and handoff documentation. It is generated
-from Git, not a list of only the most visible screens.
-
-```text
-.github/workflows/database-ci.yml
-.github/workflows/mobile-ci.yml
-AGENTS.md
-CONTRIBUTING.md
-docs/account-lifecycle.md
-docs/android-private-beta.md
-docs/architecture.md
-docs/database-design.md
-docs/decisions/0009-exact-allocation-and-native-money-range.md
-docs/decisions/0010-durable-financial-submissions.md
-docs/decisions/0011-history-and-account-lifecycle.md
-docs/decisions/README.md
-docs/DESIGN_HANDOFF.md
-docs/development-setup.md
-docs/FUNCTIONAL_COMPLETION_REPORT.md
-docs/hosted-beta-environments.md
-docs/private-beta-operations.md
-docs/private-beta-release-checklist.md
-docs/private-beta-test-plan.md
-docs/registered-user-invitations.md
-docs/roadmap.md
-docs/secure-guest-claims.md
-docs/security-model.md
-docs/testing.md
-HANDOFF.md
-mobile/android/app/src/main/AndroidManifest.xml
-mobile/integration_test/private_beta_journey_test.dart
-mobile/ios/Runner.xcodeproj/project.pbxproj
-mobile/ios/Runner/Runner.entitlements
-mobile/lib/app/router.dart
-mobile/lib/core/operations/financial_operations_providers.dart
-mobile/lib/core/operations/history_page.dart
-mobile/lib/core/operations/pending_financial_operations.dart
-mobile/lib/core/operations/pending_operations_screen.dart
-mobile/lib/features/activity/data/supabase_expense_activity_repository.dart
-mobile/lib/features/authentication/data/account_repository.dart
-mobile/lib/features/authentication/presentation/account_screen.dart
-mobile/lib/features/authentication/state/authentication_controller.dart
-mobile/lib/features/balances/data/supabase_balances_repository.dart
-mobile/lib/features/balances/state/balances_controller.dart
-mobile/lib/features/expenses/data/expense_draft_store.dart
-mobile/lib/features/expenses/data/expenses_repository.dart
-mobile/lib/features/expenses/data/supabase_expenses_repository.dart
-mobile/lib/features/expenses/domain/exact_money.dart
-mobile/lib/features/expenses/domain/expense_models.dart
-mobile/lib/features/expenses/domain/ledger_csv.dart
-mobile/lib/features/expenses/errors/expenses_error_mapper.dart
-mobile/lib/features/expenses/presentation/add_expense_screen.dart
-mobile/lib/features/expenses/presentation/expense_history_screen.dart
-mobile/lib/features/expenses/presentation/expense_history_section.dart
-mobile/lib/features/expenses/state/expenses_controller.dart
-mobile/lib/features/expenses/state/expenses_providers.dart
-mobile/lib/features/expenses/state/expenses_state.dart
-mobile/lib/features/groups/data/groups_repository.dart
-mobile/lib/features/groups/data/supabase_groups_repository.dart
-mobile/lib/features/groups/errors/groups_error_mapper.dart
-mobile/lib/features/groups/presentation/group_detail_screen.dart
-mobile/lib/features/groups/presentation/group_export_screen.dart
-mobile/lib/features/groups/presentation/group_list_screen.dart
-mobile/lib/features/groups/state/group_data_refresh_coordinator.dart
-mobile/lib/features/groups/state/groups_controller.dart
-mobile/lib/features/groups/state/groups_providers.dart
-mobile/lib/features/guest_claims/presentation/group_guest_claims_section.dart
-mobile/lib/features/invitations/presentation/group_invitations_section.dart
-mobile/lib/features/repayments/domain/repayment_suggestion_models.dart
-mobile/lib/features/settlements/data/settlements_repository.dart
-mobile/lib/features/settlements/data/supabase_settlements_repository.dart
-mobile/lib/features/settlements/errors/settlements_error_mapper.dart
-mobile/lib/features/settlements/presentation/record_settlement_screen.dart
-mobile/lib/features/settlements/presentation/settlement_history_screen.dart
-mobile/lib/features/settlements/presentation/settlement_history_section.dart
-mobile/lib/features/settlements/state/settlements_controller.dart
-mobile/lib/features/settlements/state/settlements_providers.dart
-mobile/lib/features/settlements/state/settlements_state.dart
-mobile/pubspec.lock
-mobile/pubspec.yaml
-mobile/test/core/operations/pending_financial_operations_test.dart
-mobile/test/core/operations/pending_operations_screen_test.dart
-mobile/test/fakes/authentication_fakes.dart
-mobile/test/fakes/expense_drafts_fakes.dart
-mobile/test/fakes/groups_fakes.dart
-mobile/test/features/authentication/account_screen_test.dart
-mobile/test/features/authentication/authentication_races_test.dart
-mobile/test/features/expenses/expense_models_and_money_test.dart
-mobile/test/features/expenses/expense_screens_test.dart
-mobile/test/features/expenses/financial_invariants_test.dart
-mobile/test/features/expenses/history_pagination_test.dart
-mobile/test/features/expenses/ledger_csv_test.dart
-mobile/test/features/groups/group_screens_test.dart
-package.json
-PRODUCT.md
-README.md
-scripts/check-local.ps1
-scripts/delete-account.test.mjs
-scripts/test-local-integration.mjs
-scripts/test-migration-upgrade.mjs
-supabase/config.toml
-supabase/functions/delete-account/handler.mjs
-supabase/functions/delete-account/index.ts
-supabase/migrations/20261024000000_guarded_mutations_and_reconciliation.sql
-supabase/migrations/20261024010000_cursor_financial_history.sql
-supabase/migrations/20261024020000_atomic_group_creation.sql
-supabase/migrations/20261024030000_account_lifecycle.sql
-supabase/migrations/20261024040000_deletion_audit_and_group_locking.sql
-supabase/migrations/20261024050000_complete_read_snapshots.sql
-supabase/migrations/20261024060000_non_oracular_collaboration_requests.sql
-supabase/migrations/20261024070000_aggregate_balance_reads.sql
-supabase/tests/database/001_core_database_foundation.sql
-supabase/tests/database/003_registered_group_invitations.pgtap.sql
-supabase/tests/database/005_guarded_mutations.pgtap.sql
-supabase/tests/database/006_cursor_history.pgtap.sql
-supabase/tests/database/007_account_lifecycle.pgtap.sql
-supabase/tests/database/008_collaboration_privacy.pgtap.sql
-```
+[Every path changed from master](changed-files.txt) includes both sprints,
+source/tests, all forward migrations, tooling/CI and handoff documentation.
+Generated from `git diff --name-only` plus nonignored new files; it is the full
+inventory rather than a hand-selected screen list. Use
+`git diff --stat 9fe698836488288fac704801f13683d3844bf4cc..HEAD` for review size.

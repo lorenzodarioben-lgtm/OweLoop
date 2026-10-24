@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "benchmark:local": "node scripts/benchmark-local.mjs",
     "test:integration": "node scripts/test-local-integration.mjs",
     "test:upgrade": "node scripts/test-migration-upgrade.mjs",
     "test:account-function": "node --test scripts/delete-account.test.mjs",

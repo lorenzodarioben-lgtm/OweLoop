@@ -21,18 +21,20 @@ signed out, verification pending, profile setup, password recovery and signed in
 | `/auth/callback`, `/update-password` | Verification/recovery callback and explicit password update. |
 | `/profile-setup` | Required display name before shared-data access. |
 | `/` | Groups, create group, collaboration inboxes, account/recovery menu and sign-out. |
-| `/account` | Display-name edit, personal JSON export, deletion preflight and password confirmation. |
+| `/account` | Display-name edit, personal JSON copy/share, default currency, confirmed local draft/export cleanup, deletion blockers and password confirmation. |
+| `/notifications` | Private activity inbox, manual refresh, stable pages, unread filter, read markers and links to authorized source records. |
 | `/pending-submissions` | Account-scoped saved requests; check status or explicitly retry original payload. |
 | `/invitations`, `/guest-claims` | Incoming requests, expiry, accept/decline and retry states. |
 | `/groups/new` | Name and supported single currency. |
 | `/groups/:groupId` | Members, guests, balances, repayment suggestions, recent history, collaboration, exports and safe leave. |
-| `/groups/:groupId/settings` | Rename/archive, safe removal, owner-only roles and ownership transfer. |
-| `/groups/:groupId/expenses/new` | Description, date, total, one/multiple payers, equal/exact/percentage/share allocation; preview and draft controls. |
-| `/groups/:groupId/expenses` | Full lazy paged history; description search, date range, participant and void filters. |
+| `/groups/:groupId/settings` | Rename/archive, owner-only audited reopen, lifecycle history, safe removal, roles and ownership transfer. |
+| `/groups/:groupId/templates` | Review, update and delete reusable configurations with creator/admin permissions. Review opens the existing expense form and never posts automatically. |
+| `/groups/:groupId/expenses/new` | Description, optional category, date, total, one/multiple payers, equal/exact/percentage/share allocation; preview, draft and save-template controls. |
+| `/groups/:groupId/expenses` | Full lazy paged history; description search, category, date range, participant and void filters. |
 | `/groups/:groupId/expenses/:expenseId` | Immutable amount/allocations, status, safe audit events, authorized void and duplicate for correction. |
 | `/groups/:groupId/settlements/new` | Two distinct members, amount, date and confirmation of an external payment. |
-| `/groups/:groupId/settlements` | Full lazy paged history, details and authorized void confirmation. |
-| `/groups/:groupId/exports` | Complete expense/settlement CSV generation and explicit clipboard copy. |
+| `/groups/:groupId/settlements` | Full lazy paged history; date/payer/receiver/amount/void/order filters, details and authorized void confirmation. |
+| `/groups/:groupId/exports` | Single-snapshot complete expense/settlement CSV with allocation JSON, explicit copy and private native file sharing. |
 
 ## Primary journeys
 
@@ -72,7 +74,10 @@ creation succeeds only after authoritative confirmation. Pending/unknown,
 confirmed and rejected outcomes must remain distinguishable. A missing operation
 lookup does not establish rejection. Do not silently retry in the background.
 
-Archived groups remain readable; mutation controls are unavailable. Removed
+Archived groups remain readable; normal mutation controls are unavailable.
+A live owner can explicitly confirm Reopen group in settings, producing an
+immutable event. An ownerless group explains the support recovery path; the
+app cannot appoint a new owner. Removed
 users lose access. Creator/admin authority controls voiding; owner/admin controls
 are different, and guests cannot hold privileged roles. Client visibility helps
 usability; the database independently enforces every permission.
@@ -87,6 +92,17 @@ and manual reconciliation. `ExpenseDraftStore` owns separate encrypted unsent
 state. Riverpod wires dependencies; controllers handle stale responses and
 refresh. History repository capabilities expose pages/cursors. Account operations
 use `AccountRepository`; service-role credentials never enter Flutter.
+
+Categories are stable optional keys; correcting a posted category uses
+void/duplicate. Templates are shared configuration with optimistic edits;
+review resets the date, removes inactive participants and clears an inactive
+payer so the user must choose. No recurrence scheduler or automatic posting
+exists. Device currency defaults cannot override a user's manual selection.
+
+ExportSharing owns UTF-8 private files, MIME, cancellation, cleanup and account
+switch checks. A successful share sheet is not evidence of destination import.
+Local cleanup must preserve pending/unknown submissions. Inbox read markers
+belong to the signed-in user and never grant access to source records.
 
 Existing form fields, loading/error widgets, balance rows, history sections and
 member selectors can be reused or replaced. Styling must not change which

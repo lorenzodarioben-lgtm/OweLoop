@@ -5,8 +5,12 @@ requests password-confirmed account deletion. Existing group display names are
 historical membership snapshots. Group ledger exports provide complete expense
 and settlement CSV text, including voided records. Minor-unit amounts remain
 decimal integers; personal JSON uses strings for monetary columns. CSV cells
-that could be spreadsheet formulas are escaped. Export is explicit copyable
-text; native file sharing is not implemented.
+that could be spreadsheet formulas are escaped. CSV and personal JSON have
+explicit native file sharing as well as clipboard copy. Files live in the
+account's private temporary directory, with cancellation/error cleanup and
+24-hour expiry on the next share. Successful destination import still needs
+physical-device testing. Personal export includes readable templates and the
+caller's notification read markers.
 
 ## Deletion policy implemented in code
 
@@ -65,6 +69,10 @@ retained history and checks old-token read denial. It does not verify Edge
 gateway packaging or physical-device behavior. Both tests refuse or avoid
 production resources. See `docs/testing.md` for local environment setup.
 
-An archived group with a nonzero balance blocks deletion too. The app currently
-has no unarchive or archived-settlement path; this case requires operator review
-and must be resolved through a documented lifecycle before wider deletion use.
+An archived group with a nonzero balance blocks deletion too. Its live owner can
+reopen it in Group settings, then settle and transfer ownership or archive it
+again before deletion. Reopening records an immutable lifecycle event and never
+changes balances. If no live owner remains, a trusted operator may invoke
+`recover_ownerless_archived_group` for an existing active registered successor,
+with a documented reason. This service-role-only RPC is not exposed by the app;
+there is no client deletion override or automatic debt forgiveness. See ADR 0012.

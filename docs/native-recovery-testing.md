@@ -50,8 +50,8 @@ not remove unrelated apps or reset a shared backend.
 `native-smoke.yml` runs on manual dispatch and pushes that change only the
 native-test/harness paths. Ordinary presentation/source changes do not trigger
 this heavier job. It uses a fresh local backend and API35 emulator on a pinned
-Ubuntu runner, then stops the backend. The first run must establish execution
-evidence; adding this workflow does not itself establish a pass. It covers
+Ubuntu runner, then stops the backend. Executed results are recorded in Sprint II;
+adding this workflow does not itself establish a pass. It covers
 Android emulator process termination, not physical Keystore hardware, backup/
 restore, iOS, SMTP callback or hosted Edge deployment.
 

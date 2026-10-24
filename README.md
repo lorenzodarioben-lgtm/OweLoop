@@ -90,7 +90,11 @@ membership mutations, encrypted account-scoped financial retry/reconciliation,
 normal nested back navigation, complete cursor-based financial history,
 expense discovery, saved unsent drafts, CSV ledger exports, profile editing,
 personal JSON export, safe group leaving, and a deployable password-confirmed
-account-deletion component that preserves shared financial history.
+account-deletion component that preserves shared financial history. Sprint II
+adds audited archive recovery, optional expense categories, settlement filters,
+single-snapshot ledger exports, private CSV/JSON file sharing, reusable expense
+templates, a private activity inbox and device-scoped currency/cleanup settings.
+Templates require explicit review and posting; no scheduler moves money.
 
 Start with [HANDOFF.md](HANDOFF.md), the
 [functional completion report](docs/FUNCTIONAL_COMPLETION_REPORT.md), and
