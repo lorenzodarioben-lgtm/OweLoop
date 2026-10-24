@@ -18,6 +18,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.44.2'
       - name: Restore local test environment file
         run: cp .env.example .env
       - name: Install dependencies
@@ -28,3 +29,22 @@ jobs:
         run: flutter analyze
       - name: Test
         run: flutter test
+  android-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          channel: stable
+      - run: cp .env.example .env
+      - run: flutter pub get
+      - name: Build Android debug APK without release credentials
+        run: flutter build apk --debug --no-pub

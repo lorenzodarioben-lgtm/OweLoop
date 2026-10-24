@@ -6,12 +6,14 @@ on:
       - 'supabase/**'
       - 'package.json'
       - 'package-lock.json'
+      - 'scripts/**'
       - '.github/workflows/database-ci.yml'
   push:
     paths:
       - 'supabase/**'
       - 'package.json'
       - 'package-lock.json'
+      - 'scripts/**'
       - '.github/workflows/database-ci.yml'
 
 permissions:
@@ -37,6 +39,15 @@ jobs:
         run: npx supabase test db
       - name: Lint database schema
         run: npx supabase db lint --level warning --fail-on error
+      - name: Test trusted account deletion handler
+        run: node --test scripts/delete-account.test.mjs
+      - name: Verify non-empty baseline upgrade
+        run: node scripts/test-migration-upgrade.mjs
+      - name: Configure disposable local integration environment
+        run: |
+          npx supabase status -o json | jq -r '"SUPABASE_URL=" + .API_URL, "SUPABASE_ANON_KEY=" + .ANON_KEY, "SUPABASE_SERVICE_ROLE_KEY=" + .SERVICE_ROLE_KEY' >> "$GITHUB_ENV"
+      - name: Test real local multi-account journey and concurrency
+        run: node scripts/test-local-integration.mjs
       - name: Stop local Supabase stack
         if: always()
         run: npx supabase stop
