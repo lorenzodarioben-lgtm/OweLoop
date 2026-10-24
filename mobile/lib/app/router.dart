@@ -21,6 +21,7 @@ import '../features/expenses/presentation/expense_detail_screen.dart';
 import '../features/expenses/domain/expense_models.dart';
 import '../features/expenses/domain/expense_template.dart';
 import '../features/expenses/presentation/expense_templates_screen.dart';
+import '../features/notifications/notifications_screen.dart';
 import '../features/groups/presentation/create_group_screen.dart';
 import '../features/groups/presentation/group_export_screen.dart';
 import '../features/groups/presentation/group_detail_screen.dart';
@@ -45,6 +46,7 @@ abstract final class AppRoutes {
   static const guestClaims = '/guest-claims';
   static const pendingOperations = '/pending-submissions';
   static const account = '/account';
+  static const notifications = '/notifications';
   static const newGroup = '/groups/new';
   static const groupDetail = '/groups/:groupId';
   static const groupSettings = '/groups/:groupId/settings';
@@ -126,6 +128,10 @@ GoRouter createAppRouter(AuthenticationController controller) {
         path: AppRoutes.home,
         builder: (context, state) => const GroupListScreen(),
         routes: [
+          GoRoute(
+            path: 'notifications',
+            builder: (context, state) => const NotificationsScreen(),
+          ),
           GoRoute(
             path: 'account',
             builder: (context, state) => const AccountScreen(),
@@ -254,6 +260,7 @@ String? authenticationRedirect({
 
   if (location == AppRoutes.home ||
       location == AppRoutes.account ||
+      location == AppRoutes.notifications ||
       location == AppRoutes.pendingOperations ||
       location == AppRoutes.invitations ||
       location == AppRoutes.guestClaims ||

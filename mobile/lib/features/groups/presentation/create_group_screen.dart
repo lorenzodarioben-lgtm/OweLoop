@@ -7,6 +7,8 @@ import '../domain/group_models.dart';
 import '../state/groups_providers.dart';
 import '../validation/group_validators.dart';
 import 'group_feedback.dart';
+import '../../authentication/data/device_preferences.dart';
+import '../../authentication/state/authentication_providers.dart';
 
 class CreateGroupScreen extends ConsumerStatefulWidget {
   const CreateGroupScreen({super.key});
@@ -19,6 +21,28 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   String? _currencyCode;
+  bool _currencyTouched = false;
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() async {
+      final account = ref.read(authenticationControllerProvider).state.user?.id;
+      if (account == null) return;
+      try {
+        final code = await ref
+            .read(devicePreferencesProvider)
+            .defaultCurrency(account);
+        if (mounted &&
+            !_currencyTouched &&
+            ref.read(authenticationControllerProvider).state.user?.id ==
+                account) {
+          setState(() => _currencyCode = code);
+        }
+      } catch (_) {
+        /* Optional preference failure leaves explicit currency selection available. */
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -86,6 +110,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
+                      key: ValueKey(_currencyCode),
                       initialValue: _currencyCode,
                       decoration: const InputDecoration(labelText: 'Currency'),
                       items: GroupValidators.supportedCurrencies
@@ -98,7 +123,10 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                           .toList(),
                       onChanged: state.isCreating
                           ? null
-                          : (value) => setState(() => _currencyCode = value),
+                          : (value) => setState(() {
+                              _currencyTouched = true;
+                              _currencyCode = value;
+                            }),
                       validator: GroupValidators.currency,
                     ),
                     const SizedBox(height: 28),

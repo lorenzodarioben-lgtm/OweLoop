@@ -83,6 +83,16 @@ void main() {
       final account = FakeAccountRepository()
         ..blockers = ['Trip: settle this membership balance'];
       await open(tester, account);
+      await tester.scrollUntilVisible(
+        find.widgetWithText(OutlinedButton, 'Delete account'),
+        250,
+        scrollable: find
+            .ancestor(
+              of: find.byType(Form).first,
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
       await tester.tap(find.widgetWithText(OutlinedButton, 'Delete account'));
       await tester.pumpAndSettle();
       expect(

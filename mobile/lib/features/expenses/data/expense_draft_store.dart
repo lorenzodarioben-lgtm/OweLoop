@@ -51,9 +51,12 @@ class SecureExpenseDraftStore implements ExpenseDraftStore {
   @override
   Future<void> deleteAccount(String accountId) async {
     final keys = await storage.readAll();
-    for (final key in keys.keys.where(
-      (key) => key.startsWith('oweloop.unsent_expense.v1.$accountId.'),
-    )) {
+    for (final key
+        in keys.keys
+            .where(
+              (key) => key.startsWith('oweloop.unsent_expense.v1.$accountId.'),
+            )
+            .toList()) {
       await storage.delete(key: key);
     }
   }

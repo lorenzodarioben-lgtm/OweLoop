@@ -9,7 +9,9 @@ the combined final inventory is refreshed. Archive recovery and optional
 categories are implemented. Settlement filters, consistent export snapshots,
 private native sharing and reusable group templates are also implemented and
 locally verified (175 Flutter tests; twenty-plus-five migration upgrade). Native
-harness and further product work continue; see the Sprint II record for evidence.
+harness work continues. Private in-app notifications and device settings are now
+implemented too (182 Flutter tests, 404 pgTAP assertions, 44 HTTP assertions).
+See the Sprint II record and ADR 0014 for current contracts and runtime evidence.
 
 ## Repository state
 

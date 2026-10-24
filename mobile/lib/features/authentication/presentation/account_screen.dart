@@ -8,6 +8,8 @@ import '../validation/auth_validators.dart';
 import '../../../core/operations/financial_operations_providers.dart';
 import '../../expenses/data/expense_draft_store.dart';
 import '../../../core/operations/export_sharing.dart';
+import '../data/device_preferences.dart';
+import 'device_settings_section.dart';
 
 class AccountScreen extends ConsumerStatefulWidget {
   const AccountScreen({super.key});
@@ -154,7 +156,23 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           .deletionBlockers();
       if (!mounted) return;
       if (blockers.isNotEmpty) {
-        setState(() => _message = blockers.join('\n'));
+        setState(() {
+          _busy = false;
+          _message = null;
+        });
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Resolve account blockers'),
+            content: SingleChildScrollView(child: Text(blockers.join('\n\n'))),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
         return;
       }
       final password = await showDialog<String>(
@@ -168,6 +186,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         await ref.read(financialOperationStoreProvider).write(accountId, []);
         await ref.read(expenseDraftStoreProvider).deleteAccount(accountId);
         await ref.read(exportSharingProvider).clearAccount(accountId);
+        await ref.read(devicePreferencesProvider).deleteAccount(accountId);
       } catch (_) {
         /* encrypted data remains inaccessible to other accounts */
       }
@@ -195,6 +214,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           children: [
             Text(auth.user?.email ?? ''),
             const SizedBox(height: 16),
+            if (_message != null)
+              Semantics(liveRegion: true, child: Text(_message!)),
             Form(
               key: _form,
               child: TextFormField(
@@ -226,6 +247,8 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               child: const Text('Save profile'),
             ),
             const SizedBox(height: 20),
+            const DeviceSettingsSection(),
+            const SizedBox(height: 20),
             OutlinedButton(
               onPressed: _busy ? null : _export,
               child: const Text('Export personal data'),
@@ -241,8 +264,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               child: const Text('Delete account'),
             ),
             if (_busy) const Center(child: CircularProgressIndicator()),
-            if (_message != null)
-              Semantics(liveRegion: true, child: Text(_message!)),
           ],
         ),
       ),

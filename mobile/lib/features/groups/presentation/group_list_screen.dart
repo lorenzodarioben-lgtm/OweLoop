@@ -27,6 +27,10 @@ class GroupListScreen extends ConsumerWidget {
             onSelected: (value) => context.go(value),
             itemBuilder: (_) => [
               const PopupMenuItem(
+                value: AppRoutes.notifications,
+                child: Text('Notifications'),
+              ),
+              const PopupMenuItem(
                 value: AppRoutes.account,
                 child: Text('Account'),
               ),

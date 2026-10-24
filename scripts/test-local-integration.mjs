@@ -79,6 +79,25 @@ check(settlements.every(result=>unwrap(result.data).id===unwrap(settlements[0].d
 await rpc(b,'record_settlement',{...settlementPayload,p_paying_member_id:member.id,p_amount_minor:99,p_operation_id:randomUUID()});
 balances=(await rpc(a,'get_group_balances',{p_group_id:group.id})).data;
 check(balances.every(row=>row.net_balance_minor===0),'Both external payment records settle all members exactly.');
+const categorizedPayload={...expensePayload,p_description:'Categorized self expense',p_total_amount_minor:1,p_operation_id:randomUUID(),p_category_key:'food',p_payers:[{member_id:owner.id,amount_minor:1}],p_splits:[{member_id:owner.id,amount_minor:1}]};
+const categorized=await Promise.all(Array.from({length:3},()=>rpc(a,'create_categorized_expense',categorizedPayload)));
+const categorizedExpense=unwrap(categorized[0].data);
+check(categorized.every(row=>unwrap(row.data).id===categorizedExpense.id),'Categorized retries return one durable record.');
+await rpc(a,'create_categorized_expense',{...categorizedPayload,p_category_key:'travel'},[400]);
+await rpc(c,'void_expense',{p_expense_id:categorizedExpense.id},[400]);
+const concurrentExport=await Promise.all([rpc(a,'get_group_expense_export_snapshot',{p_group_id:group.id}),rpc(a,'void_expense',{p_expense_id:categorizedExpense.id})]);
+const observed=concurrentExport[0].data.find(row=>row.id===categorizedExpense.id);
+check(['posted','voided'].includes(observed.status)&&observed.expense_payers[0].amount_minor===1,'Concurrent export and void retain complete exact allocations in one snapshot.');
+const fullExport=(await rpc(c,'get_group_expense_export_snapshot',{p_group_id:group.id})).data;
+check(fullExport.length===2&&fullExport.find(row=>row.id===categorizedExpense.id).status==='voided','Export includes all committed records and void state.');
+check((await rpc(b,'get_categorized_expense_page',{p_group_id:group.id,p_category_key:'food'})).data.length===1,'Category filters use server history.');
+check((await rpc(c,'get_filtered_settlement_page',{p_group_id:group.id,p_paying_member_id:guest.id,p_min_minor:500,p_max_minor:502})).data.length===1,'Settlement amount and directional filters apply on the server.');
+check((await rpc(c,'get_group_settlement_export_snapshot',{p_group_id:group.id})).data.length===2,'Settlement snapshot is complete.');
+const template=unwrap((await rpc(a,'save_expense_template',{p_group_id:group.id,p_name:'Shared template',p_payload:{description:'Review before posting',amount:'10.00',split_method:'equal',single_payer:owner.id,participant_ids:[owner.id,member.id,guest.id]}})).data);
+check((await rpc(c,'get_expense_templates',{p_group_id:group.id})).data.length===1,'Other active members can review templates.');
+await rpc(c,'delete_expense_template',{p_template_id:template.id,p_expected_updated_at:template.updated_at},[400]);
+const edits=await Promise.all(['first','second'].map(label=>rpc(a,'save_expense_template',{p_group_id:group.id,p_name:`Reviewed ${label}`,p_payload:{description:`Reviewed ${label}`},p_template_id:template.id,p_expected_updated_at:template.updated_at},[200,400])));
+check(edits.filter(row=>row.status===200).length===1,'Concurrent template edits prevent lost updates.');
 const page=(await rpc(a,'get_expense_page',{p_group_id:group.id,p_limit:1,p_query:'unequal'})).data;
 check(page.length===1&&page[0].id===expense.id,'Searchable history returns the financial record.');
 check((await rpc(a,'get_settlement_page',{p_group_id:group.id,p_limit:1})).data.length===2,'History returns one lookahead record for pagination.');
@@ -91,7 +110,15 @@ check((await request(`/rest/v1/groups?id=eq.${group.id}`,{user:b,method:'GET'}))
 await rpc(a,'archive_group',{p_group_id:group.id});
 await rpc(a,'create_expense',{...expensePayload,p_operation_id:randomUUID()},[400]);
 await rpc(a,'void_settlement',{p_settlement_id:unwrap(settlements[0].data).id},[400]);
-check((await rpc(c,'get_expense_page',{p_group_id:group.id})).data.length===1,'Archived history remains readable.');
+check((await rpc(c,'get_expense_page',{p_group_id:group.id})).data.length===2,'Archived history remains readable.');
+await rpc(c,'reopen_group',{p_group_id:group.id},[400]);
+await Promise.all([rpc(a,'reopen_group',{p_group_id:group.id}),rpc(a,'reopen_group',{p_group_id:group.id})]);
+const reopenEvents=(await request(`/rest/v1/group_lifecycle_events?group_id=eq.${group.id}&event_type=eq.reopened`,{user:c,method:'GET'})).data;
+check(reopenEvents.length===1,'Concurrent reopen retries append exactly one event.');
+await Promise.all([rpc(a,'archive_group',{p_group_id:group.id}),rpc(a,'reopen_group',{p_group_id:group.id})]);
+const finalGroup=(await request(`/rest/v1/groups?id=eq.${group.id}`,{user:a,method:'GET'})).data[0];
+if(finalGroup.archived_at===null)await rpc(a,'archive_group',{p_group_id:group.id});
+check((await rpc(c,'get_group_balances',{p_group_id:group.id})).data.every(row=>row.net_balance_minor===0),'Archive/reopen concurrency preserves every balance.');
 const exported=(await rpc(c,'export_personal_data',{})).data;
 check(exported.profile.id===c.id,'Personal export contains only the caller profile.');
 check(exported.memberships.every(row=>row.user_id===c.id),'Personal export isolates membership identities.');
@@ -105,7 +132,12 @@ if(serviceKey) {
   const retained=(await request(`/rest/v1/groups?id=eq.${group.id}`,{user:c,method:'GET'})).data;
   check(retained.length===1&&retained[0].created_by===null,'Deletion preserves and de-identifies the archived shared group.');
   check((await request(`/rest/v1/groups?id=eq.${group.id}`,{user:a,method:'GET'})).data.length===0,'Old access token cannot read shared data after account deletion.');
-  check((await rpc(c,'get_expense_page',{p_group_id:group.id})).data[0].total_amount_minor===1001,'Deletion preserves exact shared financial history.');
+  check((await rpc(c,'get_expense_page',{p_group_id:group.id})).data.some(row=>row.id===expense.id&&row.total_amount_minor===1001),'Deletion preserves exact shared financial history.');
+  await rpc(c,'recover_ownerless_archived_group',{p_group_id:group.id,p_successor_member_id:guest.id,p_reason:'Reviewed disposable integration recovery'},[403]);
+  await rpc({token:serviceKey},'recover_ownerless_archived_group',{p_group_id:group.id,p_successor_member_id:guest.id,p_reason:'Reviewed disposable integration recovery'});
+  const recovered=(await rpc(c,'get_group_member_snapshot',{p_group_id:group.id})).data.find(row=>row.id===guest.id);
+  check(recovered.role==='owner'&&recovered.user_id===c.id,'Trusted ownerless recovery preserves the claimed durable identity.');
+  check((await rpc(c,'get_expense_templates',{p_group_id:group.id})).data[0].created_by===null,'Deleted template creator is deidentified without losing configuration.');
 } else {
   console.log('SKIP: real Admin API deletion requires the disposable local SUPABASE_SERVICE_ROLE_KEY.');
 }

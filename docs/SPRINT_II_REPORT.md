@@ -7,6 +7,21 @@ first-sprint commit is rewritten.
 
 ## Current milestones
 
+The private in-app inbox and account-scoped device settings are implemented.
+Notifications derive from authorized records, have stable cursors/read state,
+recheck access after removal and are reachable from the home menu. Default
+currency is consumed by group creation; confirmed local cleanup preserves
+uncertain financial operations. New persistence/race/widget coverage brings
+Flutter to 182 passing tests with clean analysis. All 404 pgTAP assertions pass;
+the expanded three-account real HTTP journey passes 44 assertions, including
+concurrent category retries, export/void, template edits, archive/reopen and
+trusted ownerless recovery. See ADR 0014.
+
+The first emulator run compiled/installed the app but failed an outdated
+empty-state selector in the native test. That selector is corrected, and the
+two independent runtime probes now both execute even if one fails. Native
+success remains unclaimed pending the next CI result.
+
 - Archived-group recovery: owner-only audited reopen UI/RPC; separate
   service-role-only ownerless recovery to an existing registered member.
   Group locks, immutable financial history and direct-write denial remain.
