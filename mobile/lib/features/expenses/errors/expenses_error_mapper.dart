@@ -1,9 +1,11 @@
 import '../data/supabase_expenses_repository.dart';
+import '../../../core/operations/pending_financial_operations.dart';
 
 class ExpensesErrorMapper {
   const ExpensesErrorMapper._();
 
   static String messageFor(Object error) {
+    if (error is FinancialOperationException) return error.message;
     final rawMessage = switch (error) {
       ExpensesRepositoryException(:final message) => message,
       _ => error.toString(),

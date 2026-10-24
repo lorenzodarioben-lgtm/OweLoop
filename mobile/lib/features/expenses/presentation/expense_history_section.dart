@@ -43,6 +43,10 @@ class ExpenseHistorySection extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => context.go(AppRoutes.expenseHistoryPath(groupId)),
+          child: const Text('View all expenses'),
+        ),
         switch (state.status) {
           ExpenseHistoryStatus.loading => const _ExpenseHistoryLoading(),
           ExpenseHistoryStatus.error => _ExpenseHistoryError(
@@ -55,7 +59,7 @@ class ExpenseHistorySection extends ConsumerWidget {
                 ? _ExpenseHistoryEmpty(groupId: groupId)
                 : _ExpenseHistoryList(
                     groupId: groupId,
-                    expenses: state.expenses,
+                    expenses: state.expenses.take(5).toList(),
                   ),
         },
       ],

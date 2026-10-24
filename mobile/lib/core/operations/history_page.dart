@@ -1,0 +1,41 @@
+class HistoryCursor {
+  const HistoryCursor({
+    required this.occurredAt,
+    required this.createdAt,
+    required this.id,
+  });
+  final DateTime occurredAt, createdAt;
+  final String id;
+  Map<String, dynamic> params(String dateParameter) => {
+    dateParameter: occurredAt.toUtc().toIso8601String(),
+    'p_before_created_at': createdAt.toUtc().toIso8601String(),
+    'p_before_id': id,
+  };
+}
+
+class HistoryPage<T> {
+  const HistoryPage({required this.items, this.next});
+  final List<T> items;
+  final HistoryCursor? next;
+}
+
+class ExpenseHistoryFilter {
+  const ExpenseHistoryFilter({
+    this.query = '',
+    this.from,
+    this.until,
+    this.memberId,
+    this.includeVoided = true,
+  });
+  final String query;
+  final DateTime? from, until;
+  final String? memberId;
+  final bool includeVoided;
+  Map<String, dynamic> get params => {
+    'p_query': query.trim(),
+    'p_from': from?.toUtc().toIso8601String(),
+    'p_until': until?.toUtc().toIso8601String(),
+    'p_member_id': memberId,
+    'p_include_voided': includeVoided,
+  };
+}

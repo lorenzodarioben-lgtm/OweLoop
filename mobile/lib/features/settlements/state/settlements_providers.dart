@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/operations/financial_operations_providers.dart';
 
 import '../../authentication/state/authentication_controller.dart';
 import '../../authentication/state/authentication_providers.dart';
@@ -12,7 +13,10 @@ import '../data/supabase_settlements_repository.dart';
 import 'settlements_controller.dart';
 
 final settlementsRepositoryProvider = Provider<SettlementsRepository>((ref) {
-  return SupabaseSettlementsRepository(Supabase.instance.client);
+  return SupabaseSettlementsRepository(
+    Supabase.instance.client,
+    operations: ref.watch(pendingFinancialOperationsProvider),
+  );
 });
 
 final settlementHistoryControllerProvider = ChangeNotifierProvider.autoDispose

@@ -55,7 +55,7 @@ class GroupGuestClaimsSection extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Use “Request account claim” on a guest above. They must accept before the guest is linked to their account.',
+          'Use “Request account claim” on a guest above. They must already have an account and explicitly accept. If they register later, revoke and resend the request.',
         ),
         if (state.errorMessage case final message?) ...[
           const SizedBox(height: 12),

@@ -227,9 +227,10 @@ void main() {
 
     await tester.scrollUntilVisible(find.text('Repayment suggestions'), 240);
     expect(find.text('Alex pays Taylor'), findsOneWidget);
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -180));
-    await tester.pumpAndSettle();
     final recordButton = find.widgetWithText(OutlinedButton, 'Record');
+    await tester.scrollUntilVisible(recordButton, 120);
+    await tester.ensureVisible(recordButton);
+    await tester.pumpAndSettle();
     await tester.tap(recordButton);
     await tester.pumpAndSettle();
 

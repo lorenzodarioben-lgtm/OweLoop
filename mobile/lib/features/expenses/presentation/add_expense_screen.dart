@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../core/operations/client_operation_id.dart';
+import '../../authentication/state/authentication_providers.dart';
+import '../data/expense_draft_store.dart';
 import '../../groups/domain/group_models.dart';
 import '../../groups/state/group_data_refresh_coordinator.dart';
 import '../../groups/state/groups_providers.dart';
@@ -40,6 +42,116 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   String? _payerMessage;
   String? _splitMessage;
   String? _operationId;
+
+  Future<void> _draftAction(String action) async {
+    final accountId = ref.read(authenticationControllerProvider).state.user?.id;
+    final members = ref
+        .read(groupDetailControllerProvider(widget.groupId))
+        .state
+        .members;
+    if (accountId == null || members.isEmpty || !_hasInitializedMembers) return;
+    final store = ref.read(expenseDraftStoreProvider);
+    try {
+      if (action == 'save') {
+        await store.write(accountId, widget.groupId, {
+          'description': _descriptionController.text,
+          'amount': _amountController.text,
+          'occurred_on': _occurredOn.toIso8601String(),
+          'split_method': _splitMethod.name,
+          'multiple_payers': _multiplePayers,
+          'single_payer': _singlePayerMemberId,
+          'payer_ids': _payerIds.toList(),
+          'participant_ids': _participantIds.toList(),
+          'payer_amounts': {
+            for (final entry in _payerAmountControllers.entries)
+              entry.key: entry.value.text,
+          },
+          'split_values': {
+            for (final entry in _splitValueControllers.entries)
+              entry.key: entry.value.text,
+          },
+        });
+      } else if (action == 'discard') {
+        await store.delete(accountId, widget.groupId);
+      } else {
+        final fields = await store.read(accountId, widget.groupId);
+        if (!mounted ||
+            ref.read(authenticationControllerProvider).state.user?.id !=
+                accountId) {
+          return;
+        }
+        if (fields == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'No saved unsent draft for this account and group.',
+              ),
+            ),
+          );
+          return;
+        }
+        final active = members.map((member) => member.id).toSet();
+        setState(() {
+          _descriptionController.text = fields['description'] as String? ?? '';
+          _amountController.text = fields['amount'] as String? ?? '';
+          _occurredOn =
+              DateTime.tryParse(fields['occurred_on'] as String? ?? '') ??
+              DateTime.now();
+          _splitMethod = SplitMethod.values.firstWhere(
+            (method) => method.name == fields['split_method'],
+            orElse: () => SplitMethod.equal,
+          );
+          _multiplePayers = fields['multiple_payers'] as bool? ?? false;
+          final savedPayer = fields['single_payer'] as String?;
+          _singlePayerMemberId = active.contains(savedPayer)
+              ? savedPayer
+              : members.first.id;
+          _payerIds = (fields['payer_ids'] as List? ?? [])
+              .cast<String>()
+              .where(active.contains)
+              .toSet();
+          _participantIds = (fields['participant_ids'] as List? ?? [])
+              .cast<String>()
+              .where(active.contains)
+              .toSet();
+          for (final entry in _payerAmountControllers.entries) {
+            entry.value.text =
+                (fields['payer_amounts'] as Map?)?[entry.key] as String? ?? '';
+          }
+          for (final entry in _splitValueControllers.entries) {
+            entry.value.text =
+                (fields['split_values'] as Map?)?[entry.key] as String? ?? '';
+          }
+          _operationId = null;
+        });
+      }
+      if (mounted &&
+          ref.read(authenticationControllerProvider).state.user?.id ==
+              accountId) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              action == 'save'
+                  ? 'Unsent draft saved on this device.'
+                  : action == 'discard'
+                  ? 'Saved unsent draft discarded.'
+                  : 'Draft restored. Review participants and allocations before posting.',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'The draft could not be saved or restored. No financial request was sent.',
+            ),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -368,7 +480,33 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       groupDetailControllerProvider(widget.groupId),
     );
     return Scaffold(
-      appBar: AppBar(title: const Text('Add expense')),
+      appBar: AppBar(
+        title: const Text('Add expense'),
+        actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Unsent draft',
+            onSelected: _draftAction,
+            enabled: !ref
+                .watch(expenseCreationControllerProvider)
+                .state
+                .isSubmitting,
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: 'save',
+                child: Text('Save unsent draft'),
+              ),
+              const PopupMenuItem(
+                value: 'restore',
+                child: Text('Restore saved draft'),
+              ),
+              const PopupMenuItem(
+                value: 'discard',
+                child: Text('Discard saved draft'),
+              ),
+            ],
+          ),
+        ],
+      ),
       body: SafeArea(
         top: false,
         child: switch (groupState.status) {
@@ -558,6 +696,7 @@ class _ExpenseForm extends ConsumerWidget {
                 ],
                 TextFormField(
                   controller: descriptionController,
+                  enabled: !creationState.isSubmitting,
                   textCapitalization: TextCapitalization.sentences,
                   textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(labelText: 'Description'),
@@ -567,6 +706,7 @@ class _ExpenseForm extends ConsumerWidget {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: amountController,
+                  enabled: !creationState.isSubmitting,
                   keyboardType: TextInputType.numberWithOptions(
                     decimal: fractionDigits > 0,
                   ),
@@ -624,6 +764,7 @@ class _ExpenseForm extends ConsumerWidget {
                       subtitle: payerIds.contains(member.id)
                           ? TextFormField(
                               controller: payerAmountControllers[member.id],
+                              enabled: !creationState.isSubmitting,
                               keyboardType: TextInputType.numberWithOptions(
                                 decimal: fractionDigits > 0,
                               ),
@@ -687,6 +828,7 @@ class _ExpenseForm extends ConsumerWidget {
                             currencyCode: group.currencyCode,
                             fractionDigits: fractionDigits,
                             onChanged: onAmountChanged,
+                            enabled: !creationState.isSubmitting,
                           )
                         : (member.isGuest ? const Text('Guest') : null),
                     controlAffinity: ListTileControlAffinity.leading,
@@ -778,6 +920,7 @@ class _ExpenseForm extends ConsumerWidget {
   ];
 
   Widget _splitInput({
+    required bool enabled,
     required GroupMember member,
     required TextEditingController controller,
     required SplitMethod method,
@@ -785,6 +928,7 @@ class _ExpenseForm extends ConsumerWidget {
     required int fractionDigits,
     required ValueChanged<String> onChanged,
   }) => TextFormField(
+    enabled: enabled,
     controller: controller,
     keyboardType: TextInputType.numberWithOptions(
       decimal: method != SplitMethod.shares,

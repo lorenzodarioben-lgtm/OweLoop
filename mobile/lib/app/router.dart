@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/authentication/presentation/loading_screen.dart';
+import '../features/authentication/presentation/account_screen.dart';
+import '../core/operations/pending_operations_screen.dart';
 import '../features/authentication/presentation/auth_callback_screen.dart';
 import '../features/authentication/presentation/forgot_password_screen.dart';
 import '../features/authentication/presentation/profile_setup_screen.dart';
@@ -13,9 +15,12 @@ import '../features/authentication/state/authentication_controller.dart';
 import '../features/authentication/state/authentication_providers.dart';
 import '../features/authentication/state/authentication_state.dart';
 import '../features/expenses/presentation/add_expense_screen.dart';
+import '../features/expenses/presentation/expense_history_screen.dart';
+import '../features/settlements/presentation/settlement_history_screen.dart';
 import '../features/expenses/presentation/expense_detail_screen.dart';
 import '../features/expenses/domain/expense_models.dart';
 import '../features/groups/presentation/create_group_screen.dart';
+import '../features/groups/presentation/group_export_screen.dart';
 import '../features/groups/presentation/group_detail_screen.dart';
 import '../features/groups/presentation/group_list_screen.dart';
 import '../features/groups/presentation/group_settings_screen.dart';
@@ -33,9 +38,11 @@ abstract final class AppRoutes {
   static const authCallback = '/auth/callback';
   static const updatePassword = '/update-password';
   static const profileSetup = '/profile-setup';
-  static const home = '/home';
+  static const home = '/';
   static const invitations = '/invitations';
   static const guestClaims = '/guest-claims';
+  static const pendingOperations = '/pending-submissions';
+  static const account = '/account';
   static const newGroup = '/groups/new';
   static const groupDetail = '/groups/:groupId';
   static const groupSettings = '/groups/:groupId/settings';
@@ -56,6 +63,11 @@ abstract final class AppRoutes {
 
   static String newSettlementPath(String groupId) =>
       '/groups/$groupId/settlements/new';
+  static String expenseHistoryPath(String groupId) =>
+      '/groups/$groupId/expenses';
+  static String settlementHistoryPath(String groupId) =>
+      '/groups/$groupId/settlements';
+  static String groupExportPath(String groupId) => '/groups/$groupId/exports';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -109,54 +121,86 @@ GoRouter createAppRouter(AuthenticationController controller) {
       GoRoute(
         path: AppRoutes.home,
         builder: (context, state) => const GroupListScreen(),
+        routes: [
+          GoRoute(
+            path: 'account',
+            builder: (context, state) => const AccountScreen(),
+          ),
+          GoRoute(
+            path: 'pending-submissions',
+            builder: (context, state) => const PendingOperationsScreen(),
+          ),
+          GoRoute(
+            path: 'invitations',
+            builder: (context, state) => const InvitationInboxScreen(),
+          ),
+          GoRoute(
+            path: 'guest-claims',
+            builder: (context, state) => const GuestClaimInboxScreen(),
+          ),
+          GoRoute(
+            path: 'groups/new',
+            builder: (context, state) => const CreateGroupScreen(),
+          ),
+          GoRoute(
+            path: 'groups/:groupId',
+            builder: (context, state) =>
+                GroupDetailScreen(groupId: state.pathParameters['groupId']!),
+            routes: [
+              GoRoute(
+                path: 'exports',
+                builder: (context, state) => GroupExportScreen(
+                  groupId: state.pathParameters['groupId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'expenses',
+                builder: (context, state) => ExpenseHistoryScreen(
+                  groupId: state.pathParameters['groupId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'settlements',
+                builder: (context, state) => SettlementHistoryScreen(
+                  groupId: state.pathParameters['groupId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'settings',
+                builder: (context, state) => GroupSettingsScreen(
+                  groupId: state.pathParameters['groupId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'expenses/new',
+                builder: (context, state) => AddExpenseScreen(
+                  groupId: state.pathParameters['groupId']!,
+                  draft: state.extra is ExpenseRecord
+                      ? state.extra! as ExpenseRecord
+                      : null,
+                ),
+              ),
+              GoRoute(
+                path: 'expenses/:expenseId',
+                builder: (context, state) => ExpenseDetailScreen(
+                  groupId: state.pathParameters['groupId']!,
+                  expenseId: state.pathParameters['expenseId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'settlements/new',
+                builder: (context, state) => RecordSettlementScreen(
+                  groupId: state.pathParameters['groupId']!,
+                  draft: state.extra is SettlementDraft
+                      ? state.extra! as SettlementDraft
+                      : null,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
-      GoRoute(
-        path: AppRoutes.invitations,
-        builder: (context, state) => const InvitationInboxScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.guestClaims,
-        builder: (context, state) => const GuestClaimInboxScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.newGroup,
-        builder: (context, state) => const CreateGroupScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.groupSettings,
-        builder: (context, state) =>
-            GroupSettingsScreen(groupId: state.pathParameters['groupId']!),
-      ),
-      GoRoute(
-        path: AppRoutes.groupDetail,
-        builder: (context, state) =>
-            GroupDetailScreen(groupId: state.pathParameters['groupId']!),
-      ),
-      GoRoute(
-        path: AppRoutes.newExpense,
-        builder: (context, state) => AddExpenseScreen(
-          groupId: state.pathParameters['groupId']!,
-          draft: state.extra is ExpenseRecord
-              ? state.extra! as ExpenseRecord
-              : null,
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.expenseDetail,
-        builder: (context, state) => ExpenseDetailScreen(
-          groupId: state.pathParameters['groupId']!,
-          expenseId: state.pathParameters['expenseId']!,
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.newSettlement,
-        builder: (context, state) => RecordSettlementScreen(
-          groupId: state.pathParameters['groupId']!,
-          draft: state.extra is SettlementDraft
-              ? state.extra! as SettlementDraft
-              : null,
-        ),
-      ),
+      GoRoute(path: '/home', redirect: (context, state) => AppRoutes.home),
     ],
   );
 }
@@ -196,6 +240,8 @@ String? authenticationRedirect({
   }
 
   if (location == AppRoutes.home ||
+      location == AppRoutes.account ||
+      location == AppRoutes.pendingOperations ||
       location == AppRoutes.invitations ||
       location == AppRoutes.guestClaims ||
       location == AppRoutes.newGroup ||

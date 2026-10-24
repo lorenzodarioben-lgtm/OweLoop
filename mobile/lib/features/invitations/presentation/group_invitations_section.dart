@@ -81,7 +81,7 @@ class _GroupInvitationsSectionState
         ),
         const SizedBox(height: 8),
         const Text(
-          'Enter the email they use for OweLoop. Invitations are delivered to their in-app inbox and always join as a member.',
+          'Enter the email they already use for OweLoop. Requests do not confirm whether an account exists. If they register later, revoke the old request and send it again. Accepted invitations always join as a member.',
         ),
         const SizedBox(height: 16),
         Form(

@@ -55,7 +55,15 @@ class GroupsController extends ChangeNotifier {
 
     try {
       final group = await _repository.createGroup(input);
-      final groups = await _repository.loadCurrentUserGroups();
+      List<AppGroup> groups;
+      try {
+        groups = await _repository.loadCurrentUserGroups();
+      } catch (_) {
+        groups = [
+          group,
+          ..._state.groups.where((entry) => entry.id != group.id),
+        ];
+      }
       if (sessionGeneration != _sessionGeneration) {
         return null;
       }
@@ -105,20 +113,26 @@ class GroupDetailController extends ChangeNotifier {
   final GroupsRepository repository;
   GroupDetailState _state = const GroupDetailState.loading();
   bool _isDisposed = false;
+  int _sessionGeneration = 0;
 
   GroupDetailState get state => _state;
 
   Future<void> load() async {
+    final generation = ++_sessionGeneration;
     _setState(
       GroupDetailState(
-        status: GroupDetailStatus.loading,
+        status: _state.group == null
+            ? GroupDetailStatus.loading
+            : GroupDetailStatus.ready,
         group: _state.group,
         members: _state.members,
+        isManaging: _state.isManaging,
       ),
     );
 
     try {
       final group = await repository.loadAccessibleGroup(groupId);
+      if (generation != _sessionGeneration) return;
       if (group == null) {
         _setState(
           const GroupDetailState(status: GroupDetailStatus.unavailable),
@@ -127,6 +141,7 @@ class GroupDetailController extends ChangeNotifier {
       }
 
       final members = await repository.loadGroupMembers(groupId);
+      if (generation != _sessionGeneration) return;
       _setState(
         GroupDetailState(
           status: GroupDetailStatus.ready,
@@ -135,6 +150,7 @@ class GroupDetailController extends ChangeNotifier {
         ),
       );
     } catch (error) {
+      if (generation != _sessionGeneration) return;
       _setState(
         GroupDetailState(
           status: GroupDetailStatus.error,
@@ -151,11 +167,25 @@ class GroupDetailController extends ChangeNotifier {
       return false;
     }
 
+    final generation = _sessionGeneration;
     _setState(_state.copyWith(isAddingGuest: true, clearErrorMessage: true));
 
     try {
-      await repository.addGuestMember(groupId: groupId, input: input);
-      final members = await repository.loadGroupMembers(groupId);
+      final added = await repository.addGuestMember(
+        groupId: groupId,
+        input: input,
+      );
+      if (generation != _sessionGeneration) return false;
+      List<GroupMember> members;
+      try {
+        members = await repository.loadGroupMembers(groupId);
+      } catch (_) {
+        members = [
+          ..._state.members.where((entry) => entry.id != added.id),
+          added,
+        ];
+      }
+      if (generation != _sessionGeneration) return false;
       _setState(
         GroupDetailState(
           status: GroupDetailStatus.ready,
@@ -165,6 +195,7 @@ class GroupDetailController extends ChangeNotifier {
       );
       return true;
     } catch (error) {
+      if (generation != _sessionGeneration) return false;
       _setState(
         _state.copyWith(
           isAddingGuest: false,
@@ -183,6 +214,27 @@ class GroupDetailController extends ChangeNotifier {
 
   Future<bool> archive() async {
     return _manage(() => repository.archiveGroup(groupId));
+  }
+
+  Future<bool> leave() async {
+    if (_state.isManaging) return false;
+    final generation = _sessionGeneration;
+    _setState(_state.copyWith(isManaging: true, clearErrorMessage: true));
+    try {
+      await repository.leaveGroup(groupId);
+      if (generation != _sessionGeneration) return false;
+      clear();
+      return true;
+    } catch (error) {
+      if (generation != _sessionGeneration) return false;
+      _setState(
+        _state.copyWith(
+          isManaging: false,
+          errorMessage: GroupsErrorMapper.messageFor(error),
+        ),
+      );
+      return false;
+    }
   }
 
   Future<bool> removeMember(String memberId) async {
@@ -212,12 +264,15 @@ class GroupDetailController extends ChangeNotifier {
 
   Future<bool> _manage(Future<Object?> Function() operation) async {
     if (_state.isManaging) return false;
+    final generation = _sessionGeneration;
     _setState(_state.copyWith(isManaging: true, clearErrorMessage: true));
     try {
       await operation();
+      if (generation != _sessionGeneration) return false;
       await load();
       return _state.status == GroupDetailStatus.ready;
     } catch (error) {
+      if (generation != _sessionGeneration) return false;
       _setState(
         _state.copyWith(
           isManaging: false,
@@ -230,6 +285,11 @@ class GroupDetailController extends ChangeNotifier {
 
   void clearError() {
     _setState(_state.copyWith(clearErrorMessage: true));
+  }
+
+  void clear() {
+    _sessionGeneration += 1;
+    _setState(const GroupDetailState.loading());
   }
 
   void _setState(GroupDetailState state) {

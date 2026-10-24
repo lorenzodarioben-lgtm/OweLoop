@@ -20,6 +20,7 @@ abstract interface class GroupsRepository {
   });
 
   Future<AppGroup> archiveGroup(String groupId);
+  Future<void> leaveGroup(String groupId);
 
   Future<GroupMember> removeGroupMember({
     required String groupId,

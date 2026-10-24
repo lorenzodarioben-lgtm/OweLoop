@@ -8,6 +8,7 @@ class ExpenseHistoryState {
     this.expenses = const [],
     this.errorMessage,
     this.isRefreshing = false,
+    this.hasMore = false,
   });
 
   const ExpenseHistoryState.loading()
@@ -17,12 +18,14 @@ class ExpenseHistoryState {
   final List<ExpenseRecord> expenses;
   final String? errorMessage;
   final bool isRefreshing;
+  final bool hasMore;
 
   ExpenseHistoryState copyWith({
     ExpenseHistoryStatus? status,
     List<ExpenseRecord>? expenses,
     String? errorMessage,
     bool? isRefreshing,
+    bool? hasMore,
     bool clearErrorMessage = false,
   }) {
     return ExpenseHistoryState(
@@ -32,6 +35,7 @@ class ExpenseHistoryState {
           ? null
           : errorMessage ?? this.errorMessage,
       isRefreshing: isRefreshing ?? this.isRefreshing,
+      hasMore: hasMore ?? this.hasMore,
     );
   }
 }

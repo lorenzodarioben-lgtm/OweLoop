@@ -1,3 +1,6 @@
+import 'package:oweloop/features/expenses/data/expense_draft_store.dart';
+import '../../fakes/expense_drafts_fakes.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -20,6 +23,10 @@ import '../../fakes/groups_fakes.dart';
 import '../../fakes/settlements_fakes.dart';
 
 void main() {
+  late MemoryExpenseDraftStore drafts;
+  setUp(() {
+    drafts = MemoryExpenseDraftStore();
+  });
   FakeGroupsRepository groupRepository() {
     return FakeGroupsRepository(groups: const [testGroup])
       ..groupsById[testGroup.id] = testGroup
@@ -36,6 +43,7 @@ void main() {
   }) {
     return ProviderScope(
       overrides: [
+        expenseDraftStoreProvider.overrideWithValue(drafts),
         authRepositoryProvider.overrideWithValue(
           FakeAuthRepository(restoredUser: testUser),
         ),
@@ -118,7 +126,7 @@ void main() {
       expensesRepository: FakeExpensesRepository(),
     );
 
-    await tester.scrollUntilVisible(find.text('Expense history'), 240);
+    await tester.scrollUntilVisible(find.text('No posted expenses yet.'), 240);
     expect(find.text('Expense history'), findsOneWidget);
     expect(find.text('No posted expenses yet.'), findsOneWidget);
     expect(find.text('Add expense'), findsWidgets);
@@ -298,4 +306,93 @@ void main() {
       expensesRepository.creationInputs.first.operationId,
     );
   });
+  testWidgets('nested group, form and detail navigation returns to home', (
+    tester,
+  ) async {
+    await openGroup(
+      tester,
+      groupsRepository: groupRepository(),
+      expensesRepository: FakeExpensesRepository(),
+    );
+    final router = GoRouter.of(tester.element(find.byType(Scaffold).last));
+    expect(router.canPop(), isTrue);
+    await tester.tap(find.text('Add expense').first);
+    await tester.pumpAndSettle();
+    expect(find.byType(BackButton), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Group details'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('OweLoop'), findsOneWidget);
+    expect(router.canPop(), isFalse);
+  });
+  testWidgets(
+    'an incomplete unsent draft survives form navigation without submitting',
+    (tester) async {
+      final expenses = FakeExpensesRepository();
+      await openExpenseForm(
+        tester,
+        groupsRepository: groupRepository(),
+        expensesRepository: expenses,
+      );
+      await tester.enterText(
+        find.byType(TextFormField).first,
+        'Unfinished dinner',
+      );
+      await tester.tap(find.byTooltip('Unsent draft'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save unsent draft'));
+      await tester.pumpAndSettle();
+      expect(drafts.records, hasLength(1));
+      expect(expenses.creationInputs, isEmpty);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add expense').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Unsent draft'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Restore saved draft'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextFormField>(find.byType(TextFormField).first)
+            .controller
+            ?.text,
+        'Unfinished dinner',
+      );
+      expect(
+        tester
+            .widget<TextFormField>(find.byType(TextFormField).at(1))
+            .controller
+            ?.text,
+        isEmpty,
+      );
+      expect(expenses.creationInputs, isEmpty);
+      expect(await drafts.read('different-account', testGroup.id), isNull);
+    },
+  );
+  testWidgets(
+    'group expense export is reachable and preserves exact ledger values',
+    (tester) async {
+      await openGroup(
+        tester,
+        groupsRepository: groupRepository(),
+        expensesRepository: FakeExpensesRepository(expenses: [testExpense]),
+      );
+      await tester.tap(find.byTooltip('Export group ledger'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Expense CSV'));
+      await tester.pumpAndSettle();
+      final csv = tester
+          .widget<SelectableText>(find.byType(SelectableText))
+          .data!;
+      expect(csv, contains(testExpense.id));
+      expect(csv, contains('"1000"'));
+      expect(csv, contains('"AUD"'));
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.text('Group details'), findsOneWidget);
+    },
+  );
 }

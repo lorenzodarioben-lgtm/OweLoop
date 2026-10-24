@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../../core/operations/history_page.dart';
 
 import '../data/settlements_repository.dart';
 import '../domain/settlement_models.dart';
@@ -18,11 +19,12 @@ class SettlementHistoryController extends ChangeNotifier {
   SettlementHistoryState _state = const SettlementHistoryState.loading();
   bool _isDisposed = false;
   int _sessionGeneration = 0;
+  HistoryCursor? _next;
 
   SettlementHistoryState get state => _state;
 
   Future<void> load() async {
-    final sessionGeneration = _sessionGeneration;
+    final sessionGeneration = ++_sessionGeneration;
     if (_state.status == SettlementHistoryStatus.loading &&
         _state.settlements.isEmpty) {
       _setState(const SettlementHistoryState.loading());
@@ -30,17 +32,28 @@ class SettlementHistoryController extends ChangeNotifier {
       _setState(_state.copyWith(isRefreshing: true, clearErrorMessage: true));
     }
     try {
-      final settlements = await repository.loadGroupSettlements(
-        groupId: groupId,
-        currencyCode: currencyCode,
-      );
+      final source = repository;
+      final page = source is PagedSettlementsRepository
+          ? await source.loadSettlementPage(
+              groupId: groupId,
+              currencyCode: currencyCode,
+            )
+          : HistoryPage(
+              items: await source.loadGroupSettlements(
+                groupId: groupId,
+                currencyCode: currencyCode,
+              ),
+            );
+      final settlements = page.items;
       if (sessionGeneration != _sessionGeneration) return;
       _setState(
         SettlementHistoryState(
           status: SettlementHistoryStatus.ready,
           settlements: settlements,
+          hasMore: page.next != null,
         ),
       );
+      _next = page.next;
     } catch (error) {
       if (sessionGeneration != _sessionGeneration) return;
       _setState(
@@ -55,8 +68,49 @@ class SettlementHistoryController extends ChangeNotifier {
 
   Future<void> refresh() => load();
 
+  Future<void> loadMore() async {
+    final source = repository;
+    if (_next == null ||
+        _state.isRefreshing ||
+        source is! PagedSettlementsRepository) {
+      return;
+    }
+    final generation = _sessionGeneration;
+    _setState(_state.copyWith(isRefreshing: true, clearErrorMessage: true));
+    try {
+      final page = await source.loadSettlementPage(
+        groupId: groupId,
+        currencyCode: currencyCode,
+        before: _next,
+      );
+      if (generation != _sessionGeneration) return;
+      final ids = _state.settlements.map((entry) => entry.id).toSet();
+      _next = page.next;
+      _setState(
+        _state.copyWith(
+          settlements: [
+            ..._state.settlements,
+            ...page.items.where((entry) => ids.add(entry.id)),
+          ],
+          hasMore: _next != null,
+          isRefreshing: false,
+        ),
+      );
+    } catch (error) {
+      if (generation == _sessionGeneration) {
+        _setState(
+          _state.copyWith(
+            isRefreshing: false,
+            errorMessage: SettlementsErrorMapper.messageFor(error),
+          ),
+        );
+      }
+    }
+  }
+
   Future<bool> voidSettlement(String settlementId) async {
     if (_state.voidingSettlementId != null) return false;
+    final generation = _sessionGeneration;
     _setState(
       _state.copyWith(
         voidingSettlementId: settlementId,
@@ -69,9 +123,11 @@ class SettlementHistoryController extends ChangeNotifier {
         groupId: groupId,
         currencyCode: currencyCode,
       );
+      if (generation != _sessionGeneration) return false;
       await load();
       return true;
     } catch (error) {
+      if (generation != _sessionGeneration) return false;
       _setState(
         _state.copyWith(
           clearVoidingSettlementId: true,
@@ -84,6 +140,7 @@ class SettlementHistoryController extends ChangeNotifier {
 
   void clear() {
     _sessionGeneration += 1;
+    _next = null;
     _setState(const SettlementHistoryState.loading());
   }
 

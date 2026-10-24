@@ -14,7 +14,7 @@ class SupabaseExpenseActivityRepository implements ExpenseActivityRepository {
     required String currencyCode,
   }) async {
     final rows = await _client.rpc(
-      'get_expense_activity',
+      'get_expense_activity_snapshot',
       params: <String, dynamic>{'p_expense_id': expenseId},
     );
     return (rows as List)

@@ -105,10 +105,13 @@ class FakeProfileRepository implements ProfileRepository {
   AppProfile? completedProfile;
   Object? loadError;
   Object? completeError;
+  Future<AppProfile?> Function()? loadHandler;
+  Future<AppProfile> Function()? completeHandler;
   String? completedDisplayName;
 
   @override
   Future<AppProfile?> loadCurrentProfile() async {
+    if (loadHandler != null) return loadHandler!();
     if (loadError != null) {
       throw loadError!;
     }
@@ -117,6 +120,7 @@ class FakeProfileRepository implements ProfileRepository {
 
   @override
   Future<AppProfile> completeProfile({required String displayName}) async {
+    if (completeHandler != null) return completeHandler!();
     completedDisplayName = displayName;
     if (completeError != null) {
       throw completeError!;

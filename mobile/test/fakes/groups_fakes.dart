@@ -2,6 +2,12 @@ import 'package:oweloop/features/groups/data/groups_repository.dart';
 import 'package:oweloop/features/groups/domain/group_models.dart';
 
 class FakeGroupsRepository implements GroupsRepository {
+  @override
+  Future<void> leaveGroup(String groupId) async {
+    groups.removeWhere((group) => group.id == groupId);
+    groupsById.remove(groupId);
+  }
+
   FakeGroupsRepository({
     List<AppGroup>? groups,
     Map<String, AppGroup>? groupsById,

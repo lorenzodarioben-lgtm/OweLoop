@@ -2,10 +2,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/settlements_repository.dart';
 
+import '../../../core/operations/pending_financial_operations.dart';
+
 class SettlementsErrorMapper {
   const SettlementsErrorMapper._();
 
   static String messageFor(Object error) {
+    if (error is FinancialOperationException) return error.message;
     final message = switch (error) {
       SettlementsRepositoryException error => error.message,
       PostgrestException error => error.message,
