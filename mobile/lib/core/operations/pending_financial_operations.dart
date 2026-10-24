@@ -228,7 +228,10 @@ class PendingFinancialOperations {
       } catch (error) {
         // A successful database commit followed by local-storage failure also
         // remains recoverable through the original persisted operation ID.
-        final next = transport.isDefinitiveRejection(error)
+        // A rejected retry proves nothing about an earlier uncertain attempt.
+        // For example, the first call may have committed before membership was
+        // revoked. Keep its identity recoverable through caller-only lookup.
+        final next = pending.isEmpty && transport.isDefinitiveRejection(error)
             ? FinancialOperationStatus.rejected
             : FinancialOperationStatus.unknown;
         await _save(operations, operation.transition(next));

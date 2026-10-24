@@ -18,7 +18,12 @@ Unsent expense drafts use a separate keyspace and contain no operation identity.
 The state machine is `pending -> confirmed | rejected | unknown`. Pending after
 a restart is treated as uncertain. A timeout, missing lookup result, response
 loss or local completion-write failure cannot establish rejection. Only a
-PostgREST rejection is definitive. Unresolved records are retained without an
+known SQL transaction rejection on the first attempt is definitive. PostgREST
+also wraps damaged success/proxy responses, so its exception type alone never
+establishes failure. A rejected retry cannot erase a prior unknown outcome;
+only a matching confirmed lookup or successful replay resolves that uncertainty.
+An unavailable or permanently rejected original action can therefore stay
+blocked for support review rather than unlocking a duplicate. Unresolved records are retained without an
 automatic retry loop. Recent completed outcomes are bounded to 30 records.
 
 An unchanged retry reuses its persisted payload and identity. A different

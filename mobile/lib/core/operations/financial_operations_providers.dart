@@ -65,7 +65,17 @@ class SupabaseFinancialOperationTransport
   }
 
   @override
-  bool isDefinitiveRejection(Object error) => error is PostgrestException;
+  bool isDefinitiveRejection(Object error) {
+    if (error is! PostgrestException) return false;
+    // The SDK also wraps truncated success bodies and proxy failures in this
+    // type. Only explicit SQL transaction failures prove this attempt failed.
+    final code = error.code ?? '';
+    return code == 'P0001' ||
+        code == '42501' ||
+        code == '40001' ||
+        code == '40P01' ||
+        RegExp(r'^(22|23)[A-Z0-9]{3}$').hasMatch(code);
+  }
 }
 
 final financialOperationStoreProvider = Provider<FinancialOperationStore>(

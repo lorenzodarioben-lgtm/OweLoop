@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oweloop/core/operations/pending_financial_operations.dart';
+import 'package:oweloop/core/operations/financial_operations_providers.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MemoryStore implements FinancialOperationStore {
   final Map<String, String> data = {};
@@ -80,6 +82,61 @@ void main() {
     transport = TestTransport();
     account = 'account-a';
   });
+  test('proxy and malformed success responses remain uncertain', () {
+    final client = SupabaseClient('http://localhost:60421', 'public-test-key');
+    addTearDown(client.dispose);
+    final adapter = SupabaseFinancialOperationTransport(client);
+    for (final code in ['200', '502', '503', '406', 'PGRST116', 'PGRST000']) {
+      expect(
+        adapter.isDefinitiveRejection(
+          PostgrestException(message: 'response', code: code),
+        ),
+        isFalse,
+        reason: code,
+      );
+    }
+    for (final code in ['P0001', '42501', '23514', '22003', '40001', '40P01']) {
+      expect(
+        adapter.isDefinitiveRejection(
+          PostgrestException(message: 'rejected', code: code),
+        ),
+        isTrue,
+        reason: code,
+      );
+    }
+  });
+  test(
+    'rejected retry never erases an earlier committed unknown outcome',
+    () async {
+      transport.loseResponse = true;
+      await expectLater(
+        service().execute(type: 'expense', groupId: 'group', payload: payload),
+        throwsA(isA<FinancialOperationException>()),
+      );
+      final saved = (await service().load()).single;
+      transport.loseResponse = false;
+      transport.reject = true;
+      await expectLater(
+        service().retry(saved.id),
+        throwsA(isA<FinancialOperationException>()),
+      );
+      expect((await service().load()).single.unresolved, isTrue);
+      await expectLater(
+        service().execute(
+          type: 'expense',
+          groupId: 'group',
+          payload: {...payload, 'p_description': 'Different'},
+        ),
+        throwsA(isA<FinancialOperationException>()),
+      );
+      expect(transport.ids.toSet(), {saved.id});
+      expect(await service().reconcile(saved.id), isTrue);
+      expect(
+        (await service().load()).single.status,
+        FinancialOperationStatus.confirmed,
+      );
+    },
+  );
   test(
     'lost response after commit survives restart and reconciles once',
     () async {

@@ -5,10 +5,10 @@
 - Repository: https://github.com/lorenzodarioben-lgtm/OweLoop
 - Working branch: `codex/functional-completion`; base: `master` at
   `9fe698836488288fac704801f13683d3844bf4cc` (merged PR #7).
-- Validated engineering checkpoint: `283cb79b40450bfd5d7a2c920ae7a5b1ca9e83ea`.
+- Initial validated engineering checkpoint: `283cb79b40450bfd5d7a2c920ae7a5b1ca9e83ea`.
 - Draft PR: https://github.com/lorenzodarioben-lgtm/OweLoop/pull/8.
-- Implementation and tooling have been committed and pushed. The final handoff
-  commit follows the checkpoint and includes no application behavior changes.
+- Implementation and tooling have been committed and pushed. Handoff work and a
+  final conservative transport/retry correction follow the initial checkpoint.
   The intended delivered working tree is clean; no unfinished source files or
   secrets are intentionally left uncommitted.
 - Resolve the exact final HEAD with `git rev-parse HEAD` or the PR head SHA.
@@ -18,7 +18,7 @@
 Relevant commits: `b64d81d` guarded financial mutations/exact allocation;
 `1158f0a` recoverable ledger/history/account lifecycle; `283cb79` reproducible
 multi-account/upgrade tooling. Use `git log origin/master..HEAD --oneline` for
-the final documentation commit as well. Git uses the human operator's existing
+the handoff and final recovery correction as well. Git uses the human operator's existing
 identity. No history was rewritten and no release, merge or production deployment
 was performed.
 
@@ -76,6 +76,11 @@ outcomes are retained. Timeout or absent lookup stays uncertain. Payload mismatc
 blocks a new action for the same group/type until recovery. No background retry
 loop exists. Unsent expense drafts use a separate encrypted keyspace and require
 explicit restoration. Account switching cannot send another account's records.
+
+Only a known SQL transaction rejection on the first attempt can mark it rejected.
+Malformed success/proxy responses remain unknown; a rejected retry never clears
+earlier uncertainty. If the original action is permanently unavailable, keep it
+blocked for support review instead of manufacturing a fresh operation identity.
 
 The deletion handler is in `supabase/functions/delete-account/`. It validates
 Auth online, reauthenticates the verified email/current password and deletes that
@@ -136,7 +141,7 @@ the [release checklist](docs/private-beta-release-checklist.md) and
 
 ## Verified results and practical limits
 
-Final local runs: 165 Flutter tests; clean analysis; formatted Dart; 303 pgTAP
+Final local runs: 167 Flutter tests; clean analysis; formatted Dart; 303 pgTAP
 assertions in eight files; clean schema lint; six Node handler tests; 32 real
 Auth/PostgREST assertions; fresh twenty-migration initialization; non-empty
 12+8 migration upgrade with nine snapshots and canonical balances preserved.

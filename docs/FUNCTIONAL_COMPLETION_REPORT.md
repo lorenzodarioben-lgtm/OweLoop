@@ -49,8 +49,8 @@ no local privileged key was printed into the handoff or committed.
 | Check | Actual result |
 | --- | --- |
 | Dart format | 156 Dart files formatted; final changed files conform |
-| Flutter analyze | No issues found (final local run: 99.7 seconds) |
-| Flutter unit/widget tests | 165 passed, zero failures (final local run: about 91 seconds) |
+| Flutter analyze | No issues found (final local run: 25.9 seconds) |
+| Flutter unit/widget tests | 167 passed, zero failures (final local run: about 49 seconds) |
 | pgTAP | 303 assertions across 8 files, PASS (8 seconds) |
 | Schema lint | No schema errors found; no lint findings |
 | Trusted deletion handler | 6 Node tests passed, zero skipped/failures |
@@ -75,7 +75,7 @@ debug jobs in [Mobile CI](https://github.com/lorenzodarioben-lgtm/OweLoop/action
 and every backend step in [Database CI](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40094829985)
 at engineering checkpoint `283cb79b40450bfd5d7a2c920ae7a5b1ca9e83ea`.
 The debug APK build succeeded; no APK installation or release signing is implied.
-Final documentation-only revisions trigger their own PR checks; inspect PR #8
+Final handoff and conservative retry revisions trigger their own PR checks; inspect PR #8
 for the exact current-head result before merging.
 
 ## Failure injection and security evidence
@@ -84,6 +84,11 @@ for the exact current-head result before merging.
   the saved operation, reconciles it or retries the same ID without a second
   financial record. Missing lookup remains uncertain. Storage failure sends no
   request. Changed payload and another account cannot reuse unresolved work.
+  Adapter regressions also verify damaged success/proxy exceptions remain
+  unknown and that an explicitly rejected retry cannot erase an earlier
+  committed-but-unknown outcome. Only known SQL rollback codes on a first
+  attempt allow rejection; permanently unavailable uncertain actions may need
+  support review rather than silently unlocking a new request.
 - Auth tests delay restoration/profile responses across sign-out/account change
   and preserve legitimate password recovery through token/user events.
 - Real local HTTP sends five simultaneous expense retries, four settlement
