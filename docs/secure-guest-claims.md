@@ -24,3 +24,8 @@ The claim table has no direct mobile-client access. Narrow, authenticated
 database functions bind initiator and recipient identity to `auth.uid()` and
 enforce group isolation. Any future discovery or notification feature needs a
 separate privacy and abuse-prevention design.
+
+Unknown addresses retain unbound sender requests with generic feedback. They
+cannot be accepted or auto-bound after later signup: revoke and resend after
+registration. This preserves recipient-UUID authorization and prevents sender
+lists from becoming a registration lookup.

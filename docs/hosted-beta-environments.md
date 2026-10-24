@@ -75,3 +75,14 @@ For a failed migration:
    migration only after review.
 4. Rehearse the forward fix against the isolated backup restore.
 5. Apply the reviewed repair and document the incident in the release log.
+
+## Account lifecycle deployment gate
+
+The repository now contains personal/ledger export and a trusted deletion
+component. Before beta, follow [account lifecycle](account-lifecycle.md), deploy
+`delete-account` only on the independently verified beta project, and test the
+real Edge gateway with disposable accounts. Confirm wrong-password and balance/
+ownership rejection, actual de-identification, retained shared history and
+old-token access denial. Local handler/Admin API tests do not establish hosted
+packaging or deployment. Publish the retention/support process before enabling
+this workflow for testers.

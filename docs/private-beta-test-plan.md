@@ -1,10 +1,11 @@
 # Private beta end-to-end test plan
 
-The repository includes a deliberately skipped Flutter integration-test entry
-point at `mobile/integration_test/private_beta_journey_test.dart`. It remains
-skipped until a hosted beta project, two disposable accounts, and an emulator
-or physical device are supplied. It must not be marked as executed from local
-widget-test results.
+The repository includes a configuration-gated native test at
+`mobile/integration_test/private_beta_journey_test.dart`. It registers a local
+disposable account and exercises real repositories through the UI. Without
+local URL/key Dart defines it is skipped; it refuses hosted endpoints. It was
+not executed on a device here. See [testing](testing.md). The Node HTTP journey
+covers real local multi-account concurrency; it does not establish device results.
 
 ## Controlled two-account journey
 
@@ -35,8 +36,10 @@ backend project, and the result of each step.
 
 ## Execution prerequisite
 
-After hosted configuration exists, replace the skipped scaffold with real,
-credential-free setup that obtains disposable test identities from the secure
-test environment. Do not hard-code passwords, anon keys, refresh tokens, or
-project references in source control. Run it on Android and later iOS, with
-the results linked from the release checklist.
+Run the configured native test against a disposable local stack on Android and
+later iOS. Execute the manual hosted journey separately with beta identities.
+Include pending-operation recovery after process termination, draft restoration,
+multi-page filtered history, CSV export, profile editing, deletion blockers and
+settled-account deletion. Verify the deployed deletion Edge gateway as well as
+the handler. Never hard-code passwords or tokens. Record build/device/environment
+results in the release checklist.

@@ -1,32 +1,52 @@
 # Roadmap
 
-## Foundation - complete
+## Implemented and locally verified
 
-- Flutter Android and iOS project in `mobile/`.
-- Environment-based Supabase startup configuration.
-- Riverpod root scope and GoRouter application shell.
-- Initial test coverage and continuous integration.
-- Documentation and migration directory.
-- Secure Supabase/PostgreSQL core schema, Row-Level Security, database tests, and decision records.
+The shared-expense core includes email/password and profile flows, durable
+registered/guest memberships, invitations and explicit guest claims, guarded
+roles/ownership, archive and settled removal/leave. Expenses support multiple
+payers and equal/exact/percentage/share splits, audit history and void/duplicate
+correction. Canonical balances and repayment suggestions are exact; settlements
+record external payments and preserve voided history.
 
-## Version 0.1 - shared-expense core complete
+The functional sprint adds checked allocation/range arithmetic, direct-mutation
+protections, persisted manual retry/reconciliation, session-generation guards,
+nested navigation, complete cursor history with expense filters, saved expense
+drafts, CSV/personal JSON exports, profile editing and a trusted account-deletion
+component. Forward migrations, adversarial pgTAP, real local Auth/PostgREST
+concurrency and non-empty upgrade validation are implemented and executed.
+See [the completion report](FUNCTIONAL_COMPLETION_REPORT.md) for precise evidence.
 
-1. Authentication and account lifecycle - complete for email/password access and required profile onboarding.
-2. Groups with registered and guest members - complete for creation, viewing, guest addition, safe removal, owner-only role and ownership changes, archive, protected in-app registered-user invitations, and explicit two-party guest account claims.
-3. Flexible expenses - complete for one or multiple payers; equal, exact, percentage, and share splits; exact previews; posted history; detail; and correction by void-and-duplicate.
-4. Transparent per-group balances - complete for exact, settlement-aware, read-only balances and deterministic repayment suggestions.
-5. Settlement recording and history - complete for recording externally completed payments and voiding history.
-6. Basic expense audit history - complete for safe creation, allocation, finalization, and void activity.
+## Next: native and beta release gates
 
-## Before a public beta
+1. Android debug compilation passed GitHub CI. Run the configured local native journey;
+   exercise process termination, secure-storage recovery, account switching,
+   system back, callbacks, large text and TalkBack on a physical device.
+2. Build on macOS/Xcode and validate iOS Keychain, signing, callbacks, VoiceOver
+   and equivalent account/financial journeys.
+3. Configure reviewed beta infrastructure and email delivery, apply migrations
+   after backup/rehearsal, deploy the trusted deletion Edge function and test
+   its actual gateway, blockers, identity validation and retained records.
+4. Publish privacy/retention/support information, select crash reporting or a
+   staffed manual process, rehearse recovery and record release/test owners.
+5. Review exact-head CI and complete the private-beta checklist before any
+   distribution. Local tests and plain functional screens are not release proof.
 
-- Build and test on configured Android and iOS toolchains and physical devices.
-- Configure a non-local Supabase project, email delivery, and environment values without committing secrets.
-- Configure and manually validate hosted in-app invitations and guest claims with real beta accounts.
-- Implement account deletion/data export and publish the associated support process.
-- Add localization, performance, physical-device accessibility, migration-upgrade, and live end-to-end coverage.
-- Establish privacy, support, monitoring, backup, incident-response, release, store-listing, and signing processes.
+## Functional follow-up
 
-## Later versions
+- Resolve archived groups with outstanding balances: there is no in-app
+  unarchive/settlement path and deletion correctly stays blocked.
+- Test large-group UI memory/scrolling and whole JSON snapshots; improve export
+  snapshot consistency under concurrent edits and add native file sharing.
+- Extend settlement discovery and preferences beyond profile. Localization,
+  categories, recurring expenses, notifications and receipts remain absent.
+- Revisit unknown-email invitation delivery with an explicit verified identity
+  model; current requests remain unbound until revoked/resubmitted after signup.
 
-Receipt scanning, AI assistance, subscriptions, bank integrations, payment processing, advanced analytics, multiple currencies, and full offline synchronisation will be evaluated only after the Version 0.1 shared-expense workflow is stable.
+## Later product decisions
+
+Full offline synchronization, receipt scanning, analytics, subscriptions,
+AI assistance, bank/payment integrations and currency conversion require their
+own correctness/privacy/scope decisions. No placeholder feature is counted as
+implemented. Presentation design may proceed independently using
+[the neutral functional handoff](DESIGN_HANDOFF.md).

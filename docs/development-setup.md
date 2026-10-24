@@ -85,4 +85,18 @@ From the repository root, use `./scripts/check.sh` on macOS/Linux or `.\scripts\
 
 ## Current validation limitation
 
-The current development machine has no Android SDK configured, so Android builds cannot be claimed as validated here. Do not treat Flutter analysis or widget tests as native-build evidence; validate a native Android build after configuring the SDK. Release builds also require the local signing setup documented in [Android private beta preparation](android-private-beta.md).
+This workstation has Android SDK 36 installed, but command-line tools are missing and licence status is unknown. The attempted native build also failed before compilation because Gradle could not establish a loopback connection. Android builds cannot be claimed as validated here. Do not treat Flutter analysis or widget tests as native-build evidence; validate a native Android build after configuring the SDK. Release builds also require the local signing setup documented in [Android private beta preparation](android-private-beta.md).
+
+## Functional sprint setup
+
+Use the CI-pinned Flutter 3.44.2 / Dart 3.12.2 and Node 22 for reproducible checks.
+On Windows, `.\scripts\check-local.ps1` creates/tests/stops its own temporary
+Supabase project, avoiding the regular project's reserved port block. It does
+not leave a development backend running. See [testing](testing.md) for flags,
+real-service integration and native test commands. Start a disposable development
+stack separately before running Flutter. Android emulators access the host via
+`10.0.2.2`; never copy a service-role key into `mobile/.env`.
+
+The same source successfully built an Android debug APK on Ubuntu/JDK17 in
+[GitHub CI](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40094829981).
+The limitation above describes this workstation; device runtime remains untested.

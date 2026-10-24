@@ -6,7 +6,7 @@ OweLoop is a shared-expense mobile application for Android and iOS. It is intend
 
 ## Current project stage
 
-The repository currently contains only the initial application foundation. Planned features are not necessarily implemented. Inspect the current code and documentation before making assumptions about authentication, groups, expenses, settlements, or the database.
+The repository implements the shared-expense core and functional completion work: guarded financial mutations, exact allocation, persisted submission recovery, nested navigation, paginated history, account management, and local integration coverage. Native device validation and hosted release setup remain separate gates. Read HANDOFF.md and docs/FUNCTIONAL_COMPLETION_REPORT.md for the verified state; code existence does not mean a feature was deployed or device-tested.
 
 ## Technology stack
 

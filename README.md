@@ -82,3 +82,22 @@ Run the local database check separately from the repository root with `npm run c
 MUST Read [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md) before changing code. Keep work focused, use one task per branch where practical, run the checks, review the diff, and describe scope, testing, and risks in pull requests.
 
 For a reusable task handoff, use the [agent handoff template](docs/agent-handoff-template.md). Significant architecture decisions should use the [ADR process](docs/decisions/README.md).
+
+## Functional completion sprint
+
+The current implementation adds checked largest-remainder splits, guarded
+membership mutations, encrypted account-scoped financial retry/reconciliation,
+normal nested back navigation, complete cursor-based financial history,
+expense discovery, saved unsent drafts, CSV ledger exports, profile editing,
+personal JSON export, safe group leaving, and a deployable password-confirmed
+account-deletion component that preserves shared financial history.
+
+Start with [HANDOFF.md](HANDOFF.md), the
+[functional completion report](docs/FUNCTIONAL_COMPLETION_REPORT.md), and
+[reproducible testing](docs/testing.md). The
+[design handoff](docs/DESIGN_HANDOFF.md) documents functional contracts without
+prescribing a visual style. Hosted deletion deployment and physical-device
+validation remain release gates; code and local tests are not deployment claims.
+
+On Windows, `.\scripts\check-local.ps1` validates a uniquely named disposable
+Supabase stack without resetting the developer's regular project.

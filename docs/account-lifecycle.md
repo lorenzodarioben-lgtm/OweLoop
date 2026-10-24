@@ -64,3 +64,7 @@ process it exercises the handler against the real local Admin API, verifies
 retained history and checks old-token read denial. It does not verify Edge
 gateway packaging or physical-device behavior. Both tests refuse or avoid
 production resources. See `docs/testing.md` for local environment setup.
+
+An archived group with a nonzero balance blocks deletion too. The app currently
+has no unarchive or archived-settlement path; this case requires operator review
+and must be resolved through a documented lifecycle before wider deletion use.

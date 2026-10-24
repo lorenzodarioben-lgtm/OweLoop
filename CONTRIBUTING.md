@@ -1,6 +1,6 @@
 # Contributing to OweLoop
 
-Thanks for helping build OweLoop. The repository is intentionally at an early stage, so please read [AGENTS.md](AGENTS.md), the [architecture](docs/architecture.md), and the [roadmap](docs/roadmap.md) before starting work.
+Thanks for helping build OweLoop. The repository contains a working shared-expense core, so please read [AGENTS.md](AGENTS.md), the [architecture](docs/architecture.md), and the [roadmap](docs/roadmap.md) before starting work.
 
 ## Required software
 

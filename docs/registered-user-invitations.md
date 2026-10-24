@@ -23,3 +23,8 @@ permissions and lifecycle.
 This is intentionally a controlled-beta workflow. A future notification or
 identity-discovery feature needs its own privacy, abuse-prevention, and email
 delivery design; it must not expose account-existence lookup to ordinary users.
+
+Unknown addresses retain an unbound sender request so list cardinality does not
+reveal account registration. Such a request is not delivered or auto-bound after
+signup. Revoke and resend once the recipient has registered. Acceptance always
+checks an already bound recipient UUID, never a caller-supplied email identity.

@@ -9,6 +9,8 @@ Complete and record every applicable item before distributing a build.
 - [ ] Backup and recovery ownership is confirmed by two operators.
 - [ ] Hosted Auth has the exact `oweloop://auth/callback` redirect URL.
 - [ ] Email confirmation/reset behavior and the email provider are tested.
+- [ ] Trusted `delete-account` Edge function is deployed on beta; passwords,
+  blockers, actual deletion and old-token denial are verified there.
 - [ ] Only public URL and anon key are in the build's ignored `.env`; no
   service-role credential is present.
 
@@ -29,6 +31,9 @@ Complete and record every applicable item before distributing a build.
 - [ ] Verify archived history remains read-only.
 - [ ] Verify in-app invitations and explicit guest claims with separate users.
 - [ ] Verify restart/session restoration and timeout/offline error feedback.
+- [ ] Verify pending requests and drafts after physical process termination,
+  restart and account switching, including platform secure storage.
+- [ ] Verify personal/ledger export and published shared-record retention policy.
 - [ ] Run physical accessibility smoke checks with increased text size and
   TalkBack/VoiceOver where available.
 
@@ -44,8 +49,16 @@ Complete and record every applicable item before distributing a build.
 
 ## Repository validation
 
-- [ ] `npm ci`, `npm run db:start`, `npm run check:db`, and `npm run db:stop` pass locally.
+- [ ] Full backend checks pass for the release commit (`scripts/check-local.ps1`
+  on Windows or the database CI workflow).
 - [ ] `flutter pub get`, format check, `flutter analyze`, and `flutter test` pass.
 - [ ] CI is green for the exact release commit.
 - [ ] Secret/diff review confirms no `.env`, signing material, token, or
   service-role key is committed.
+
+## Functional sprint evidence
+
+Local results and limitations are recorded in
+[the completion report](FUNCTIONAL_COMPLETION_REPORT.md). They do not check off
+hosted setup, release-commit CI or device distribution. Release-specific items
+above intentionally remain unverified until an operator records their results.

@@ -50,3 +50,9 @@ Do not promise account deletion, data export, backups, or a public support SLA
 until the corresponding process is implemented and staffed. Testers should be
 told not to use OweLoop as their sole financial record and not to enter
 unnecessary sensitive personal data.
+
+The functional sprint implements export and a trusted account-deletion component;
+see [account lifecycle](account-lifecycle.md). Hosted deployment, published
+retention terms and a staffed exception/support process remain unconfigured.
+Archived groups with outstanding balances need explicit operator review because
+there is no unarchive or archived-settlement workflow in the app.

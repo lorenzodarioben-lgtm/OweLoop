@@ -4,7 +4,7 @@
 
 - Flutter and Dart provide one Android and iOS client.
 - Supabase provides authentication and a PostgreSQL backend.
-- Riverpod will manage application state and dependency injection.
+- Riverpod manages application state and dependency injection.
 - GoRouter owns declarative navigation.
 - GitHub Actions verifies formatting, analysis, and tests on every push and pull request.
 
@@ -32,7 +32,7 @@ Feature code owns its models, repositories, state, screens, and tests. Shared co
 
 The `authentication` feature has repository interfaces alongside Supabase implementations, an `AuthenticationController` for session and profile state, pure validation and safe error mapping, and presentation widgets. Widgets submit user intent to the controller; they do not call Supabase or contain database rules.
 
-At startup the controller restores the existing Supabase session, loads the private profile, and remains in a loading state until that work completes. It listens for sign-in, sign-out, token-refresh, and user-update events, clearing profile state after sign-out. GoRouter observes this state and applies testable redirect rules: signed-out users go to `/sign-in`, authenticated users with incomplete onboarding go to `/profile-setup`, and users with completed onboarding go to `/home`. The `/loading` route is intentionally separate so a loading state is never treated as signed out.
+At startup the controller restores the existing Supabase session, loads the private profile, and remains in a loading state until that work completes. It listens for sign-in, sign-out, token-refresh, and user-update events, clearing profile state after sign-out. GoRouter observes this state and applies testable redirect rules: signed-out users go to `/sign-in`, authenticated users with incomplete onboarding go to `/profile-setup`, and users with completed onboarding go to `/`. The `/loading` route is intentionally separate so a loading state is never treated as signed out.
 
 The `groups` feature follows the same repository/controller/presentation split. Its group-list controller reloads when an authenticated session becomes available and clears its in-memory list when that session ends. GoRouter protects `/groups/new` and `/groups/:groupId` with the same authentication and onboarding redirects as `/home`; group-detail data is still loaded through Supabase RLS, so a manually changed ID is treated as unavailable rather than exposing private group data.
 
@@ -49,3 +49,36 @@ The `groups` settings route exposes only controls allowed by the current role. G
 Supabase configuration is read from `mobile/.env`, which is never committed. The client uses only the public anon key; privileged database access remains in Supabase server-side policy, functions, or trusted tooling. Schema changes are captured as ordered SQL migrations under `supabase/migrations/` and protected with Row Level Security.
 
 The ordered migrations establish profiles, groups, durable memberships for registered users and guests, expenses, payer contributions, splits, settlements, and append-only expense events. Later migrations add explicit onboarding, guarded guest creation, equal entry, transparent balances, settlement recording, generic flexible expense creation, safe expense activity, and group administration. Public database functions use fixed search paths and caller-derived authority; all client-accessible tables use RLS. Financial records use integer minor units, and only exact posted records contribute to balances. See the [database design](database-design.md), [security model](security-model.md), and related [ADRs](decisions/README.md).
+
+## Functional completion boundaries
+
+`core/operations` owns checked request identities, persisted pending financial
+state and cursor types. Production expense/settlement repositories persist
+through the shared encrypted operation service before invoking RPCs. Widgets
+never silently regenerate unresolved operation identities. Unsent drafts have a
+separate encrypted account/group keyspace. Recovery is explicit and manual.
+
+The route root `/` hosts the group list; group detail and its forms/settings/
+history/export screens are nested children. `/home` remains a redirect alias.
+Account, collaboration inboxes and pending submissions are root children.
+Authentication redirects remove protected content after sign-out. Generation
+checks discard stale Auth, group, balance and history responses. Refresh
+coordination watches live notifier identities and is disposed with its view.
+
+History uses repository page capabilities, separate full-expense-history state,
+keyset cursors and lazy list rendering. Group previews show five records. Scalar
+JSON snapshots keep balances, memberships, current groups and safe activity
+complete beyond API row limits. Personal and ledger exports are explicit
+copyable text; exact monetary fields do not pass through floating-point math.
+
+The trusted deletion handler is outside Flutter. PostgreSQL enforces deletion
+prerequisites and historical de-identification even for Admin API deletion.
+See ADRs 0009–0011 and `docs/account-lifecycle.md` for precise contracts.
+
+## Source-map additions
+
+`core/operations` now contains persisted request recovery and cursor types.
+Additional feature directories include `activity`, `balances`, `repayments`,
+`invitations` and `guest_claims`. Balances, current groups/members and safe activity
+use complete scalar JSON snapshots; history uses paged RPCs. These extend the
+original directory sketch above rather than a second application architecture.
