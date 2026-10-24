@@ -41,7 +41,12 @@ void main() {
       );
       await tester.pumpWidget(const ProviderScope(child: OweLoopBootstrap()));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Create group').first);
+      final createFirst=find.text('Create your first group');
+      for(var attempt=0;attempt<100&&createFirst.evaluate().isEmpty;attempt++){
+        await tester.pump(const Duration(milliseconds:100));
+      }
+      expect(createFirst,findsOneWidget,reason:'A new local account must reach its empty group list.');
+      await tester.tap(createFirst);
       await tester.pumpAndSettle();
       await tester.enterText(
         find.byType(TextFormField),

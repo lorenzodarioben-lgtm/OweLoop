@@ -6,6 +6,7 @@ on:
     paths:
       - 'mobile/integration_test/**'
       - 'scripts/test-android-recovery.mjs'
+      - 'scripts/run-native-smoke.sh'
       - '.github/workflows/native-smoke.yml'
 
 permissions:
@@ -51,10 +52,7 @@ jobs:
           profile: pixel_6
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: |
-            cd mobile && flutter test integration_test/private_beta_journey_test.dart -d emulator-5554 --dart-define=OWELOOP_TEST_SUPABASE_URL=http://10.0.2.2:55421 --dart-define=OWELOOP_TEST_ANON_KEY=$OWELOOP_TEST_ANON_KEY
-            cd mobile && flutter build apk --debug -t integration_test/recovery_probe_app.dart --dart-define=OWELOOP_TEST_SUPABASE_URL=http://10.0.2.2:55421 --dart-define=OWELOOP_TEST_ANON_KEY=$OWELOOP_TEST_ANON_KEY
-            node scripts/test-android-recovery.mjs emulator-5554
+          script: bash scripts/run-native-smoke.sh
       - name: Stop disposable backend
         if: always()
         run: npx supabase stop --no-backup
