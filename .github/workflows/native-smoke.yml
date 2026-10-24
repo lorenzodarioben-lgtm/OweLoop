@@ -1,0 +1,60 @@
+name: Native local integration
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'mobile/integration_test/**'
+      - 'scripts/test-android-recovery.mjs'
+      - '.github/workflows/native-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  android-local:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          channel: stable
+      - name: Prepare local-only backend
+        run: |
+          npm ci
+          npx supabase start
+          npx supabase status -o json | jq -r '"OWELOOP_TEST_ANON_KEY=" + .ANON_KEY' >> "$GITHUB_ENV"
+          echo "::add-mask::$(npx supabase status -o json | jq -r .ANON_KEY)"
+          cp mobile/.env.example mobile/.env
+          cd mobile && flutter pub get
+      - name: Enable KVM access on disposable runner
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Native multi-account journey and process-restart probe
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            cd mobile && flutter test integration_test/private_beta_journey_test.dart -d emulator-5554 --dart-define=OWELOOP_TEST_SUPABASE_URL=http://10.0.2.2:55421 --dart-define=OWELOOP_TEST_ANON_KEY=$OWELOOP_TEST_ANON_KEY
+            cd mobile && flutter build apk --debug -t integration_test/recovery_probe_app.dart --dart-define=OWELOOP_TEST_SUPABASE_URL=http://10.0.2.2:55421 --dart-define=OWELOOP_TEST_ANON_KEY=$OWELOOP_TEST_ANON_KEY
+            node scripts/test-android-recovery.mjs emulator-5554
+      - name: Stop disposable backend
+        if: always()
+        run: npx supabase stop --no-backup

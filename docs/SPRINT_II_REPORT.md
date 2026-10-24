@@ -22,6 +22,13 @@ first-sprint commit is rewritten.
 
 ## Evidence so far
 
+A separate native workflow and debug recovery-probe target now exercise actual
+ADB force-stop/relaunch before send and after server commit. The native UI test
+has independent B/C Auth clients for the broader collaboration/financial journey.
+The harness is pending its first emulator CI result; see
+[native recovery testing](native-recovery-testing.md). CI uses Node24 action
+runtimes and pinned Ubuntu24.04 to remove the previously reported notices.
+
 The second milestone adds server-side settlement date/payer/receiver/amount/
 void-state filtering and stable oldest/newest cursors; transactionally consistent
 ledger export snapshots including allocation JSON; explicit private CSV/JSON
