@@ -55,6 +55,12 @@ adding this workflow does not itself establish a pass. It covers
 Android emulator process termination, not physical Keystore hardware, backup/
 restore, iOS, SMTP callback or hosted Edge deployment.
 
+Executed PASS at `806fdef09e72aa41ca7616dfcae18544171dc9bc`:
+[API35 native run](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40118377624).
+The UI/multi-account test passed and all four before/resume-before/after/
+resume-after checkpoints passed. Earlier runs exposed selectors/async test setup
+and the real Dart SDK absent-lookup mismatch, now covered by regressions.
+
 The Windows host still has no configured AVD/device and its JDK21 Gradle attempt
 failed at loopback initialization. No global firewall or security settings were
 changed. Native run status and exact CI links belong in the Sprint II report.

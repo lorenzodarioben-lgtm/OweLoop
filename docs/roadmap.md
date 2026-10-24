@@ -23,8 +23,9 @@ See [the completion report](FUNCTIONAL_COMPLETION_REPORT.md) for precise evidenc
 
 ## Next: native and beta release gates
 
-1. Android debug compilation passed GitHub CI. Run the configured local native journey;
-   exercise process termination, secure-storage recovery, account switching,
+1. Android debug compilation, the API35 native multi-account journey and actual
+   process termination/secure-store recovery before send and after commit passed
+   GitHub CI. Next exercise physical Keystore, draft restoration, account switching,
    system back, callbacks, large text and TalkBack on a physical device.
 2. Build on macOS/Xcode and validate iOS Keychain, signing, callbacks, VoiceOver
    and equivalent account/financial journeys.

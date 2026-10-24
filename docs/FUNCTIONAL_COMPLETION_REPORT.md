@@ -58,7 +58,7 @@ environment; no credentials or raw financial recovery payloads are committed.
 | Non-empty upgrade | Twenty first-sprint + six Sprint II migrations; nine ledger table snapshots/canonical balances preserved |
 | Rollback-only benchmark | Four fixture scales passed; largest balance 1,700.208ms, first history 1.298ms locally |
 | Mobile/Android debug CI | Passed at code checkpoint `806fdef`; links in Sprint II record |
-| Native Android runtime | Real APK compiled/installed; before-send barrier reached, resume failed; corrected run pending |
+| Native Android runtime | API35 emulator UI/multi-account journey and real force-stop/restart before-send/after-commit recovery passed at `806fdef` |
 | Local Android build | JDK21 attempt failed before app compilation at Gradle loopback initialization; no AVD/device |
 | iOS | Not executed: no macOS/Xcode/device |
 
@@ -99,8 +99,7 @@ package upgrade or service dependency is introduced.
 
 ## Remaining limitations and release gates
 
-1. Complete the corrected Android emulator UI/process-death run, then physical
-   Keystore, account-switch, draft restart, network-loss, back/callback,
+1. Verify physical Keystore, account-switch, draft restart, network-loss, back/callback,
    TalkBack/large-text and share-destination checks. Emulator evidence is narrower
    than physical hardware, backup/restore or a release build.
 2. Build/run iOS on macOS, validate Keychain, iPad sharing origin, callbacks,

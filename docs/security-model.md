@@ -47,7 +47,8 @@ does not mean failure.
 
 Pending requests and explicit unsent drafts use flutter_secure_storage in
 separate account keyspaces. No Auth credentials are added to those records.
-Physical Keychain/Keystore, backup and process-termination tests remain open.
+Actual Android emulator process termination/session/secure-store recovery passed
+before send and after commit. Physical Keychain/Keystore and backup tests remain open.
 Android backup is disabled; iOS entitlements are configured but not device-built.
 Auth/data controllers discard stale account/session responses. Token refresh
 preserves recovery sessions. Protected routes redirect after sign-out. These

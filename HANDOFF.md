@@ -13,8 +13,8 @@ bring the total to twenty-six. No merge, release, hosted deployment or productio
 mutation was performed. Git uses the operator's existing identity.
 
 Latest pushed code checkpoint: `806fdef09e72aa41ca7616dfcae18544171dc9bc`.
-The real Dart lookup correction is verified; corrected native CI and final
-handoff verification are in progress.
+The real Dart lookup correction and corrected Android emulator journey/process
+recovery are verified. Final documentation follows that code checkpoint.
 Resolve the exact delivered revision with `git rev-parse HEAD` and
 `git rev-parse origin/codex/functional-completion`; a document cannot contain
 the hash of its own containing commit. The final PR description records delivery
@@ -80,8 +80,13 @@ failed test selectors/async readiness, then reached the actual persist-before-se
 barrier. Resume-before failed. A separate local real-SDK test reproduced the
 cause: `.maybeSingle()` on a POST RPC throws PGRST116/406 for absent operations.
 The adapter now reads/validates the table JSON result; malformed/ambiguous rows
-stay uncertain. Live SDK and new wire regressions passed. Native
-success is unclaimed until the corrected emulator run completes.
+stay uncertain. Live SDK and new wire regressions passed. The corrected
+[API35 emulator run](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40118377624)
+passed the UI/independent multi-account journey and all four actual-process
+checkpoints: before, resume-before, after and resume-after. Session/secure-store
+reload, same-ID recovery and exactly one unchanged expense passed after both
+terminations. Native/app sources are identical at the later handoff commit.
+Physical Keystore, iOS and destination-share results remain unverified.
 
 The Windows host has Flutter 3.44.2/Dart 3.12.2, Node22, Docker Desktop and SDK36,
 but no configured AVD or connected device. Two JDK21 locations were inspected;
@@ -165,7 +170,7 @@ A share sheet result never proves import. Clear exports/drafts must not clear
 unknown operations. Notification read markers never grant source access.
 
 ADRs 0009-0014 record money, persistence, lifecycle, templates/export and inbox
-contracts. `share_plus` 13.3.1 adds native sharing; direct `path_provider`2.1.6 was
+contracts. `share_plus` 13.3.1 adds native sharing; direct `path_provider` 2.1.6 was
 already transitive. `http` 1.6.0 is dev-only for real SDK wire regressions, already
 transitive; no runtime package upgrade is implied.
 
@@ -173,8 +178,8 @@ transitive; no runtime package upgrade is implied.
 
 1. First action: fetch origin, run `git status --short`, confirm the branch/head
    and inspect PR8 checks. Read the exact native result in the Sprint II record.
-   Complete the corrected Android native UI/process-death run; retain exact
-   failing stage if unsuccessful. Then physical Android Keystore, network-loss,
+   The Android emulator journey/process-death run passed. Next verify physical
+   Android Keystore, network-loss,
    back/callback, account-switch, draft restart, share destination/cancellation,
    large-text/TalkBack and release-signing checks. Emulator success is narrower.
 2. On macOS build/run iOS, verify Keychain, share sheet/iPad origin, callbacks,

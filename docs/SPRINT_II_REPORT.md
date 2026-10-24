@@ -41,6 +41,7 @@ recovery. Reads can become stale; server validation remains authoritative.
 | `0072953` | Correct native empty-state selector; run both independent probes |
 | `ba81a51` | Private inbox, safe device settings and cleanup race correction |
 | `806fdef` | Real Dart POST lookup correction, wire/live regressions, native async/Auth setup |
+| `15a9f60` | Reproducible scale/live-SDK helpers, full manifest and combined handoff |
 
 Resolve exact delivered HEAD with `git rev-parse HEAD`; final documentation/tooling
 commits follow these code checkpoints. See [HANDOFF](../HANDOFF.md) for combined
@@ -62,6 +63,7 @@ every path changed across both sprints.
 | Fresh initialization | All26 migrations passed |
 | Non-empty upgrade | 20+6 migrations passed, nine ledger snapshots and canonical balances preserved |
 | Scale fixtures | All four passed and rolled back; see [performance](performance.md) |
+| Android native runtime | One native UI/multi-account test and four real-process checkpoints passed on API35 |
 
 The last full local command sequence was `dart format --output=none
 --set-exit-if-changed .`, `flutter analyze --no-pub`, `flutter test --no-pub`,
@@ -90,6 +92,10 @@ Final documentation/tooling-head checks follow this code checkpoint and are
 recorded in the PR. Actions now use maintained Node24 versions and pinned
 Ubuntu24.04; Flutter remains 3.44.2 / Dart 3.12.2. Native CI is separate and bounded.
 
+The `15a9f606ed0d572e85febe3c3006286eaf3269a9` tooling/handoff checkpoint also
+passed [Mobile CI](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40118889697)
+and [Database CI](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40118889597).
+
 The first real Android run compiled/installed the APK, then failed a stale empty
 state selector. Subsequent runs reached Group details but attempted Add guest
 before asynchronous authorization data arrived. The test now waits for controls,
@@ -105,8 +111,14 @@ The adapter now validates ordinary table JSON, returns null for zero rows and
 rejects malformed/multiple rows. Four wire regressions and both real-SDK tests
 pass. Lookup absence remains uncertain; it never becomes a rejected transaction.
 The corrected [native run](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40118377624)
-at `806fdef09e72aa41ca7616dfcae18544171dc9bc` is pending. No complete native pass
-is claimed yet. Sanitized stage/type/code markers help diagnose future failures.
+at `806fdef09e72aa41ca7616dfcae18544171dc9bc` passed. The log records
+`1 test passed` for the native UI/independent multi-account journey, then
+`PASS: before`, `PASS: resume-before`, `PASS: after`, `PASS: resume-after`, and
+the final real Android termination/secure-store/same-ID recovery PASS. Actual
+session/storage reload and exactly one expense were checked after both force
+stops. The later tooling/handoff checkpoint changes no mobile/native/harness
+source, so this evidence applies to its identical app code. Sanitized
+stage/type/code markers remain available for future diagnosis.
 
 The probe is a separate debug target, not the release entry point. The host script
 refuses physical devices, preserves app data, terminates the actual OS process
@@ -142,8 +154,8 @@ beta backup/upgrade rehearsal; local validation does not authorize deployment.
 
 ## Known limits and next action
 
-Fetch/confirm the delivered branch and exact PR checks first. Finish the corrected
-native run, then the physical Android/iOS and hosted lifecycle/recovery checklist.
+Fetch/confirm the delivered branch and exact PR checks first. The emulator run
+passed; next complete physical Android/iOS and hosted lifecycle/recovery checks.
 [HANDOFF](../HANDOFF.md) prioritizes files, commands and verification. Whole
 snapshots remain memory-bound and large-group balance validation is the largest
 measured SQL cost. The neutral design handoff maps the implemented screens;
