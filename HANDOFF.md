@@ -38,7 +38,8 @@ without configuration). The rehearsal was executed, not inferred from CI:
 | Repeat start/configure; modified existing env; forged project ID/comment; unsupported host option | Identical setup preserved env; conflicts/foreign stop/unsupported host refused; no unrelated container stopped |
 | Real HTTP integration against the generated app backend | 44 assertions passed, including actual local Auth/Admin deletion |
 | `.\scripts\check.ps1` | Formatting/static analysis clean; 186 unit/widget tests passed, two explicitly configured live tests skipped |
-| `.\scripts\check-local.ps1 -SkipInstall -DartIntegration` | Fresh 26 migrations; 404 pgTAP/14 files; clean schema lint; six handler tests; 20+6 upgrade/nine snapshots+balances; 44 HTTP assertions; two live Dart SDK tests passed |
+| `.\scripts\check-local.ps1 -SkipInstall -DartIntegration` | PowerShell 7: fresh 26 migrations; 404 pgTAP/14 files; clean lint; six handler tests; 20+6 upgrade/nine snapshots+balances; 44 HTTP assertions; two live SDK tests passed |
+| `powershell.exe -NoProfile -NonInteractive -File scripts/check-local.ps1 -SkipInstall -DartIntegration` | Full workflow passed on actual Windows PowerShell 5.1 after the captured-stderr correction, with the same backend/live-SDK results and own-stack cleanup |
 | `flutter doctor -v`, `flutter devices`, `flutter run -d android` | Doctor reported missing Android command-line tools/licence validation; only desktop/web targets, no Android target; launch exited 1 |
 | `flutter build apk --debug` | Failed before compilation with Gradle `Unable to establish loopback connection`; no host/global security changes or unbounded retries |
 | Documentation checker and deliberate missing-file probe | All relative file targets passed; injected broken link correctly failed and probe removed; external URL availability/heading fragments not automatically checked |
@@ -53,6 +54,15 @@ is not installed). Supported CLAUDE.md import/start behavior was checked against
 [quickstart](https://code.claude.com/docs/en/quickstart). Exact pushed-head CI links
 belong in PR #8's Developer Handover section; don't relabel inherited native
 evidence as a new run. App/SQL/native harness sources remain unchanged.
+
+The first onboarding checkpoint `d248519` also passed exact-head Mobile and
+Database CI. A final compatibility probe then found PowerShell 5.1 treats captured
+benign native stderr as terminating errors under `Stop`. `Invoke-NativeCapture`
+now scopes `Continue` to that capture only, restores the caller preference and
+checks the real process exit code; stdout-only status JSON stays parseable.
+Targeted contracts on 5.1 and 7 passed success-with-stderr, preserved exit 7,
+stderr discard and preference restoration. The full helper then passed on 5.1
+without changing execution policy. This is a setup fix, not an application change.
 
 Files in this pass: `START_HERE.md` (entry), `CLAUDE.md`/`AGENTS.md` (shared rules),
 `CONTRIBUTING.md` (collaborator/fork workflow), `README.md` (discovery), this file

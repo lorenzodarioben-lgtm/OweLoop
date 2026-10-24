@@ -5,6 +5,9 @@ Use Flutter 3.44.2/Dart 3.12.2 (CI pinned), Node 22/npm, Git and Docker Desktop'
 local Linux engine. PowerShell 5.1+ works on Windows; PowerShell 7 is optional on
 macOS/Linux for the isolated test helper. No global Supabase install is needed.
 The root lockfile pins CLI 2.109.1; `npm ci` installs it, including its platform package.
+The full backend helper was executed on Windows PowerShell 5.1 and PowerShell 7;
+its native-output capture preserves nonzero exits while tolerating CLI progress
+on stderr. No global preference or execution-policy change is made.
 
 ## App backend versus test backend
 

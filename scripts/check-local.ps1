@@ -23,6 +23,20 @@ function Invoke-Checked {
     & $Command @Arguments
     if ($LASTEXITCODE -ne 0) { throw "Validation failed: $Command $($Arguments -join ' ')" }
 }
+function Invoke-NativeCapture {
+    param([string]$Command, [string[]]$Arguments, [switch]$DiscardErrorOutput)
+    $resolvedCommand = (Get-Command -Name $Command -ErrorAction Stop).Source
+    $capturePreference = $ErrorActionPreference
+    try {
+        # Windows PowerShell 5.1 promotes captured native stderr to ErrorRecords,
+        # including successful CLI progress. Judge the process by its exit code.
+        $ErrorActionPreference = 'Continue'
+        if ($DiscardErrorOutput) { $captured = & $resolvedCommand @Arguments 2>$null }
+        else { $captured = & $resolvedCommand @Arguments 2>&1 }
+        $nativeExitCode = $LASTEXITCODE
+    } finally { $ErrorActionPreference = $capturePreference }
+    [pscustomobject]@{ Output = @($captured); ExitCode = $nativeExitCode }
+}
 Push-Location $repositoryRoot
 try {
     if (-not $SkipInstall) { Invoke-Checked $npmCommand @('ci') }
@@ -36,16 +50,15 @@ try {
     $config = $config.Replace('sql_paths = ["./seed.sql"]', 'sql_paths = []')
     Set-Content -LiteralPath (Join-Path $validationSupabase 'config.toml') -Value $config
     Write-Host "Disposable validation project: $projectId (API $($PortBase + 1), DB $($PortBase + 2))"
-    $startOutput = & $npxCommand supabase start --workdir $validationRoot 2>&1
-    $startResult = $LASTEXITCODE
-    $startOutput | Where-Object { $_.ToString() -notmatch '(?i)ANON_KEY|SERVICE_ROLE_KEY|SECRET_KEY|JWT_SECRET|PUBLISHABLE_KEY|DB_URL|postgresql://' } | ForEach-Object { Write-Host $_ }
-    if ($startResult -ne 0) { throw 'Disposable Supabase startup failed; check port availability.' }
+    $start = Invoke-NativeCapture $npxCommand @('supabase','start','--workdir',$validationRoot)
+    $start.Output | Where-Object { $_.ToString() -notmatch '(?i)ANON_KEY|SERVICE_ROLE_KEY|SECRET_KEY|JWT_SECRET|PUBLISHABLE_KEY|DB_URL|postgresql://' } | ForEach-Object { Write-Host $_ }
+    if ($start.ExitCode -ne 0) { throw 'Disposable Supabase startup failed; check port availability.' }
     Invoke-Checked $npxCommand @('supabase','db','reset','--local','--workdir',$validationRoot)
     Invoke-Checked $npxCommand @('supabase','test','db','--workdir',$validationRoot)
     Invoke-Checked $npxCommand @('supabase','db','lint','--local','--level','warning','--fail-on','error','--workdir',$validationRoot)
-    $statusJson = & $npxCommand supabase status -o json --workdir $validationRoot 2>$null
-    if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect disposable local stack.' }
-    $status = ($statusJson -join "`n") | ConvertFrom-Json
+    $statusResult = Invoke-NativeCapture $npxCommand @('supabase','status','-o','json','--workdir',$validationRoot) -DiscardErrorOutput
+    if ($statusResult.ExitCode -ne 0) { throw 'Cannot inspect disposable local stack.' }
+    $status = ($statusResult.Output -join "`n") | ConvertFrom-Json
     $env:SUPABASE_URL = $status.API_URL
     $env:SUPABASE_ANON_KEY = $status.ANON_KEY
     $env:SUPABASE_SERVICE_ROLE_KEY = $status.SERVICE_ROLE_KEY
