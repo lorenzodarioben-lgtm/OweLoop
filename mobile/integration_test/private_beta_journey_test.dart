@@ -67,11 +67,31 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, 'Create group'));
       await tester.pumpAndSettle();
       expect(find.text('Group details'), findsOneWidget);
+      for (
+        var attempt = 0;
+        attempt < 300 && find.text('Add guest').evaluate().isEmpty;
+        attempt++
+      ) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(
+        find.text('Add guest'),
+        findsOneWidget,
+        reason: 'Wait for authorized group data, not only its app-bar title.',
+      );
       await tester.tap(find.text('Add guest'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField), 'Device guest');
       await tester.tap(find.widgetWithText(FilledButton, 'Add guest'));
       await tester.pumpAndSettle();
+      for (
+        var attempt = 0;
+        attempt < 300 && find.byType(AlertDialog).evaluate().isNotEmpty;
+        attempt++
+      ) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(find.byType(AlertDialog), findsNothing);
       await tester.tap(find.text('Add expense').first);
       await tester.pumpAndSettle();
       await tester.enterText(
@@ -81,9 +101,19 @@ void main() {
       await tester.enterText(find.byType(TextFormField).at(1), '9.01');
       await tester.pump();
       final post = find.widgetWithText(FilledButton, 'Post expense');
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
       await tester.ensureVisible(post);
+      await tester.pumpAndSettle();
       await tester.tap(post);
       await tester.pumpAndSettle();
+      for (
+        var attempt = 0;
+        attempt < 300 && find.text('Expense details').evaluate().isEmpty;
+        attempt++
+      ) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
       expect(find.text('Expense details'), findsOneWidget);
       final groups = await client
           .from('groups')
@@ -111,12 +141,18 @@ void main() {
       final b = SupabaseClient(
         _url,
         _key,
-        authOptions: const AuthClientOptions(autoRefreshToken: false),
+        authOptions: const AuthClientOptions(
+          autoRefreshToken: false,
+          authFlowType: AuthFlowType.implicit,
+        ),
       );
       final c = SupabaseClient(
         _url,
         _key,
-        authOptions: const AuthClientOptions(autoRefreshToken: false),
+        authOptions: const AuthClientOptions(
+          autoRefreshToken: false,
+          authFlowType: AuthFlowType.implicit,
+        ),
       );
       addTearDown(() async {
         await b.dispose();

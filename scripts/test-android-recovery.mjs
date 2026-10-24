@@ -20,7 +20,8 @@ async function runPhase(phase,expected){
   const deadline=Date.now()+90000;
   while(Date.now()<deadline){
     const log=adb(['logcat','-d','-s','flutter']);
-    assert.ok(!log.includes('OWELOOP_PROBE:FAIL:'),`Native probe rejected phase ${phase}; inspect the disposable emulator locally.`);
+    const failure=log.match(/OWELOOP_PROBE:FAIL:[A-Za-z0-9_:]+/);
+    assert.ok(!failure,`Native probe rejected phase ${phase}: ${failure?.[0]||''}`);
     if(log.includes(`OWELOOP_PROBE:${expected}`)){console.log(`PASS: ${phase}`);return;}
     await new Promise(resolve=>setTimeout(resolve,1000));
   }

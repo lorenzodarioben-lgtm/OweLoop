@@ -61,10 +61,20 @@ class SupabaseFinancialOperationTransport
 
   @override
   Future<Map<String, dynamic>?> lookup(String operationId) async {
-    final row = await client
-        .rpc('get_financial_operation', params: {'p_operation_id': operationId})
-        .maybeSingle();
-    return row == null ? null : Map<String, dynamic>.from(row);
+    // A POST RPC with maybeSingle can receive PGRST116/406 for zero rows.
+    // Read the table result as JSON so an absent request remains recoverable.
+    final rows = await client.rpc(
+      'get_financial_operation',
+      params: {'p_operation_id': operationId},
+    );
+    if (rows is! List || rows.length > 1) {
+      throw const FormatException('Invalid operation lookup response.');
+    }
+    if (rows.isEmpty) return null;
+    if (rows.single is! Map) {
+      throw const FormatException('Invalid operation lookup response.');
+    }
+    return Map<String, dynamic>.from(rows.single as Map);
   }
 
   @override

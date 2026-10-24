@@ -15,6 +15,7 @@ const _url = String.fromEnvironment('OWELOOP_TEST_SUPABASE_URL');
 const _key = String.fromEnvironment('OWELOOP_TEST_ANON_KEY');
 void marker(String value) => debugPrint('OWELOOP_PROBE:$value');
 Future<void> main() async {
+  var stage = 'initialize';
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
     const MaterialApp(
@@ -38,6 +39,10 @@ Future<void> main() async {
       '${support.path}/oweloop-probe-phase',
     ).readAsString()).trim();
     final resume = phase.startsWith('resume-');
+    stage = 'session';
+    if (resume && client.auth.currentUser == null) {
+      throw StateError('Session did not restore');
+    }
     final store = SecureFinancialOperationStore(const FlutterSecureStorage());
     final transport = SupabaseFinancialOperationTransport(client);
     if (!resume) {
@@ -98,10 +103,14 @@ Future<void> main() async {
       transport: transport,
       currentAccountId: () => client.auth.currentUser?.id,
     );
-    final saved = (await service.load()).single;
+    stage = 'load';
+    final savedRecords = await service.load();
+    marker('LOAD_COUNT:${savedRecords.length}');
+    final saved = savedRecords.single;
     if (!saved.unresolved) {
       throw StateError('Pending request did not survive termination');
     }
+    stage = 'lookup';
     final committed = await service.reconcile(saved.id);
     if (phase == 'resume-before' && committed) {
       throw StateError('Before-send barrier wrote to server');
@@ -109,10 +118,13 @@ Future<void> main() async {
     if (phase == 'resume-after' && !committed) {
       throw StateError('Committed result was lost');
     }
+    stage = 'retry';
     if (!committed) await service.retry(saved.id);
+    stage = 'confirm';
     if (!(await service.reconcile(saved.id))) {
       throw StateError('Same-ID recovery failed');
     }
+    stage = 'verify';
     final records = await client
         .from('expenses')
         .select('id,total_amount_minor')
@@ -126,7 +138,9 @@ Future<void> main() async {
     }
     marker('PASS:$phase');
   } catch (error) {
-    marker('FAIL:${error.runtimeType}');
+    marker(
+      'FAIL:$stage:${error.runtimeType}${error is PostgrestException ? ':${error.code}' : ''}',
+    );
   }
 }
 
