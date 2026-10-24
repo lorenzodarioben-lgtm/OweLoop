@@ -1,5 +1,13 @@
 # OweLoop engineering handoff
 
+## Sprint II continuation
+
+Sprint II began from the clean first-sprint head `280b86d` on 2026-10-25.
+Read [the Sprint II record](docs/SPRINT_II_REPORT.md) for current milestones and
+new evidence; the first-sprint snapshot below remains historical context until
+the combined final inventory is refreshed. Archive recovery and optional
+categories are implemented; additional feature and native-harness work continues.
+
 ## Repository state
 
 - Repository: https://github.com/lorenzodarioben-lgtm/OweLoop

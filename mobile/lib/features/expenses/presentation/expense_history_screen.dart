@@ -5,6 +5,7 @@ import '../../../app/router.dart';
 import '../../../core/operations/history_page.dart';
 import '../../groups/state/groups_providers.dart';
 import '../domain/expense_models.dart';
+import '../domain/expense_category.dart';
 import '../state/expenses_providers.dart';
 import '../state/expenses_state.dart';
 
@@ -21,6 +22,7 @@ class _ExpenseHistoryScreenState extends ConsumerState<ExpenseHistoryScreen> {
   bool _includeVoided = true;
   DateTimeRange? _dates;
   String? _memberId;
+  String? _categoryKey;
   @override
   void dispose() {
     _query.dispose();
@@ -36,6 +38,7 @@ class _ExpenseHistoryScreenState extends ConsumerState<ExpenseHistoryScreen> {
           from: _dates?.start,
           until: _dates?.end.add(const Duration(days: 1)),
           memberId: _memberId,
+          categoryKey: _categoryKey,
         ),
       );
   @override
@@ -97,6 +100,29 @@ class _ExpenseHistoryScreenState extends ConsumerState<ExpenseHistoryScreen> {
                   ],
                   onChanged: (value) {
                     setState(() => _memberId = value);
+                    _filter();
+                  },
+                ),
+                DropdownButtonFormField<String>(
+                  initialValue: _categoryKey,
+                  decoration: const InputDecoration(labelText: 'Category'),
+                  items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('All categories'),
+                    ),
+                    const DropdownMenuItem(
+                      value: '',
+                      child: Text('Uncategorized'),
+                    ),
+                    for (final value in ExpenseCategory.values)
+                      DropdownMenuItem(
+                        value: value.name,
+                        child: Text(value.label),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _categoryKey = value);
                     _filter();
                   },
                 ),
@@ -183,6 +209,10 @@ class _ExpenseHistoryScreenState extends ConsumerState<ExpenseHistoryScreen> {
                         final expense = state.expenses[index];
                         return ListTile(
                           title: Text(expense.description),
+                          leading: Tooltip(
+                            message: expense.categoryLabel,
+                            child: const Icon(Icons.receipt_long_outlined),
+                          ),
                           subtitle: Text(
                             '${MaterialLocalizations.of(context).formatMediumDate(expense.occurredAt.toLocal())}${expense.status == ExpenseStatus.voided ? ' · Voided' : ''}',
                           ),

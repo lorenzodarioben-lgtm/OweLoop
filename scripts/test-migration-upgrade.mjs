@@ -27,8 +27,8 @@ try {
     grant execute on function auth.uid() to authenticated,anon;`);
   const migrationUrl=new URL('../supabase/migrations/',import.meta.url);
   const files=readdirSync(migrationUrl).filter(name=>name.endsWith('.sql')).sort();
-  const baseline=files.filter(name=>name<'20261024000000');
-  const forward=files.filter(name=>name>='20261024000000');
+  const baseline=files.filter(name=>name<'20261025000000');
+  const forward=files.filter(name=>name>='20261025000000');
   for(const name of baseline) sql(readFileSync(new URL(name,migrationUrl),'utf8'));
   const identity="select set_config('request.jwt.claim.sub','cccccccc-1111-4111-8111-111111111101',false);";
   sql(`insert into auth.users(id,email) values('cccccccc-1111-4111-8111-111111111101','upgrade@example.test');
@@ -39,12 +39,18 @@ try {
       jsonb_build_array(jsonb_build_object('member_id',(select id from public.group_members where user_id=auth.uid()),'amount_minor',1000)),
       jsonb_build_array(jsonb_build_object('member_id','cccccccc-1111-4111-8111-111111111102','amount_minor',1000)),gen_random_uuid());`);
   const tables=['profiles','groups','group_members','expenses','expense_payers','expense_splits','settlements','expense_events','financial_operations'];
-  const snapshot=()=>Object.fromEntries(tables.map(table=>[table,sql(`select coalesce(jsonb_agg(to_jsonb(t) order by t.id),'[]'::jsonb)::text from public.${table} t;`)]));
+  const snapshot=()=>Object.fromEntries(tables.map(table=>[table,JSON.parse(sql(`select coalesce(jsonb_agg(to_jsonb(t) order by t.id),'[]'::jsonb)::text from public.${table} t;`))]));
   const before=snapshot();
   const balance=()=>sql(`${identity} select jsonb_agg(to_jsonb(b) order by b.group_member_id)::text from public.get_group_balances('cccccccc-1111-4111-8111-111111111100') b;`);
   const oldBalance=balance();
   for(const name of forward) sql(readFileSync(new URL(name,migrationUrl),'utf8'));
-  assert.deepEqual(snapshot(),before,'Forward migrations must preserve every existing financial, identity and audit row.');
+  const after=snapshot();
+  for (const table of tables) {
+    assert.equal(after[table].length,before[table].length,`${table} row count must survive upgrade.`);
+    const preserved=after[table].map((row,index)=>Object.fromEntries(Object.keys(before[table][index]).map(key=>[key,row[key]])));
+    assert.deepEqual(preserved,before[table],`${table}: every pre-existing column must remain exactly unchanged.`);
+  }
+  for (const expense of after.expenses) assert.equal(expense.category_key,null,'Historical expenses remain uncategorized.');
   assert.equal(balance(),oldBalance,'Canonical balances must remain identical.');
   console.log(`PASS: ${baseline.length} released migrations + ${forward.length} forward migrations; ${tables.length} non-empty/empty ledger table snapshots and canonical balances preserved on local PostgreSQL.`);
 } finally {

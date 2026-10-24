@@ -30,7 +30,7 @@ class SupabaseExpensesRepository implements PagedExpensesRepository {
     ExpenseHistoryFilter filter = const ExpenseHistoryFilter(),
   }) async {
     final rows = await _client.rpc(
-      'get_expense_page',
+      'get_categorized_expense_page',
       params: {
         'p_group_id': groupId,
         'p_limit': 50,
@@ -60,6 +60,7 @@ class SupabaseExpensesRepository implements PagedExpensesRepository {
     final params = <String, dynamic>{
       'p_group_id': input.groupId,
       'p_description': input.trimmedDescription,
+      if (input.category != null) 'p_category_key': input.category!.name,
       'p_total_amount_minor': input.total.minorUnits,
       'p_occurred_at': input.occurredAt.toUtc().toIso8601String(),
       'p_payers': [
@@ -80,7 +81,9 @@ class SupabaseExpensesRepository implements PagedExpensesRepository {
     final row = operations == null
         ? await _client
               .rpc(
-                'create_expense',
+                input.category == null
+                    ? 'create_expense'
+                    : 'create_categorized_expense',
                 params: {...params, 'p_operation_id': input.operationId},
               )
               .single()
@@ -102,7 +105,7 @@ class SupabaseExpensesRepository implements PagedExpensesRepository {
     final row = await _client
         .from('expenses')
         .select(
-          'id, group_id, description, total_amount_minor, occurred_at, status, voided_at, '
+          'id, group_id, description, category_key, total_amount_minor, occurred_at, status, voided_at, '
           'groups!inner(currency_code), '
           'expense_payers(group_member_id, amount_minor, '
           'group_members!inner(display_name)), '

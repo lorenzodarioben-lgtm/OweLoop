@@ -12,6 +12,7 @@ import '../../groups/state/groups_providers.dart';
 import '../../groups/state/groups_state.dart';
 import '../domain/exact_money.dart';
 import '../domain/expense_models.dart';
+import '../domain/expense_category.dart';
 import '../state/expenses_providers.dart';
 import '../validation/expense_validators.dart';
 import 'expense_feedback.dart';
@@ -42,6 +43,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   String? _payerMessage;
   String? _splitMessage;
   String? _operationId;
+  ExpenseCategory? _category;
 
   Future<void> _draftAction(String action) async {
     final accountId = ref.read(authenticationControllerProvider).state.user?.id;
@@ -55,6 +57,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       if (action == 'save') {
         await store.write(accountId, widget.groupId, {
           'description': _descriptionController.text,
+          'category_key': _category?.name,
           'amount': _amountController.text,
           'occurred_on': _occurredOn.toIso8601String(),
           'split_method': _splitMethod.name,
@@ -93,6 +96,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         final active = members.map((member) => member.id).toSet();
         setState(() {
           _descriptionController.text = fields['description'] as String? ?? '';
+          _category = ExpenseCategory.fromKey(fields['category_key']);
           _amountController.text = fields['amount'] as String? ?? '';
           _occurredOn =
               DateTime.tryParse(fields['occurred_on'] as String? ?? '') ??
@@ -159,6 +163,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     final draft = widget.draft;
     if (draft != null) {
       _descriptionController.text = draft.description;
+      _category = draft.category;
       _amountController.text = _inputAmount(draft.total);
       _occurredOn = draft.occurredAt.toLocal();
     }
@@ -441,6 +446,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           ExpenseCreationInput(
             groupId: group.id,
             description: _descriptionController.text,
+            category: _category,
             total: total,
             occurredAt: DateTime.utc(
               _occurredOn.year,
@@ -530,6 +536,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             members: groupState.members,
             formKey: _formKey,
             descriptionController: _descriptionController,
+            category: _category,
+            onCategoryChanged: (value) => setState(() {
+              _category = value;
+              _operationId = null;
+            }),
             amountController: _amountController,
             payerAmountControllers: _payerAmountControllers,
             splitValueControllers: _splitValueControllers,
@@ -595,6 +606,8 @@ class _ExpenseForm extends ConsumerWidget {
     required this.members,
     required this.formKey,
     required this.descriptionController,
+    required this.category,
+    required this.onCategoryChanged,
     required this.amountController,
     required this.payerAmountControllers,
     required this.splitValueControllers,
@@ -622,6 +635,8 @@ class _ExpenseForm extends ConsumerWidget {
   final List<GroupMember> members;
   final GlobalKey<FormState> formKey;
   final TextEditingController descriptionController;
+  final ExpenseCategory? category;
+  final ValueChanged<ExpenseCategory?> onCategoryChanged;
   final TextEditingController amountController;
   final Map<String, TextEditingController> payerAmountControllers;
   final Map<String, TextEditingController> splitValueControllers;
@@ -702,6 +717,25 @@ class _ExpenseForm extends ConsumerWidget {
                   decoration: const InputDecoration(labelText: 'Description'),
                   onChanged: onAmountChanged,
                   validator: ExpenseValidators.description,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<ExpenseCategory>(
+                  key: ValueKey(category),
+                  initialValue: category,
+                  decoration: const InputDecoration(
+                    labelText: 'Category (optional)',
+                  ),
+                  items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('Uncategorized'),
+                    ),
+                    for (final value in ExpenseCategory.values)
+                      DropdownMenuItem(value: value, child: Text(value.label)),
+                  ],
+                  onChanged: creationState.isSubmitting
+                      ? null
+                      : onCategoryChanged,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(

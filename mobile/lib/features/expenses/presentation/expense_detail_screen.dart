@@ -107,6 +107,7 @@ class _ExpenseDetailContent extends StatelessWidget {
           children: [
             Chip(label: Text(expense.status.label)),
             Chip(label: Text(expense.total.currencyCode)),
+            Chip(label: Text(expense.categoryLabel)),
           ],
         ),
         if (errorMessage case final message?) ...[

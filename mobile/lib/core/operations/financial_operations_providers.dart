@@ -46,7 +46,10 @@ class SupabaseFinancialOperationTransport
     String operationId,
   ) async {
     final function = switch (type) {
-      'expense' => 'create_expense',
+      'expense' =>
+        payload.containsKey('p_category_key')
+            ? 'create_categorized_expense'
+            : 'create_expense',
       'settlement' => 'record_settlement',
       _ => throw const FormatException('Unknown operation type.'),
     };

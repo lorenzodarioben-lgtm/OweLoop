@@ -8,6 +8,29 @@ class SupabaseGroupsRepository implements GroupsRepository {
 
   final SupabaseClient _client;
   @override
+  Future<AppGroup> reopenGroup(String groupId) async {
+    final row = await _client
+        .rpc('reopen_group', params: {'p_group_id': groupId})
+        .single();
+    return AppGroup.fromMap(
+      Map<String, dynamic>.from(row),
+      currentUserRole: GroupRole.owner,
+    );
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> loadLifecycleEvents(String groupId) async {
+    final rows = await _client
+        .from('group_lifecycle_events')
+        .select('event_type,created_at,reason')
+        .eq('group_id', groupId)
+        .order('created_at', ascending: false)
+        .order('id', ascending: false)
+        .limit(50);
+    return rows.map((row) => Map<String, dynamic>.from(row)).toList();
+  }
+
+  @override
   Future<void> leaveGroup(String groupId) async {
     await _client.rpc('leave_group', params: {'p_group_id': groupId});
   }

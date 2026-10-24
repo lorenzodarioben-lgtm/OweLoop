@@ -1,4 +1,5 @@
 import 'exact_money.dart';
+import 'expense_category.dart';
 
 enum ExpenseStatus {
   draft,
@@ -83,6 +84,7 @@ class ExpenseRecord {
     this.payers = const [],
     this.splits = const [],
     this.voidedAt,
+    this.category,
   });
 
   final String id;
@@ -94,6 +96,8 @@ class ExpenseRecord {
   final List<ExpensePayer> payers;
   final List<ExpenseSplit> splits;
   final DateTime? voidedAt;
+  final ExpenseCategory? category;
+  String get categoryLabel => category?.label ?? 'Uncategorized';
 
   factory ExpenseRecord.fromMap(
     Map<String, dynamic> map, {
@@ -110,6 +114,7 @@ class ExpenseRecord {
       id: map['id'] as String,
       groupId: map['group_id'] as String,
       description: map['description'] as String,
+      category: ExpenseCategory.fromKey(map['category_key']),
       total: ExactMoney(
         currencyCode: resolvedCurrencyCode,
         minorUnits: map['total_amount_minor'] as int,
@@ -145,6 +150,7 @@ class ExpenseCreationInput {
     this.splitMethod = SplitMethod.equal,
     this.payerMemberId,
     this.participantMemberIds = const [],
+    this.category,
   });
 
   final String groupId;
@@ -152,6 +158,7 @@ class ExpenseCreationInput {
   final ExactMoney total;
   final DateTime occurredAt;
   final String operationId;
+  final ExpenseCategory? category;
   final List<ExpenseAllocation> payers;
   final List<ExpenseAllocation> splits;
   final SplitMethod splitMethod;

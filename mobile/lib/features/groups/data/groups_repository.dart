@@ -20,6 +20,8 @@ abstract interface class GroupsRepository {
   });
 
   Future<AppGroup> archiveGroup(String groupId);
+  Future<AppGroup> reopenGroup(String groupId);
+  Future<List<Map<String, dynamic>>> loadLifecycleEvents(String groupId);
   Future<void> leaveGroup(String groupId);
 
   Future<GroupMember> removeGroupMember({

@@ -26,10 +26,12 @@ class ExpenseHistoryFilter {
     this.until,
     this.memberId,
     this.includeVoided = true,
+    this.categoryKey,
   });
   final String query;
   final DateTime? from, until;
   final String? memberId;
+  final String? categoryKey;
   final bool includeVoided;
   Map<String, dynamic> get params => {
     'p_query': query.trim(),
@@ -37,5 +39,6 @@ class ExpenseHistoryFilter {
     'p_until': until?.toUtc().toIso8601String(),
     'p_member_id': memberId,
     'p_include_voided': includeVoided,
+    'p_category_key': categoryKey,
   };
 }

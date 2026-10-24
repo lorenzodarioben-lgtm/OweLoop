@@ -216,6 +216,8 @@ class GroupDetailController extends ChangeNotifier {
     return _manage(() => repository.archiveGroup(groupId));
   }
 
+  Future<bool> reopen() => _manage(() => repository.reopenGroup(groupId));
+
   Future<bool> leave() async {
     if (_state.isManaging) return false;
     final generation = _sessionGeneration;
