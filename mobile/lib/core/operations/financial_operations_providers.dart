@@ -47,7 +47,9 @@ class SupabaseFinancialOperationTransport
   ) async {
     final function = switch (type) {
       'expense' =>
-        payload.containsKey('p_category_key')
+        payload.containsKey('p_occurrence_id')
+            ? 'post_scheduled_expense'
+            : payload.containsKey('p_category_key')
             ? 'create_categorized_expense'
             : 'create_expense',
       'settlement' => 'record_settlement',

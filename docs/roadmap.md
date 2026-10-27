@@ -6,10 +6,21 @@ categories/templates, private exports/sharing, inbox and device settings.
 See [functional inventory](FUNCTIONAL_COMPLETION_REPORT.md), [Sprint II evidence](SPRINT_II_REPORT.md)
 and [HANDOFF](../HANDOFF.md). Code availability is separate from release readiness.
 
-## P1 — First engineering contribution: native unsent draft restart coverage
+## P1 — First independent contribution: recurrence editor session races
 
-**Local engineering; no hosted approval required.** This is the recommended first
-contribution because it exercises existing architecture without adding a feature.
+Add delayed-repository widget tests for signing out or switching accounts while
+schedule create/edit/skip dialogs or refresh are pending. Files:
+`mobile/test/features/expenses/expense_schedules_test.dart`,
+`mobile/lib/features/expenses/presentation/expense_schedules_screen.dart` and
+`expense_templates_screen.dart`. Assert no action authorized by A is submitted
+as B, no A content reappears and busy states recover. Change production only for
+a reproduced defect. Run formatting/analysis/full Flutter and native CI.
+
+## Completed — native unsent draft restart coverage
+
+Completed in Sprint III: the actual API35 emulator run passed the new draft and
+resume-draft checkpoints plus all four financial checkpoints. See
+[Sprint III](SPRINT_III_REPORT.md). The original acceptance contract follows.
 
 - **Motivation/current:** real-process tests cover pending financial operations;
   unsent draft save/restore has unit/widget coverage but no actual restart probe.

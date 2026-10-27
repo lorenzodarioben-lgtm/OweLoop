@@ -105,6 +105,9 @@ also supports this helper on macOS/Linux). See [testing](docs/testing.md).
   Unknown outcome or missing lookup is not failure. Retry only the original ID
   and payload; a rejected retry cannot erase previous uncertainty.
 - Drafts/templates are separate from financial operations and never auto-post.
+- Recurrence uses server-calendar due proposals with pinned template snapshots.
+  Preserve unique occurrence dates, atomic expense completion and original
+  pending request identities; schedules never post without explicit review.
 - Account deletion requires zero membership balances and no active ownership;
   trusted server validation/de-identification preserves shared history.
 - Keep export files/private read state account-scoped; cleanup must preserve

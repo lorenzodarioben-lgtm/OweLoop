@@ -28,8 +28,41 @@ Docker Linux-engine pipe is absent even after a bounded Desktop start attempt;
 ADB is not on PATH and no local emulator is configured. These are environmental
 blocks, not backend/native passes. Physical Android/iOS remain unverified.
 
+## Recurrence milestone
+
+Migration `20261028000000_review_only_recurrence.sql` is forward-only after the
+existing 26. RLS/direct-DML denial, creator/admin optimistic edits, current-member
+review/skip, archive/removal/deletion, immutable pinned templates and atomic
+expense completion are covered by 44 additional pgTAP assertions (448 total).
+Four calendar cadences, leap years, DST and monthly clamping are server based.
+Discovery deliberately omits ungenerated dates older than 90 days; 100 schedules
+per group and keyset occurrence pages bound work. No end-date control or worker.
+
+Reachable Material controls create from a template, list schedules, edit/pause,
+cancel, show next dates, review, skip and open completed expenses. Reviewing opens
+the ordinary form and sends nothing until Post expense. Persistence/lookup/retry
+remain the existing expense operation type with a saved occurrence reference.
+194 ordinary Flutter tests pass, with two live skips. New tests cover calendar
+input, review without posting, explicit-post identity, skip confirmation, stale
+errors and large text on a 375px phone. Analysis is checked separately.
+
+Actual local `check-local.ps1 -SkipInstall -DartIntegration` passed fresh 27
+migrations, 448 pgTAP assertions, schema lint, six handler tests, populated 20+7
+upgrade, 58 real HTTP assertions and two live SDK tests. HTTP cases include
+concurrent discovery, lost-response/multi-account completion, conflicting replay,
+pause, skip, template edit, paging, archive/reopen, removal and export. The helper
+also passed the populated 26+1 Sprint II upgrade, retaining eleven table snapshots
+including templates and canonical balances.
+
+Recovery checkpoint `57f13f7` passed [API35 native CI](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40523228599):
+UI journey and before/resume-before/after/resume-after/draft/resume-draft.
+[Mobile CI](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40523239245)
+and the rerun [Database CI](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40523239243)
+passed. Initial database jobs failed image-registry downloads, before tests.
+Local Docker later started successfully; isolated stacks were individually stopped.
+
 ## Remaining assignment
 
-Review-only recurrence, private receipts, actual network-fault resilience, scale
+Private receipts, actual network-fault resilience, scale
 measurements, local Edge gateway and practical accessibility remain to be evaluated
 in successive milestones. A configured test is not evidence of execution.

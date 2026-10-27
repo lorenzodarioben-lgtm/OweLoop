@@ -61,6 +61,8 @@ class SupabaseExpensesRepository implements PagedExpensesRepository {
   Future<ExpenseRecord> createExpense(ExpenseCreationInput input) async {
     final params = <String, dynamic>{
       'p_group_id': input.groupId,
+      if (input.scheduledOccurrenceId != null)
+        'p_occurrence_id': input.scheduledOccurrenceId,
       'p_description': input.trimmedDescription,
       if (input.category != null) 'p_category_key': input.category!.name,
       'p_total_amount_minor': input.total.minorUnits,
@@ -83,7 +85,9 @@ class SupabaseExpensesRepository implements PagedExpensesRepository {
     final row = operations == null
         ? await _client
               .rpc(
-                input.category == null
+                input.scheduledOccurrenceId != null
+                    ? 'post_scheduled_expense'
+                    : input.category == null
                     ? 'create_expense'
                     : 'create_categorized_expense',
                 params: {...params, 'p_operation_id': input.operationId},

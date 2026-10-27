@@ -19,8 +19,25 @@ and migrations as well as its harness.
 
 Local Docker engine and ADB/emulator are unavailable; starting Docker Desktop
 did not establish its Linux-engine pipe. Native and backend results require CI.
-Single next action at this checkpoint: execute the new native checkpoints in CI,
-then implement bounded review-only recurrence against the guarded template API.
+The engine subsequently became available without global configuration changes.
+The actual [API35 run](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40523228599)
+at `57f13f7` passed the UI journey and all six financial/draft checkpoints.
+Mobile CI passed; the initial Database CI image pulls hit registry rate limits,
+and a single rerun passed. Local isolated checks now pass: fresh 27 migrations,
+448 pgTAP assertions, lint, 20+7 populated upgrade, six handler tests, 58 HTTP
+assertions including recurrence and two separately configured live Dart tests.
+
+Sprint III recurrence adds pinned template schedules with daily/weekly/fortnightly/
+monthly server-calendar dates, month-end clamping, explicit IANA zones, 90-day
+bounded due discovery, upcoming dates, paged history, pause/edit/cancel/skip and
+the ordinary explicit expense form. SQL serializes posting and completion so
+concurrent reviewers cannot duplicate an occurrence. Pending requests keep the
+original operation ID and occurrence reference. No cron or automatic posting.
+[ADR 0015](docs/decisions/0015-bounded-review-only-recurrence.md) owns the contract.
+Full Flutter suite: 194 passing, two live skips; new form tests cover explicit
+posting identity, skip confirmation, stale errors and large text on 375px width.
+Single next action at this checkpoint: validate optional private local Storage
+and a secure receipt lifecycle before exposing any attachment control.
 
 Updated 2026-10-25, Australia/Sydney. New developers first open
 [START_HERE.md](START_HERE.md); this is the authoritative continuity record.

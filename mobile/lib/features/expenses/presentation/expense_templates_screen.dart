@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../groups/state/groups_providers.dart';
 import '../data/expense_templates_repository.dart';
+import '../data/expense_schedules_repository.dart';
+import '../../authentication/state/authentication_providers.dart';
+import 'expense_schedules_screen.dart';
 
 class ExpenseTemplatesScreen extends ConsumerWidget {
   const ExpenseTemplatesScreen({required this.groupId, super.key});
@@ -69,6 +72,51 @@ class ExpenseTemplatesScreen extends ConsumerWidget {
                     if (group != null && !group.isArchived)
                       Wrap(
                         children: [
+                          TextButton(
+                            onPressed: () async {
+                              final account = ref
+                                  .read(authenticationControllerProvider)
+                                  .state
+                                  .user
+                                  ?.id;
+                              final config = await showScheduleConfiguration(
+                                context,
+                              );
+                              if (config == null ||
+                                  !context.mounted ||
+                                  ref
+                                          .read(
+                                            authenticationControllerProvider,
+                                          )
+                                          .state
+                                          .user
+                                          ?.id !=
+                                      account) {
+                                return;
+                              }
+                              try {
+                                await ref
+                                    .read(expenseSchedulesRepositoryProvider)
+                                    .create(template.id, config);
+                                if (context.mounted) {
+                                  context.push(
+                                    AppRoutes.expenseSchedulesPath(groupId),
+                                  );
+                                }
+                              } catch (_) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Schedule could not be saved. Check name, date, timezone and current permissions, then retry.',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            child: const Text('Create schedule'),
+                          ),
                           TextButton(
                             onPressed: () => context.push(
                               AppRoutes.newExpensePath(groupId),

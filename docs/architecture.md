@@ -1,5 +1,12 @@
 # Architecture
 
+Sprint III adds `expenses/domain/expense_schedule.dart`, a schedule repository
+and `/groups/:groupId/schedules`. Recurrence uses server-calendar proposal
+discovery and pinned template configuration. Review reuses Add expense; its
+persisted payload adds an occurrence reference and the guarded posting wrapper
+atomically completes it. No background financial posting exists. See
+[ADR 0015](decisions/0015-bounded-review-only-recurrence.md).
+
 ## Technology stack
 
 - Flutter and Dart provide one Android and iOS client.

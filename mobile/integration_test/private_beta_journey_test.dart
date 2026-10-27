@@ -336,7 +336,7 @@ void main() {
             'amount': '10.00',
             'split_method': 'equal',
             'single_payer': aMember,
-            'participant_ids': [aMember, bMember, guest],
+            'participant_ids': [aMember],
           },
         },
       );
@@ -366,6 +366,76 @@ void main() {
       await tester.pageBack();
       await tester.pumpAndSettle();
       expect(find.text('Group details'), findsOneWidget);
+      await tester.tap(find.byTooltip('Expense templates'));
+      await tester.pumpAndSettle();
+      for (
+        var attempt = 0;
+        attempt < 200 && find.text('Create schedule').evaluate().isEmpty;
+        attempt++
+      ) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      await tester.tap(find.text('Create schedule'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Schedule name'),
+        'Native recurring review',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Anchor date (YYYY-MM-DD)'),
+        '2000-01-01',
+      );
+      await tester.tap(find.text('Save schedule'));
+      await tester.pumpAndSettle();
+      for (
+        var attempt = 0;
+        attempt < 200 && find.text('Review expense').evaluate().isEmpty;
+        attempt++
+      ) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      final review = find.text('Review expense').first;
+      await tester.ensureVisible(review);
+      await tester.tap(review);
+      await tester.pumpAndSettle();
+      expect(
+        (await client.from('expenses').select('id').eq('group_id', groupId))
+            .length,
+        2,
+        reason: 'Schedule creation and form review never post automatically.',
+      );
+      final post = find.widgetWithText(FilledButton, 'Post expense');
+      await tester.ensureVisible(post);
+      await tester.tap(post);
+      await tester.pumpAndSettle();
+      for (
+        var attempt = 0;
+        attempt < 200 && find.text('Expense details').evaluate().isEmpty;
+        attempt++
+      ) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      final schedulePage =
+          await client.rpc(
+                'get_expense_schedule_page',
+                params: {'p_group_id': groupId},
+              )
+              as Map;
+      expect(
+        (schedulePage['occurrences'] as List)
+            .where((dynamic row) => row['state'] == 'completed')
+            .length,
+        1,
+        reason: 'Only explicit native form posting completes a due occurrence.',
+      );
+      expect(
+        (await client.from('expenses').select('id').eq('group_id', groupId))
+            .length,
+        3,
+      );
+      // go() after posting rebuilds the root/group/detail stack.
+      await tester.pageBack();
+      await tester.pumpAndSettle();
       await tester.pageBack();
       await tester.pumpAndSettle();
       expect(find.text('OweLoop'), findsOneWidget);

@@ -30,6 +30,12 @@ class GroupDetailScreen extends ConsumerWidget {
         actions: state.status == GroupDetailStatus.ready
             ? [
                 IconButton(
+                  tooltip: 'Recurring drafts',
+                  onPressed: () =>
+                      context.push(AppRoutes.expenseSchedulesPath(groupId)),
+                  icon: const Icon(Icons.event_repeat),
+                ),
+                IconButton(
                   tooltip: 'Expense templates',
                   onPressed: () =>
                       context.push(AppRoutes.expenseTemplatesPath(groupId)),

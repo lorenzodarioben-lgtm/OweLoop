@@ -1,5 +1,13 @@
 # Reproducible testing
 
+Sprint III current checkpoint: 194 ordinary Flutter tests, two configured live
+SDK tests, 448 pgTAP assertions across 15 files, 58 real HTTP assertions and six
+handler tests. The isolated helper verifies both populated 20+forward and
+26+forward upgrades; the latter retains Sprint II template configuration.
+`node --test scripts/native-checkpoint.test.mjs` tests marker failure/timeout.
+Actual API35 draft restart evidence is linked in [Sprint III](SPRINT_III_REPORT.md).
+Counts below describe the earlier baseline unless explicitly updated.
+
 Run commands from the repository root unless a block says `cd mobile`.
 Use Flutter 3.44.2/Dart 3.12.2, Node 22/npm and the project-local Supabase CLI.
 [START_HERE](../START_HERE.md) installs locked dependencies and configures a

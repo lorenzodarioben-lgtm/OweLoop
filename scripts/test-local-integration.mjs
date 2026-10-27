@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createDeleteAccountHandler } from '../supabase/functions/delete-account/handler.mjs';
+import {scheduleJourney} from './test-schedule-journey.mjs';
 
 const envFile = (() => {try {return readFileSync(new URL('../mobile/.env',import.meta.url),'utf8');} catch {return '';}})();
 const value = key => process.env[key] || envFile.match(new RegExp(`^${key}=(.*)$`,'m'))?.[1]?.trim();
@@ -123,6 +124,7 @@ const exported=(await rpc(c,'export_personal_data',{})).data;
 check(exported.profile.id===c.id,'Personal export contains only the caller profile.');
 check(exported.memberships.every(row=>row.user_id===c.id),'Personal export isolates membership identities.');
 const serviceKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
+await scheduleJourney({a,b,c,rpc,request,check,unwrap});
 if(serviceKey) {
   const handler=createDeleteAccountHandler({url,anonKey:key,serviceKey});
   const deletionRequest=password=>new Request('http://localhost/delete-account',{method:'POST',headers:{Authorization:`Bearer ${a.token}`,'Content-Type':'application/json'},body:JSON.stringify({password,user_id:c.id})});

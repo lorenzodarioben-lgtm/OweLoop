@@ -1,5 +1,7 @@
 # Architecture Decision Records
 
+Sprint III: [0015 — bounded review-only recurrence](0015-bounded-review-only-recurrence.md).
+
 Architecture Decision Records (ADRs) preserve decisions that affect the project's direction and would be costly or confusing to rediscover later.
 
 Create an ADR only when a meaningful architectural decision has been made. Copy [0000-template.md](0000-template.md), assign the next sequential four-digit number, and use a concise kebab-case filename such as `0001-state-management.md`.

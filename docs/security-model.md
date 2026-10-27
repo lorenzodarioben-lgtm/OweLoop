@@ -1,5 +1,12 @@
 # Security model
 
+Sprint III schedules/occurrences have current-membership RLS and guarded RPC-only
+mutations. Creator/admin versioned edits, bounded server-calendar discovery and
+atomic occurrence/expense posting retain ordinary persist-before-send recovery.
+Pauses, cancellation, archive and removal prevent fresh posting; matching completed
+replay returns the existing authorized result. No scheduler can post by itself.
+See [ADR 0015](decisions/0015-bounded-review-only-recurrence.md).
+
 The Flutter client is untrusted. It receives a public Supabase URL/key and a
 user session. Service-role keys, database passwords and signing material never
 belong in Flutter or source control. Guests are durable group records, not

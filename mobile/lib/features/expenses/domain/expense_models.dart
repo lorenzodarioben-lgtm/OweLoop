@@ -151,6 +151,7 @@ class ExpenseCreationInput {
     this.payerMemberId,
     this.participantMemberIds = const [],
     this.category,
+    this.scheduledOccurrenceId,
   });
 
   final String groupId;
@@ -158,6 +159,7 @@ class ExpenseCreationInput {
   final ExactMoney total;
   final DateTime occurredAt;
   final String operationId;
+  final String? scheduledOccurrenceId;
   final ExpenseCategory? category;
   final List<ExpenseAllocation> payers;
   final List<ExpenseAllocation> splits;

@@ -71,6 +71,13 @@ Physical phones need a deliberately configured reachable development endpoint;
 
 ## What you inherit
 
+Sprint III extends this baseline with serialized financial recovery, actual
+Android draft restart/isolation evidence and review-only recurring drafts.
+Create a schedule from Expense templates, then open Recurring drafts from group
+details. Server-calendar daily/weekly/fortnightly/monthly discovery never posts
+automatically. Current migration/test counts and evidence are in
+[Sprint III](docs/SPRINT_III_REPORT.md) and [HANDOFF](HANDOFF.md).
+
 Working features include exact flexible/multi-payer expenses, immutable audit
 and void/duplicate correction, balances, reported settlements, registered/guest
 collaboration, guarded group administration and audited reopening, account
@@ -88,7 +95,7 @@ original evidence. These results do not establish production readiness.
 
 Physical Android, iOS/Keychain, destination sharing, callbacks/accessibility,
 hosted deletion/SMTP, signing, backup/restore and staffed privacy/support processes
-remain release gates. Receipts, scheduled recurring drafts, localization, full
+remain release gates. Receipts, localization, full
 offline sync and push/email delivery are missing. Templates never post by
 themselves. [Roadmap](docs/roadmap.md) separates local tasks from owner/hardware gates.
 
@@ -111,16 +118,15 @@ themselves. [Roadmap](docs/roadmap.md) separates local tasks from owner/hardware
 ## First contribution and Claude Code
 
 Read [AGENTS.md](AGENTS.md), then [CONTRIBUTING.md](CONTRIBUTING.md) for collaborator
-and fork paths, identity, tests, commits and PR commands. A useful first task is
-**extend the emulator recovery probe to verify unsent draft restoration without
-posting**; its bounded acceptance criteria are [P1 in the roadmap](docs/roadmap.md).
-Create `test/native-draft-restart` from the handover branch before editing.
+and fork paths, identity, tests, commits and PR commands. The native unsent draft
+restart task passed in Sprint III. Pick the current independent P1 task from
+[the roadmap](docs/roadmap.md) and branch from the handover branch before editing.
 
 Install/sign in to Claude Code using its [official quickstart](https://code.claude.com/docs/en/quickstart).
 From the repository root run `claude`. Root [CLAUDE.md](CLAUDE.md) imports the shared
 agent rules using [supported project memory](https://code.claude.com/docs/en/memory).
 Use `/memory` to inspect loaded project instructions, then ask it to read
-`START_HERE.md`, `HANDOFF.md` and the P1 draft-restart task before implementing.
+`START_HERE.md`, `HANDOFF.md` and the current roadmap P1 task before implementing.
 The CLI/account are not installed or authenticated by this repository.
 
 Essential references: [architecture](docs/architecture.md),

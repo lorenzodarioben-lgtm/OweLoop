@@ -20,6 +20,8 @@ import '../features/settlements/presentation/settlement_history_screen.dart';
 import '../features/expenses/presentation/expense_detail_screen.dart';
 import '../features/expenses/domain/expense_models.dart';
 import '../features/expenses/domain/expense_template.dart';
+import '../features/expenses/domain/expense_schedule.dart';
+import '../features/expenses/presentation/expense_schedules_screen.dart';
 import '../features/expenses/presentation/expense_templates_screen.dart';
 import '../features/notifications/notifications_screen.dart';
 import '../features/groups/presentation/create_group_screen.dart';
@@ -74,6 +76,8 @@ abstract final class AppRoutes {
   static String groupExportPath(String groupId) => '/groups/$groupId/exports';
   static String expenseTemplatesPath(String groupId) =>
       '/groups/$groupId/templates';
+  static String expenseSchedulesPath(String groupId) =>
+      '/groups/$groupId/schedules';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -158,6 +162,12 @@ GoRouter createAppRouter(AuthenticationController controller) {
                 GroupDetailScreen(groupId: state.pathParameters['groupId']!),
             routes: [
               GoRoute(
+                path: 'schedules',
+                builder: (context, state) => ExpenseSchedulesScreen(
+                  groupId: state.pathParameters['groupId']!,
+                ),
+              ),
+              GoRoute(
                 path: 'templates',
                 builder: (context, state) => ExpenseTemplatesScreen(
                   groupId: state.pathParameters['groupId']!,
@@ -191,7 +201,12 @@ GoRouter createAppRouter(AuthenticationController controller) {
                 path: 'expenses/new',
                 builder: (context, state) => AddExpenseScreen(
                   groupId: state.pathParameters['groupId']!,
-                  template: state.extra is ExpenseTemplate
+                  occurrence: state.extra is ExpenseOccurrence
+                      ? state.extra! as ExpenseOccurrence
+                      : null,
+                  template: state.extra is ExpenseOccurrence
+                      ? (state.extra! as ExpenseOccurrence).template
+                      : state.extra is ExpenseTemplate
                       ? state.extra! as ExpenseTemplate
                       : null,
                   draft: state.extra is ExpenseRecord

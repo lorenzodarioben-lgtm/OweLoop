@@ -1,5 +1,14 @@
 # Functional reference for the design phase
 
+Sprint III adds `/groups/:groupId/schedules`, reachable as Recurring drafts from
+group details. Create schedule from a template; set name, cadence, calendar anchor
+and IANA zone. The list shows next dates, pinned template, enabled/cancelled state,
+edit/pause/cancel, paged due history, explicit skip and completed expense links.
+Review opens Add expense with due date/pinned fields and current-member filtering.
+It requires Post expense and cannot detach the occurrence through draft/template
+actions. Refresh failures identify stale data and disable mutations until retry.
+Month ends clamp; discovery omits ungenerated dates older than 90 days, stated in UI.
+
 For setup and the prioritized next task, start at [START_HERE](../START_HERE.md)
 and [the roadmap](roadmap.md). This document remains the neutral functional
 reference; it does not authorize a visual redesign or check off release gates.

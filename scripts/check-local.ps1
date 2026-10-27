@@ -65,6 +65,7 @@ try {
     $env:OWELOOP_DB_CONTAINER = "supabase_db_$projectId"
     Invoke-Checked 'node' @('--test','scripts/delete-account.test.mjs')
     Invoke-Checked 'node' @('scripts/test-migration-upgrade.mjs')
+    Invoke-Checked 'node' @('scripts/test-migration-upgrade.mjs','--sprint-ii')
     Invoke-Checked 'node' @('scripts/test-local-integration.mjs')
     if ($DartIntegration) {
         Push-Location (Join-Path $repositoryRoot 'mobile')

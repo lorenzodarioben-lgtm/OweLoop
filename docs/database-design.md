@@ -1,5 +1,13 @@
 # Database design
 
+Sprint III adds the 27th forward migration, `20261028000000_review_only_recurrence`.
+`expense_schedules` pins template configuration and calendar/zone/revision;
+`expense_occurrences` uniquely identifies schedule/calendar dates and links only
+authoritatively confirmed expenses. RLS protects reads; direct DML is revoked.
+All configuration/discovery/skip/post RPCs derive current caller authorization
+and use fixed search paths/group locks. See [ADR 0015](decisions/0015-bounded-review-only-recurrence.md).
+Personal export now includes currently readable schedules/occurrences.
+
 PostgreSQL owns authorization, transaction boundaries and financial consistency.
 The original twelve migrations remain unchanged. Eight forward migrations dated
 `20261024` extend that baseline; six `20261025` migrations add Sprint II.

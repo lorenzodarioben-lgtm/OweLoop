@@ -18,6 +18,7 @@ import '../validation/expense_validators.dart';
 import 'expense_feedback.dart';
 import '../domain/expense_template.dart';
 import '../domain/expense_draft_review.dart';
+import '../domain/expense_schedule.dart';
 import '../data/expense_templates_repository.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
@@ -25,12 +26,14 @@ class AddExpenseScreen extends ConsumerStatefulWidget {
     required this.groupId,
     this.draft,
     this.template,
+    this.occurrence,
     super.key,
   });
 
   final String groupId;
   final ExpenseRecord? draft;
   final ExpenseTemplate? template;
+  final ExpenseOccurrence? occurrence;
 
   @override
   ConsumerState<AddExpenseScreen> createState() => _AddExpenseScreenState();
@@ -260,6 +263,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.occurrence != null) {
+      _occurredOn = DateTime.parse(widget.occurrence!.dueDate);
+    }
     final draft = widget.draft;
     if (draft != null) {
       _descriptionController.text = draft.description;
@@ -558,6 +564,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               12,
             ),
             operationId: _operationId ??= ClientOperationId.generate().value,
+            scheduledOccurrenceId: widget.occurrence?.id,
             payers: payers,
             splits: splits,
             splitMethod: _splitMethod,
@@ -596,6 +603,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             tooltip: 'Unsent draft',
             onSelected: _draftAction,
             enabled:
+                widget.occurrence == null &&
                 !_templateBusy &&
                 !ref
                     .watch(expenseCreationControllerProvider)

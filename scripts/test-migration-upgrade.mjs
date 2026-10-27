@@ -11,6 +11,8 @@ assert.match(endpoint,/^(npipe:|unix:|tcp:\/\/(127\.0\.0\.1|localhost)(:|\/|$))/
 const container=process.env.OWELOOP_DB_CONTAINER||'supabase_db_oweloop-local';
 assert.match(container,/^supabase_db_[a-zA-Z0-9_-]+$/,'Only a local Supabase DB container may be used.');
 const database=`oweloop_upgrade_${randomBytes(8).toString('hex')}`;
+assert.ok(process.argv.slice(2).every(arg=>arg==='--sprint-ii'),'Only --sprint-ii is supported.');
+const sprintII=process.argv.includes('--sprint-ii');
 assert.match(database,/^oweloop_upgrade_[0-9a-f]{16}$/);
 function sql(source,db=database) {
   const result=spawnSync('docker',['exec','-i',container,'psql','-U','postgres','-d',db,'-v','ON_ERROR_STOP=1','-q','-A','-t'],{input:source,encoding:'utf8'});
@@ -27,8 +29,9 @@ try {
     grant execute on function auth.uid() to authenticated,anon;`);
   const migrationUrl=new URL('../supabase/migrations/',import.meta.url);
   const files=readdirSync(migrationUrl).filter(name=>name.endsWith('.sql')).sort();
-  const baseline=files.filter(name=>name<'20261025000000');
-  const forward=files.filter(name=>name>='20261025000000');
+  const boundary=sprintII?'20261028000000':'20261025000000';
+  const baseline=files.filter(name=>name<boundary);
+  const forward=files.filter(name=>name>=boundary);
   for(const name of baseline) sql(readFileSync(new URL(name,migrationUrl),'utf8'));
   const identity="select set_config('request.jwt.claim.sub','cccccccc-1111-4111-8111-111111111101',false);";
   sql(`insert into auth.users(id,email) values('cccccccc-1111-4111-8111-111111111101','upgrade@example.test');
@@ -39,6 +42,10 @@ try {
       jsonb_build_array(jsonb_build_object('member_id',(select id from public.group_members where user_id=auth.uid()),'amount_minor',1000)),
       jsonb_build_array(jsonb_build_object('member_id','cccccccc-1111-4111-8111-111111111102','amount_minor',1000)),gen_random_uuid());`);
   const tables=['profiles','groups','group_members','expenses','expense_payers','expense_splits','settlements','expense_events','financial_operations'];
+  if(sprintII) {
+    sql(`${identity} select public.save_expense_template('cccccccc-1111-4111-8111-111111111100','Preserved Sprint II template','{"description":"Retained template","amount":"10.00","split_method":"equal"}');`);
+    tables.push('expense_templates','group_lifecycle_events');
+  }
   const snapshot=()=>Object.fromEntries(tables.map(table=>[table,JSON.parse(sql(`select coalesce(jsonb_agg(to_jsonb(t) order by t.id),'[]'::jsonb)::text from public.${table} t;`))]));
   const before=snapshot();
   const balance=()=>sql(`${identity} select jsonb_agg(to_jsonb(b) order by b.group_member_id)::text from public.get_group_balances('cccccccc-1111-4111-8111-111111111100') b;`);
