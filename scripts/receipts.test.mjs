@@ -1,5 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {createReceiptHandler,receiptMime,MAX_RECEIPT_BYTES} from '../supabase/functions/receipts/handler.mjs';
 const bytes=Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=','base64'));
 const id='a5555555-1111-4111-8111-111111111101',expense='a5555555-1111-4111-8111-111111111102';
@@ -9,6 +10,9 @@ const json=(value,status=200)=>new Response(JSON.stringify(value),{status,header
 const request=body=>new Request('http://localhost/receipts',{method:'POST',headers:{Authorization:'Bearer user','Content-Type':'application/json'},body:JSON.stringify(body)});
 test('image validation rejects active formats, corruption and excessive dimensions',()=>{
   assert.equal(receiptMime(bytes),'image/png');
+  const jpeg=readFileSync(new URL('./fixtures/receipt.jpg',import.meta.url));
+  assert.equal(receiptMime(jpeg),'image/jpeg');
+  assert.throws(()=>receiptMime(jpeg.subarray(0,jpeg.length-2)));
   for(const data of [new TextEncoder().encode('<svg/>'),bytes.slice(0,30),new Uint8Array([...bytes,1])])assert.throws(()=>receiptMime(data));
   const huge=bytes.slice();new DataView(huge.buffer).setUint32(16,4097);assert.throws(()=>receiptMime(huge));
 });

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {randomUUID,randomBytes,createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
 import {cleanupStaleReceipts} from './cleanup-local-receipts.mjs';
 const url=process.env.SUPABASE_URL,key=process.env.SUPABASE_ANON_KEY,serviceKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
 assert.ok(url&&key&&serviceKey,'Disposable local Storage configuration required.');
@@ -46,6 +47,11 @@ let metadata=(await rpc(a,'get_expense_receipts',{p_expense_id:expense.id})).dat
 check(metadata.length===1&&metadata[0].id===id,'One metadata identity is retained.');
 const objectPath=`/storage/v1/object/authenticated/oweloop-receipts/${metadata[0].object_key}`;
 check((await call(objectPath,{user:b,method:'GET',binary:true})).data.equals(bytes),'Authorized second account downloads exact private bytes.');
+const jpeg=readFileSync(new URL('./fixtures/receipt.jpg',import.meta.url));
+const jpegId=randomUUID();
+const jpegReceipt=(await upload(a,{...payload,receipt_id:jpegId,mime_type:'image/jpeg',data_base64:jpeg.toString('base64')})).data;
+const jpegMetadata=(await rpc(a,'get_expense_receipts',{p_expense_id:expense.id})).data.receipts.find(x=>x.id===jpegId);
+check(jpegReceipt.state==='ready'&&(await call(`/storage/v1/object/authenticated/oweloop-receipts/${jpegMetadata.object_key}`,{user:b,method:'GET',binary:true})).data.equals(jpeg),'JPEG upload and authorized download retain exact bytes.');
 await call(objectPath,{user:c,method:'GET',allowed:[400,403,404]});
 await call(`/storage/v1/object/public/oweloop-receipts/${metadata[0].object_key}`,{method:'GET',allowed:[400,403,404]});
 await call(`/storage/v1/object/oweloop-receipts/${expense.id}/${randomUUID()}.png`,{user:a,body:bytes,raw:true,allowed:[400,403]});
