@@ -24,7 +24,7 @@ The current launcher assets are the stock Flutter icon and the launch background
 
 ## Device validation gate
 
-This development environment does not currently have an Android SDK configured. Once the SDK and either an emulator or physical Android device are available, run:
+Android SDK 36 is now present, but command-line tools/licence validation are incomplete. A debug-build attempt failed while Gradle established its loopback connection, before native compilation. Repair the toolchain and connect an emulator/device, then run:
 
 ```sh
 cd mobile
@@ -33,3 +33,16 @@ flutter build apk --debug
 ```
 
 Then perform the private-beta smoke checks on a physical device: first launch, sign-in, group invitation, expense, settlement, app restart, and offline/error recovery. Only test release signing after the controlled local signing material has been configured.
+
+The independent Android debug build passed on Ubuntu/JDK17 in
+[GitHub Mobile CI](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40094829981)
+at engineering checkpoint `283cb79`. This resolves compilation evidence while
+leaving this host's loopback/SDK repair and all physical-runtime checks open.
+
+Sprint II independently compiled/installed the expanded native journey and
+force-stop probe on an API35 emulator. Check the exact status and revision in
+[Sprint II](SPRINT_II_REPORT.md) and use [native testing](native-recovery-testing.md)
+to reproduce it. Runtime attempts exposed a missing-operation lookup mismatch
+in the real Dart SDK; source correction and actual verification are recorded
+there. Neither a debug build nor emulator result checks physical share import,
+Keystore hardware, email callbacks, release signing or TalkBack.

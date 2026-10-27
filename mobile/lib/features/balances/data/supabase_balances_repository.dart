@@ -14,7 +14,7 @@ class SupabaseBalancesRepository implements BalancesRepository {
     required String currencyCode,
   }) async {
     final rows = await _client.rpc(
-      'get_group_balances',
+      'get_group_balance_snapshot',
       params: <String, dynamic>{'p_group_id': groupId},
     );
 

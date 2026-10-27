@@ -53,8 +53,8 @@ select lives_ok(
 );
 select is(
   (select count(*) from public.get_group_invitations('99999999-9999-9999-9999-999999999900')),
-  1::bigint,
-  'an unknown email creates no invitation'
+  2::bigint,
+  'an unknown email creates an unbound sender request without exposing registration'
 );
 select lives_ok(
   $$select public.create_group_invitation('99999999-9999-9999-9999-999999999900', 'invite-existing@example.test')$$,
@@ -62,8 +62,8 @@ select lives_ok(
 );
 select is(
   (select count(*) from public.get_group_invitations('99999999-9999-9999-9999-999999999900')),
-  1::bigint,
-  'an existing active member receives no invitation'
+  2::bigint,
+  'an existing active member receives no additional invitation'
 );
 
 reset role;

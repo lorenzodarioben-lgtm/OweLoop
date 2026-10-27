@@ -27,16 +27,33 @@ class GroupDetailScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Group details'),
-        actions:
-            state.status == GroupDetailStatus.ready &&
-                state.group!.currentUserRole != GroupRole.member
+        actions: state.status == GroupDetailStatus.ready
             ? [
                 IconButton(
-                  tooltip: 'Group settings',
+                  tooltip: 'Recurring drafts',
                   onPressed: () =>
-                      context.go(AppRoutes.groupSettingsPath(groupId)),
-                  icon: const Icon(Icons.settings_outlined),
+                      context.push(AppRoutes.expenseSchedulesPath(groupId)),
+                  icon: const Icon(Icons.event_repeat),
                 ),
+                IconButton(
+                  tooltip: 'Expense templates',
+                  onPressed: () =>
+                      context.push(AppRoutes.expenseTemplatesPath(groupId)),
+                  icon: const Icon(Icons.bookmark_outline),
+                ),
+                IconButton(
+                  tooltip: 'Export group ledger',
+                  onPressed: () =>
+                      context.go(AppRoutes.groupExportPath(groupId)),
+                  icon: const Icon(Icons.file_download_outlined),
+                ),
+                if (state.group!.currentUserRole != GroupRole.member)
+                  IconButton(
+                    tooltip: 'Group settings',
+                    onPressed: () =>
+                        context.go(AppRoutes.groupSettingsPath(groupId)),
+                    icon: const Icon(Icons.settings_outlined),
+                  ),
               ]
             : null,
       ),
@@ -82,7 +99,7 @@ class _GroupDetailContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(groupDetailControllerProvider(groupId));
-    final refreshCoordinator = ref.read(
+    final refreshCoordinator = ref.watch(
       groupDataRefreshCoordinatorProvider((
         groupId: groupId,
         currencyCode: group.currencyCode,
@@ -99,24 +116,71 @@ class _GroupDetailContent extends ConsumerWidget {
             index == 0 ? const SizedBox(height: 24) : const Divider(height: 1),
         itemBuilder: (context, index) {
           if (index == 0) {
-            return _GroupSummary(
-              group: group,
-              onAddGuest:
-                  group.currentUserRole.canAddGuests && !group.isArchived
-                  ? () {
-                      controller.clearError();
-                      showDialog<void>(
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _GroupSummary(
+                  group: group,
+                  onAddGuest:
+                      group.currentUserRole.canAddGuests && !group.isArchived
+                      ? () {
+                          controller.clearError();
+                          showDialog<void>(
+                            context: context,
+                            builder: (_) => AddGuestDialog(groupId: groupId),
+                          );
+                        }
+                      : null,
+                  onAddExpense: group.isArchived
+                      ? null
+                      : () => context.go(AppRoutes.newExpensePath(groupId)),
+                  onRecordSettlement: group.isArchived
+                      ? null
+                      : () => context.go(AppRoutes.newSettlementPath(groupId)),
+                ),
+                if (!group.isArchived &&
+                    group.currentUserRole != GroupRole.owner)
+                  TextButton(
+                    onPressed: () async {
+                      final confirmed = await showDialog<bool>(
                         context: context,
-                        builder: (_) => AddGuestDialog(groupId: groupId),
+                        builder: (context) => AlertDialog(
+                          title: const Text('Leave group?'),
+                          content: const Text(
+                            'You must settle your balance first. Shared history is preserved; an administrator must invite you again to regain access.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Leave group'),
+                            ),
+                          ],
+                        ),
                       );
-                    }
-                  : null,
-              onAddExpense: group.isArchived
-                  ? null
-                  : () => context.go(AppRoutes.newExpensePath(groupId)),
-              onRecordSettlement: group.isArchived
-                  ? null
-                  : () => context.go(AppRoutes.newSettlementPath(groupId)),
+                      if (confirmed != true) return;
+                      final left = await controller.leave();
+                      if (!context.mounted) return;
+                      if (left) {
+                        await ref.read(groupsControllerProvider).refresh();
+                        if (context.mounted) context.go(AppRoutes.home);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              controller.state.errorMessage ??
+                                  'The group could not be left.',
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text('Leave group'),
+                  ),
+              ],
             );
           }
 

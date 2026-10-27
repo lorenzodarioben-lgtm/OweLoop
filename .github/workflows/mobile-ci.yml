@@ -7,17 +7,27 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: mobile
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Verify documentation file links
+        run: node ../scripts/check-doc-links.mjs
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.44.2'
       - name: Restore local test environment file
         run: cp .env.example .env
       - name: Install dependencies
@@ -28,3 +38,22 @@ jobs:
         run: flutter analyze
       - name: Test
         run: flutter test
+  android-build:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.2'
+          channel: stable
+      - run: cp .env.example .env
+      - run: flutter pub get
+      - name: Build Android debug APK without release credentials
+        run: flutter build apk --debug --no-pub

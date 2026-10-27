@@ -31,11 +31,17 @@ abstract final class DebtSimplifier {
       throw const FormatException('Balances use different currencies.');
     }
 
-    final total = entries.fold<int>(
-      0,
-      (sum, balance) => sum + balance.netBalance.minorUnits,
+    if (entries.map((entry) => entry.groupMemberId).toSet().length !=
+        entries.length) {
+      throw const FormatException('Balances contain duplicate members.');
+    }
+    for (final entry in entries) {
+      MoneyMath.checked(BigInt.from(entry.netBalance.minorUnits));
+    }
+    final total = MoneyMath.sum(
+      entries.map((balance) => balance.netBalance.minorUnits),
     );
-    if (total != 0) {
+    if (total != BigInt.zero) {
       throw const FormatException('Balances do not reconcile.');
     }
 

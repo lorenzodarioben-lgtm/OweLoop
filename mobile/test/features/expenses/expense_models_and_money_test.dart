@@ -116,8 +116,8 @@ void main() {
       );
 
       expect(allocations.map((allocation) => allocation.amountMinor), [
-        334,
         333,
+        334,
         333,
       ]);
       expect(

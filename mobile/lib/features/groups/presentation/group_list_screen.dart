@@ -22,6 +22,24 @@ class GroupListScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('OweLoop'),
         actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Account and recovery',
+            onSelected: (value) => context.go(value),
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: AppRoutes.notifications,
+                child: Text('Notifications'),
+              ),
+              const PopupMenuItem(
+                value: AppRoutes.account,
+                child: Text('Account'),
+              ),
+              const PopupMenuItem(
+                value: AppRoutes.pendingOperations,
+                child: Text('Pending submissions'),
+              ),
+            ],
+          ),
           IconButton(
             tooltip: 'Invitations',
             onPressed: () => context.go(AppRoutes.invitations),

@@ -1,8 +1,13 @@
 # OweLoop
 
-OweLoop is an idea for a mobile app for recording shared expenses clearly, without limits or opaque balances. It is being built for students, roommates, couples, and group travellers who need an understandable record of who paid, who owes, and why.
+**New developer: open [START_HERE.md](START_HERE.md).** Use
+`codex/functional-completion` while [draft PR #8](https://github.com/lorenzodarioben-lgtm/OweLoop/pull/8)
+is unmerged; `master` does not yet contain the handover baseline.
+Claude Code reads [CLAUDE.md](CLAUDE.md), which imports the shared [agent rules](AGENTS.md).
 
-The initial implementation lives in [`mobile/`](mobile/). It uses Flutter, Supabase, Riverpod, and GoRouter.
+OweLoop is a mobile app for recording shared expenses clearly, without limits or opaque balances. It is being built for students, roommates, couples, and group travellers who need an understandable record of who paid, who owes, and why.
+
+The implementation lives in [`mobile/`](mobile/). It uses Flutter, Supabase, Riverpod, and GoRouter.
 
 ## Current project status
 
@@ -10,22 +15,29 @@ The repository now contains the Version 0.1 shared-expense core plus private-bet
 
 ## Local database development
 
-The Supabase CLI is a project-local development dependency. Install Node.js 20 or newer and start Docker Desktop before running local database checks:
+The Supabase CLI is a project-local locked dependency. Use Node 22/npm and
+Docker Desktop's local Linux engine. For the app's isolated backend:
 
 ```sh
 npm ci
-npm run db:start
-npm run check:db
-npm run db:stop
+npm run dev:check
+npm run dev:start -- --configure-mobile
+# Later:
+npm run dev:stop
 ```
 
-`db:reset` applies the ordered migrations, `db:test` runs pgTAP tests, and `db:lint` checks the schema. These commands use the local Supabase stack only; do not link them to a hosted or production project.
+This writes a fresh ignored mobile env using public local values and preserves
+existing configuration. [Setup](docs/development-setup.md) explains ports and
+platforms; [testing](docs/testing.md) gives isolated full checks. The legacy
+`db:reset`/`check:db` commands reset the normal local project: use disposable data
+only, never a hosted/production target.
 
 ## Getting started
 
-1. Install the current stable Flutter SDK.
-2. Copy `mobile/.env.example` to `mobile/.env`.
-3. Set `SUPABASE_URL` and `SUPABASE_ANON_KEY` with development-project values. Do not use a Supabase service-role key in the app.
+1. Install Flutter 3.44.2 / Dart 3.12.2 as pinned in CI.
+2. Follow [START_HERE](START_HERE.md) for fresh local configuration. Unit-only
+   work may copy the blank `mobile/.env.example` instead, without overwriting an env file.
+3. Use only public development URL/anon values. Never use a service-role key in the app.
 4. Run the commands from `mobile/`:
 
    ```sh
@@ -82,3 +94,26 @@ Run the local database check separately from the repository root with `npm run c
 MUST Read [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md) before changing code. Keep work focused, use one task per branch where practical, run the checks, review the diff, and describe scope, testing, and risks in pull requests.
 
 For a reusable task handoff, use the [agent handoff template](docs/agent-handoff-template.md). Significant architecture decisions should use the [ADR process](docs/decisions/README.md).
+
+## Functional completion sprint
+
+The current implementation adds checked largest-remainder splits, guarded
+membership mutations, encrypted account-scoped financial retry/reconciliation,
+normal nested back navigation, complete cursor-based financial history,
+expense discovery, saved unsent drafts, CSV ledger exports, profile editing,
+personal JSON export, safe group leaving, and a deployable password-confirmed
+account-deletion component that preserves shared financial history. Sprint II
+adds audited archive recovery, optional expense categories, settlement filters,
+single-snapshot ledger exports, private CSV/JSON file sharing, reusable expense
+templates, a private activity inbox and device-scoped currency/cleanup settings.
+Templates require explicit review and posting; no scheduler moves money.
+
+Continue from [START_HERE.md](START_HERE.md), [HANDOFF.md](HANDOFF.md), the
+[functional completion report](docs/FUNCTIONAL_COMPLETION_REPORT.md), and
+[reproducible testing](docs/testing.md). The
+[design handoff](docs/DESIGN_HANDOFF.md) documents functional contracts without
+prescribing a visual style. Hosted deletion deployment and physical-device
+validation remain release gates; code and local tests are not deployment claims.
+
+On Windows, `.\scripts\check-local.ps1` validates a uniquely named disposable
+Supabase stack without resetting the developer's regular project.

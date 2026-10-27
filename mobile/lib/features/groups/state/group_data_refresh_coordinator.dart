@@ -36,33 +36,33 @@ class GroupDataRefreshCoordinator {
   ]);
 }
 
-final groupDataRefreshCoordinatorProvider =
-    Provider.family<
+final groupDataRefreshCoordinatorProvider = Provider.autoDispose
+    .family<
       GroupDataRefreshCoordinator,
       ({String groupId, String currencyCode})
     >((ref, request) {
       return GroupDataRefreshCoordinator(
-        refreshGroups: ref.read(groupsControllerProvider).refresh,
+        refreshGroups: ref.watch(groupsControllerProvider.notifier).refresh,
         refreshGroup: ref
-            .read(groupDetailControllerProvider(request.groupId))
+            .watch(groupDetailControllerProvider(request.groupId).notifier)
             .load,
         refreshBalances: ref
-            .read(
+            .watch(
               groupBalancesControllerProvider((
                 groupId: request.groupId,
                 currencyCode: request.currencyCode,
-              )),
+              )).notifier,
             )
             .refresh,
         refreshExpenses: ref
-            .read(expenseHistoryControllerProvider(request.groupId))
+            .watch(expenseHistoryControllerProvider(request.groupId).notifier)
             .refresh,
         refreshSettlements: ref
-            .read(
+            .watch(
               settlementHistoryControllerProvider((
                 groupId: request.groupId,
                 currencyCode: request.currencyCode,
-              )),
+              )).notifier,
             )
             .refresh,
       );

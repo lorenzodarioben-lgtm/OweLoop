@@ -7,18 +7,38 @@ class SupabaseGroupsRepository implements GroupsRepository {
   SupabaseGroupsRepository(this._client);
 
   final SupabaseClient _client;
+  @override
+  Future<AppGroup> reopenGroup(String groupId) async {
+    final row = await _client
+        .rpc('reopen_group', params: {'p_group_id': groupId})
+        .single();
+    return AppGroup.fromMap(
+      Map<String, dynamic>.from(row),
+      currentUserRole: GroupRole.owner,
+    );
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> loadLifecycleEvents(String groupId) async {
+    final rows = await _client
+        .from('group_lifecycle_events')
+        .select('event_type,created_at,reason')
+        .eq('group_id', groupId)
+        .order('created_at', ascending: false)
+        .order('id', ascending: false)
+        .limit(50);
+    return rows.map((row) => Map<String, dynamic>.from(row)).toList();
+  }
+
+  @override
+  Future<void> leaveGroup(String groupId) async {
+    await _client.rpc('leave_group', params: {'p_group_id': groupId});
+  }
 
   @override
   Future<List<AppGroup>> loadCurrentUserGroups() async {
-    final userId = _currentUserId();
-    final rows = await _client
-        .from('groups')
-        .select(
-          'id, name, currency_code, created_at, archived_at, '
-          'group_members!inner(role, user_id, removed_at)',
-        )
-        .eq('group_members.user_id', userId)
-        .isFilter('group_members.removed_at', null);
+    _currentUserId();
+    final rows = await _client.rpc('get_current_groups_snapshot');
 
     final groups = (rows as List)
         .map(
@@ -42,12 +62,13 @@ class SupabaseGroupsRepository implements GroupsRepository {
   Future<AppGroup> createGroup(GroupCreationInput input) async {
     _currentUserId();
     final row = await _client
-        .from('groups')
-        .insert(<String, dynamic>{
-          'name': input.trimmedName,
-          'currency_code': input.currencyCode,
-        })
-        .select('id, name, currency_code, created_at, archived_at')
+        .rpc(
+          'create_group',
+          params: <String, dynamic>{
+            'p_name': input.trimmedName,
+            'p_currency_code': input.currencyCode,
+          },
+        )
         .single();
 
     return AppGroup.fromMap(
@@ -79,12 +100,10 @@ class SupabaseGroupsRepository implements GroupsRepository {
 
   @override
   Future<List<GroupMember>> loadGroupMembers(String groupId) async {
-    final rows = await _client
-        .from('group_members')
-        .select('id, display_name, role, user_id, removed_at')
-        .eq('group_id', groupId)
-        .isFilter('removed_at', null)
-        .order('created_at');
+    final rows = await _client.rpc(
+      'get_group_member_snapshot',
+      params: {'p_group_id': groupId},
+    );
 
     return (rows as List)
         .map((row) => GroupMember.fromMap(Map<String, dynamic>.from(row)))

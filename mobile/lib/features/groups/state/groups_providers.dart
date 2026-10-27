@@ -41,6 +41,18 @@ final groupDetailControllerProvider = ChangeNotifierProvider.autoDispose
         groupId: groupId,
         repository: ref.watch(groupsRepositoryProvider),
       );
-      unawaited(controller.load());
+      ref.listen<AuthenticationState>(
+        authenticationControllerProvider.select(
+          (controller) => controller.state,
+        ),
+        (_, next) {
+          if (next.status == AuthenticationStatus.authenticated) {
+            unawaited(controller.load());
+          } else {
+            controller.clear();
+          }
+        },
+        fireImmediately: true,
+      );
       return controller;
     });

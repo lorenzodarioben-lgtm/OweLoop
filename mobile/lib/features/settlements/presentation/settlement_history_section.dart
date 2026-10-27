@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../app/router.dart';
 
 import '../../balances/state/balances_providers.dart';
 import '../domain/settlement_models.dart';
@@ -47,6 +49,10 @@ class SettlementHistorySection extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => context.go(AppRoutes.settlementHistoryPath(groupId)),
+          child: const Text('View all settlements'),
+        ),
         switch (state.status) {
           SettlementHistoryStatus.loading => const _SettlementLoading(),
           SettlementHistoryStatus.unavailable => const _SettlementMessage(
@@ -58,7 +64,9 @@ class SettlementHistorySection extends ConsumerWidget {
             onRetry: controller.refresh,
           ),
           SettlementHistoryStatus.ready => _SettlementResults(
-            state: state,
+            state: state.copyWith(
+              settlements: state.settlements.take(5).toList(),
+            ),
             onVoid: (settlement) => _confirmVoid(
               context,
               settlement: settlement,

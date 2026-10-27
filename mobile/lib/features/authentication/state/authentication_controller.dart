@@ -21,6 +21,9 @@ class AuthenticationController extends ChangeNotifier {
   StreamSubscription<AuthSessionEvent>? _authSubscription;
   bool _hasStarted = false;
   bool _isDisposed = false;
+  int _generation = 0;
+
+  bool _current(int generation) => !_isDisposed && generation == _generation;
 
   AuthenticationState get state => _state;
 
@@ -30,9 +33,11 @@ class AuthenticationController extends ChangeNotifier {
     }
 
     _hasStarted = true;
+    final generation = _generation;
     _authSubscription = authRepository.authEvents.listen(
       (event) => unawaited(_handleAuthEvent(event)),
       onError: (Object error, StackTrace stackTrace) {
+        _generation += 1;
         _setState(
           AuthenticationState.signedOut(
             errorMessage: AuthErrorMapper.messageFor(error),
@@ -43,6 +48,7 @@ class AuthenticationController extends ChangeNotifier {
 
     try {
       final user = await authRepository.restoreSession();
+      if (!_current(generation)) return;
       if (user == null) {
         _setState(const AuthenticationState.signedOut());
         return;
@@ -53,6 +59,7 @@ class AuthenticationController extends ChangeNotifier {
 
       await _loadProfileFor(user);
     } catch (error) {
+      if (!_current(generation)) return;
       _setState(
         AuthenticationState.signedOut(
           errorMessage: AuthErrorMapper.messageFor(error),
@@ -66,6 +73,7 @@ class AuthenticationController extends ChangeNotifier {
       return;
     }
 
+    final generation = ++_generation;
     _setState(
       const AuthenticationState.signedOut().copyWith(isSubmitting: true),
     );
@@ -75,8 +83,10 @@ class AuthenticationController extends ChangeNotifier {
         email: email,
         password: password,
       );
+      if (!_current(generation)) return;
       await _loadProfileFor(user);
     } catch (error) {
+      if (!_current(generation)) return;
       _setState(
         AuthenticationState.signedOut(
           errorMessage: AuthErrorMapper.messageFor(error),
@@ -90,6 +100,7 @@ class AuthenticationController extends ChangeNotifier {
       return;
     }
 
+    final generation = ++_generation;
     _setState(
       const AuthenticationState.signedOut().copyWith(isSubmitting: true),
     );
@@ -99,6 +110,7 @@ class AuthenticationController extends ChangeNotifier {
         email: email,
         password: password,
       );
+      if (!_current(generation)) return;
 
       if (result.disposition == SignUpDisposition.verificationRequired) {
         _setState(AuthenticationState.verificationPending(email: result.email));
@@ -112,6 +124,7 @@ class AuthenticationController extends ChangeNotifier {
 
       await _loadProfileFor(user);
     } catch (error) {
+      if (!_current(generation)) return;
       _setState(
         AuthenticationState.signedOut(
           errorMessage: AuthErrorMapper.messageFor(error),
@@ -131,9 +144,11 @@ class AuthenticationController extends ChangeNotifier {
       return;
     }
 
+    final generation = _generation;
+    final previousStatus = _state.status;
     _setState(
       AuthenticationState(
-        status: AuthenticationStatus.profileSetup,
+        status: previousStatus,
         user: user,
         profile: _state.profile,
         isSubmitting: true,
@@ -144,6 +159,7 @@ class AuthenticationController extends ChangeNotifier {
       final profile = await profileRepository.completeProfile(
         displayName: displayName,
       );
+      if (!_current(generation)) return;
       _setState(
         AuthenticationState(
           status: AuthenticationStatus.authenticated,
@@ -152,9 +168,10 @@ class AuthenticationController extends ChangeNotifier {
         ),
       );
     } catch (error) {
+      if (!_current(generation)) return;
       _setState(
         AuthenticationState(
-          status: AuthenticationStatus.profileSetup,
+          status: previousStatus,
           user: user,
           profile: _state.profile,
           errorMessage: AuthErrorMapper.messageFor(error),
@@ -174,9 +191,11 @@ class AuthenticationController extends ChangeNotifier {
       return;
     }
 
+    final generation = _generation;
     _setState(_state.copyWith(isSubmitting: true, clearErrorMessage: true));
     try {
       await authRepository.resendVerification(email: email);
+      if (!_current(generation)) return;
       _setState(
         _state.copyWith(
           isSubmitting: false,
@@ -186,6 +205,7 @@ class AuthenticationController extends ChangeNotifier {
         ),
       );
     } catch (error) {
+      if (!_current(generation)) return;
       _setState(
         _state.copyWith(
           isSubmitting: false,
@@ -201,13 +221,16 @@ class AuthenticationController extends ChangeNotifier {
       return;
     }
 
+    final generation = ++_generation;
     _setState(
       const AuthenticationState.signedOut().copyWith(isSubmitting: true),
     );
     try {
       await authRepository.requestPasswordRecovery(email: email);
+      if (!_current(generation)) return;
       _setState(_passwordRecoveryRequestSentState);
     } catch (error) {
+      if (!_current(generation)) return;
       final message = AuthErrorMapper.messageFor(error);
       if (message == _networkErrorMessage) {
         _setState(AuthenticationState.signedOut(errorMessage: message));
@@ -228,11 +251,14 @@ class AuthenticationController extends ChangeNotifier {
       return;
     }
 
+    final generation = _generation;
     _setState(_state.copyWith(isSubmitting: true, clearErrorMessage: true));
     try {
       await authRepository.updatePassword(password: password);
+      if (!_current(generation)) return;
       await _loadProfileFor(user);
     } catch (error) {
+      if (!_current(generation)) return;
       _setState(
         _state.copyWith(
           isSubmitting: false,
@@ -243,17 +269,16 @@ class AuthenticationController extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
-    if (_state.isSubmitting) {
-      return;
-    }
-
     final previousState = _state;
+    final generation = ++_generation;
     _setState(previousState.copyWith(isSubmitting: true));
 
     try {
       await authRepository.signOut();
+      if (!_current(generation)) return;
       _setState(const AuthenticationState.signedOut());
     } catch (error) {
+      if (!_current(generation)) return;
       _setState(
         previousState.copyWith(
           errorMessage: AuthErrorMapper.messageFor(error),
@@ -264,14 +289,22 @@ class AuthenticationController extends ChangeNotifier {
   }
 
   void dismissVerificationMessage() {
+    _generation += 1;
+    _setState(const AuthenticationState.signedOut());
+  }
+
+  void accountDeleted() {
+    _generation += 1;
     _setState(const AuthenticationState.signedOut());
   }
 
   Future<void> _handleAuthEvent(AuthSessionEvent event) async {
     switch (event.type) {
       case AuthSessionEventType.signedOut:
+        _generation += 1;
         _setState(const AuthenticationState.signedOut());
       case AuthSessionEventType.passwordRecovery:
+        _generation += 1;
         final user = event.user;
         if (user == null) {
           _setState(
@@ -287,6 +320,15 @@ class AuthenticationController extends ChangeNotifier {
       case AuthSessionEventType.tokenRefreshed:
       case AuthSessionEventType.userUpdated:
         final user = event.user;
+        if (_state.status == AuthenticationStatus.passwordRecovery &&
+            user?.id == _state.user?.id) {
+          return;
+        }
+        if (event.type == AuthSessionEventType.tokenRefreshed &&
+            user?.id == _state.user?.id &&
+            _state.status != AuthenticationStatus.signedOut) {
+          return;
+        }
         if (user != null) {
           await _loadProfileFor(user);
         }
@@ -302,12 +344,19 @@ class AuthenticationController extends ChangeNotifier {
   );
 
   Future<void> _loadProfileFor(AuthenticatedUser user) async {
+    final generation = ++_generation;
     _setState(
       AuthenticationState(status: AuthenticationStatus.loading, user: user),
     );
 
     try {
       final profile = await profileRepository.loadCurrentProfile();
+      if (!_current(generation)) return;
+      if (profile != null && profile.id != user.id) {
+        throw const FormatException(
+          'Profile identity did not match the session.',
+        );
+      }
       final status = profile?.hasCompletedOnboarding ?? false
           ? AuthenticationStatus.authenticated
           : AuthenticationStatus.profileSetup;
@@ -316,6 +365,7 @@ class AuthenticationController extends ChangeNotifier {
         AuthenticationState(status: status, user: user, profile: profile),
       );
     } catch (error) {
+      if (!_current(generation)) return;
       _setState(
         AuthenticationState(
           status: AuthenticationStatus.profileSetup,
@@ -337,6 +387,7 @@ class AuthenticationController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _generation += 1;
     _isDisposed = true;
     unawaited(_authSubscription?.cancel());
     super.dispose();

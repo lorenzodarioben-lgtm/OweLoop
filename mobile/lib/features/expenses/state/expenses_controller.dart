@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../../core/operations/history_page.dart';
 
 import '../data/expenses_repository.dart';
 import '../domain/expense_models.dart';
@@ -13,11 +14,13 @@ class ExpenseHistoryController extends ChangeNotifier {
   ExpenseHistoryState _state = const ExpenseHistoryState.loading();
   bool _isDisposed = false;
   int _sessionGeneration = 0;
+  HistoryCursor? _next;
+  ExpenseHistoryFilter _filter = const ExpenseHistoryFilter();
 
   ExpenseHistoryState get state => _state;
 
   Future<void> load() async {
-    final sessionGeneration = _sessionGeneration;
+    final sessionGeneration = ++_sessionGeneration;
     if (_state.status == ExpenseHistoryStatus.loading &&
         _state.expenses.isEmpty) {
       _setState(const ExpenseHistoryState.loading());
@@ -26,7 +29,11 @@ class ExpenseHistoryController extends ChangeNotifier {
     }
 
     try {
-      final expenses = await repository.loadPostedExpenses(groupId);
+      final source = repository;
+      final page = source is PagedExpensesRepository
+          ? await source.loadExpensePage(groupId, filter: _filter)
+          : HistoryPage(items: await source.loadPostedExpenses(groupId));
+      final expenses = page.items;
       if (sessionGeneration != _sessionGeneration) {
         return;
       }
@@ -34,8 +41,10 @@ class ExpenseHistoryController extends ChangeNotifier {
         ExpenseHistoryState(
           status: ExpenseHistoryStatus.ready,
           expenses: expenses,
+          hasMore: page.next != null,
         ),
       );
+      _next = page.next;
     } catch (error) {
       if (sessionGeneration != _sessionGeneration) {
         return;
@@ -52,8 +61,55 @@ class ExpenseHistoryController extends ChangeNotifier {
 
   Future<void> refresh() => load();
 
+  Future<void> filter(ExpenseHistoryFilter filter) {
+    _filter = filter;
+    return load();
+  }
+
+  Future<void> loadMore() async {
+    final source = repository;
+    if (_next == null ||
+        _state.isRefreshing ||
+        source is! PagedExpensesRepository) {
+      return;
+    }
+    final generation = _sessionGeneration;
+    _setState(_state.copyWith(isRefreshing: true, clearErrorMessage: true));
+    try {
+      final page = await source.loadExpensePage(
+        groupId,
+        before: _next,
+        filter: _filter,
+      );
+      if (generation != _sessionGeneration) return;
+      final ids = _state.expenses.map((entry) => entry.id).toSet();
+      _next = page.next;
+      _setState(
+        _state.copyWith(
+          expenses: [
+            ..._state.expenses,
+            ...page.items.where((entry) => ids.add(entry.id)),
+          ],
+          hasMore: _next != null,
+          isRefreshing: false,
+        ),
+      );
+    } catch (error) {
+      if (generation == _sessionGeneration) {
+        _setState(
+          _state.copyWith(
+            isRefreshing: false,
+            errorMessage: ExpensesErrorMapper.messageFor(error),
+          ),
+        );
+      }
+    }
+  }
+
   void clear() {
     _sessionGeneration += 1;
+    _next = null;
+    _filter = const ExpenseHistoryFilter();
     _setState(const ExpenseHistoryState.loading());
   }
 

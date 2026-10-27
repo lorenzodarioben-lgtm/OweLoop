@@ -12,6 +12,12 @@ import '../state/groups_controller.dart';
 import '../state/groups_state.dart';
 import '../validation/group_validators.dart';
 
+final groupLifecycleProvider = FutureProvider.autoDispose
+    .family<List<Map<String, dynamic>>, String>((ref, id) {
+      ref.watch(groupDetailControllerProvider(id));
+      return ref.watch(groupsRepositoryProvider).loadLifecycleEvents(id);
+    });
+
 class GroupSettingsScreen extends ConsumerStatefulWidget {
   const GroupSettingsScreen({required this.groupId, super.key});
 
@@ -72,6 +78,32 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
     if (confirmed == true && await controller.archive() && mounted) {
       await ref.read(groupsControllerProvider).refresh();
       if (mounted) context.go(AppRoutes.home);
+    }
+  }
+
+  Future<void> _reopen(GroupDetailController controller) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Reopen group?'),
+        content: const Text(
+          'Balances and history stay unchanged. Members can record external settlements and new expenses again. This action is audited.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Reopen group'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && await controller.reopen()) {
+      ref.invalidate(groupLifecycleProvider(widget.groupId));
+      await ref.read(groupsControllerProvider).refresh();
     }
   }
 
@@ -158,6 +190,7 @@ class _GroupSettingsScreenState extends ConsumerState<GroupSettingsScreen> {
             onReady: _initialize,
             onRename: _rename,
             onArchive: _archive,
+            onReopen: _reopen,
             onRemove: _remove,
             onTransferOwnership: _transferOwnership,
           ),
@@ -176,6 +209,7 @@ class _SettingsContent extends StatelessWidget {
     required this.onReady,
     required this.onRename,
     required this.onArchive,
+    required this.onReopen,
     required this.onRemove,
     required this.onTransferOwnership,
   });
@@ -187,6 +221,7 @@ class _SettingsContent extends StatelessWidget {
   final ValueChanged<AppGroup> onReady;
   final Future<void> Function(GroupDetailController) onRename;
   final Future<void> Function(GroupDetailController) onArchive;
+  final Future<void> Function(GroupDetailController) onReopen;
   final Future<void> Function(GroupDetailController, GroupMember) onRemove;
   final Future<void> Function(GroupDetailController, GroupMember)
   onTransferOwnership;
@@ -315,7 +350,7 @@ class _SettingsContent extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           group.isArchived
-              ? 'This group is archived. Its history remains available, but it cannot be changed.'
+              ? 'This group is archived. The owner can reopen it to resolve outstanding balances. If there is no registered owner, contact support for audited recovery to an existing member.'
               : 'Archiving preserves all history and stops future financial and membership changes.',
         ),
         const SizedBox(height: 12),
@@ -331,9 +366,51 @@ class _SettingsContent extends StatelessWidget {
               label: const Text('Archive group'),
             ),
           ),
+        if (group.isArchived && isOwner)
+          FilledButton(
+            onPressed: state.isManaging ? null : () => onReopen(controller),
+            child: const Text('Reopen group'),
+          ),
+        const SizedBox(height: 24),
+        const Text('Recent group lifecycle history'),
+        _LifecycleHistory(groupId: group.id),
       ],
     );
   }
+}
+
+class _LifecycleHistory extends ConsumerWidget {
+  const _LifecycleHistory({required this.groupId});
+  final String groupId;
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => ref
+      .watch(groupLifecycleProvider(groupId))
+      .when(
+        loading: () => const LinearProgressIndicator(),
+        error: (_, _) => TextButton(
+          onPressed: () => ref.invalidate(groupLifecycleProvider(groupId)),
+          child: const Text('Retry group history'),
+        ),
+        data: (events) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (events.isEmpty)
+              const Text('No recorded lifecycle changes yet.'),
+            for (final event in events)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(switch (event['event_type']) {
+                  'archived' => 'Group archived',
+                  'reopened' => 'Group reopened',
+                  _ => 'Ownerless group recovered by operator',
+                }),
+                subtitle: Text(
+                  '${event['created_at']}\n${event['reason'] ?? ''}',
+                ),
+              ),
+          ],
+        ),
+      );
 }
 
 class _SettingsMessage extends StatelessWidget {

@@ -8,6 +8,12 @@ class GroupsErrorMapper {
       GroupsRepositoryException(:final message) => message,
       _ => error.toString(),
     }.toLowerCase();
+    if (rawMessage.contains('settle your balance')) {
+      return 'Settle your balance before leaving this group. Record the external payment from the group screen.';
+    }
+    if (rawMessage.contains('transfer ownership')) {
+      return 'Transfer ownership to another registered member before leaving.';
+    }
 
     if (rawMessage.contains('guest display name')) {
       return 'Enter a valid guest name.';

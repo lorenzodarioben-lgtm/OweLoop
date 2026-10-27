@@ -50,3 +50,12 @@ Do not promise account deletion, data export, backups, or a public support SLA
 until the corresponding process is implemented and staffed. Testers should be
 told not to use OweLoop as their sole financial record and not to enter
 unnecessary sensitive personal data.
+
+The functional sprint implements export and a trusted account-deletion component;
+see [account lifecycle](account-lifecycle.md). Hosted deployment, published
+retention terms and a staffed exception/support process remain unconfigured.
+Live owners can reopen archived groups through audited Group settings, then
+record external settlements before deletion. Ownerless archives require a
+staffed, service-role-only recovery procedure to an existing active registered
+successor; no client override or debt forgiveness exists. See ADR 0012 and the
+account lifecycle runbook. That support process is still unconfigured.

@@ -38,6 +38,10 @@ dependencies:
   go_router: ^17.3.0
   supabase_flutter: ^2.16.0
   flutter_dotenv: ^6.0.1
+  flutter_secure_storage: ^11.2.0
+  share_plus: ^13.3.1
+  path_provider: ^2.1.5
+  file_selector: 1.1.0
 
 dev_dependencies:
   flutter_test:
@@ -51,6 +55,8 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  # Exercise the real PostgREST adapter's wire protocol without a backend.
+  http: ^1.6.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

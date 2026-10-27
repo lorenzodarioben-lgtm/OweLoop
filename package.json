@@ -1,5 +1,16 @@
 {
   "scripts": {
+    "check:docs": "node scripts/check-doc-links.mjs",
+    "dev:check": "node scripts/dev-local.mjs check",
+    "dev:start": "node scripts/dev-local.mjs start",
+    "dev:status": "node scripts/dev-local.mjs status",
+    "dev:stop": "node scripts/dev-local.mjs stop",
+    "benchmark:local": "node scripts/benchmark-local.mjs",
+    "test:integration": "node scripts/test-local-integration.mjs",
+    "test:upgrade": "node scripts/test-migration-upgrade.mjs",
+    "test:account-function": "node --test scripts/delete-account.test.mjs",
+    "test:receipts-handler": "node --test scripts/receipts.test.mjs",
+    "receipts:cleanup": "node scripts/cleanup-local-receipts.mjs",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",

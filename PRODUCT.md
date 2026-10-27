@@ -1,33 +1,27 @@
 # Product
 
-## Register
+OweLoop is a shared-expense mobile ledger for roommates, couples, students and
+travellers. Registered users collaborate with account-free guest participants.
+Each group has one currency. Expenses record who paid and owes what; balances
+and history explain the result. Settlements record payments made elsewhere.
 
-product
+Implemented features include flexible exact splits, financial recovery,
+registered invitations, explicit guest claims, group administration, filtered
+expense and settlement history, expense drafts, exports, profile editing
+and a deployable trusted deletion component. Sprint II adds audited archive
+recovery, optional immutable categories, reviewed reusable templates, settlement
+filters, consistent snapshots/private CSV/JSON sharing, a private activity inbox
+and device currency/cleanup settings. The
+[completion report](docs/FUNCTIONAL_COMPLETION_REPORT.md) separates tested code
+from unverified device/hosted behavior and missing features.
 
-## Users
+Financial correctness, authorization, understandable errors and accessible
+controls are product requirements. Payment processing, currency conversion,
+full offline synchronization, receipt attachments, scheduled recurring
+expenses, localization and push/email delivery are not implemented. Templates
+never automatically post expenses. Physical-device and hosted release checks
+remain open.
 
-Students, roommates, couples, and group travellers use OweLoop when they need to record a shared cost or understand who paid and owes what. The first-run path should make account access and profile setup feel straightforward on a mobile device, often while the user is in a social or time-constrained setting.
-
-## Product Purpose
-
-OweLoop is a lightweight shared-expense ledger that makes costs, balances, and their history understandable. Authentication and profile onboarding establish a trustworthy personal identity before the later group and expense workflows are introduced.
-
-## Brand Personality
-
-Clear, calm, and trustworthy. The product should explain financial collaboration in plain language, remain reassuring when account verification is pending, and avoid making routine account tasks feel ceremonial.
-
-## Anti-references
-
-Avoid opaque balance summaries, dense trading-style finance dashboards, decorative onboarding choreography, and interfaces that pressure users into sharing more than is needed for the current task.
-
-## Design Principles
-
-- Put the next safe action first.
-- Explain account state in plain, non-technical language.
-- Preserve a consistent, familiar Material form vocabulary across every auth screen.
-- Treat privacy and identity boundaries as visible product behaviour, not hidden implementation details.
-- Leave room for future shared-expense work without inventing fake data or premature navigation.
-
-## Accessibility & Inclusion
-
-Use the existing Material theme with accessible labels, semantic controls, keyboard-safe layouts, clear validation feedback, and colour-independent errors. Support text scaling, screen readers, and reduced-motion preferences through standard Flutter components; target WCAG AA-equivalent contrast and interaction clarity.
+Current screens use standard Material controls. Visual design is a separate
+phase; layouts, themes and component composition can change while preserving
+contracts in [the design handoff](docs/DESIGN_HANDOFF.md).

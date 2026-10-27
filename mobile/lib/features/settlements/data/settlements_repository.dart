@@ -1,4 +1,15 @@
 import '../domain/settlement_models.dart';
+import '../../../core/operations/history_page.dart';
+
+abstract interface class PagedSettlementsRepository
+    implements SettlementsRepository {
+  Future<HistoryPage<SettlementRecord>> loadSettlementPage({
+    required String groupId,
+    required String currencyCode,
+    HistoryCursor? before,
+    SettlementHistoryFilter filter = const SettlementHistoryFilter(),
+  });
+}
 
 abstract interface class SettlementsRepository {
   Future<List<SettlementRecord>> loadGroupSettlements({

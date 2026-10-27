@@ -22,7 +22,7 @@ class GroupBalancesController extends ChangeNotifier {
   GroupBalancesState get state => _state;
 
   Future<void> load() async {
-    final sessionGeneration = _sessionGeneration;
+    final sessionGeneration = ++_sessionGeneration;
     if (_state.status == GroupBalancesStatus.loading &&
         _state.balances.isEmpty) {
       _setState(const GroupBalancesState.loading());

@@ -14,6 +14,12 @@ import 'package:oweloop/features/groups/domain/group_models.dart';
 import 'package:oweloop/features/groups/presentation/group_feedback.dart';
 import 'package:oweloop/features/groups/state/groups_providers.dart';
 import 'package:oweloop/features/settlements/state/settlements_providers.dart';
+import 'package:oweloop/features/invitations/state/invitations_providers.dart';
+import 'package:oweloop/features/guest_claims/state/guest_claims_providers.dart';
+import '../../fakes/invitations_fakes.dart';
+import '../../fakes/guest_claims_fakes.dart';
+import '../../fakes/device_preferences_fakes.dart';
+import 'package:oweloop/features/authentication/data/device_preferences.dart';
 
 import '../../fakes/authentication_fakes.dart';
 import '../../fakes/activity_fakes.dart';
@@ -27,9 +33,19 @@ void main() {
     FakeGroupsRepository groupsRepository, {
     FakeExpensesRepository? expensesRepository,
     FakeBalancesRepository? balancesRepository,
+    DevicePreferences? preferences,
   }) {
     return ProviderScope(
       overrides: [
+        devicePreferencesProvider.overrideWithValue(
+          preferences ?? MemoryDevicePreferences(),
+        ),
+        invitationsRepositoryProvider.overrideWithValue(
+          FakeInvitationsRepository(),
+        ),
+        guestClaimsRepositoryProvider.overrideWithValue(
+          FakeGuestClaimsRepository(),
+        ),
         authRepositoryProvider.overrideWithValue(
           FakeAuthRepository(restoredUser: testUser),
         ),
@@ -89,6 +105,94 @@ void main() {
 
     expect(find.text('Hi, Taylor'), findsOneWidget);
     expect(find.text('Create your first group'), findsOneWidget);
+  });
+
+  testWidgets('new group consumes the account-scoped device currency', (
+    tester,
+  ) async {
+    final preferences = MemoryDevicePreferences()..values[testUser.id] = 'JPY';
+    await tester.pumpWidget(
+      buildApp(FakeGroupsRepository(), preferences: preferences),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Create your first group'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<DropdownButtonFormField<String>>(
+            find.byType(DropdownButtonFormField<String>),
+          )
+          .initialValue,
+      'JPY',
+    );
+  });
+  testWidgets('delayed device preference cannot overwrite a chosen currency', (
+    tester,
+  ) async {
+    final delayed = Completer<String?>();
+    final preferences = MemoryDevicePreferences()
+      ..loader = (_) => delayed.future;
+    await tester.pumpWidget(
+      buildApp(FakeGroupsRepository(), preferences: preferences),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Create your first group'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('USD').last);
+    await tester.pumpAndSettle();
+    delayed.complete('JPY');
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<DropdownButtonFormField<String>>(
+            find.byType(DropdownButtonFormField<String>),
+          )
+          .initialValue,
+      'USD',
+    );
+  });
+
+  testWidgets('archived owner can confirm reopening without losing history', (
+    tester,
+  ) async {
+    final archived = AppGroup(
+      id: testGroup.id,
+      name: testGroup.name,
+      currencyCode: 'AUD',
+      currentUserRole: GroupRole.owner,
+      archivedAt: DateTime.utc(2026),
+    );
+    final repository = FakeGroupsRepository(
+      groups: [archived],
+      groupsById: {archived.id: archived},
+      membersByGroupId: {
+        archived.id: [testOwnerMember, testGuestMember],
+      },
+    );
+    await pumpApp(tester, repository);
+    await tester.tap(find.text(testGroup.name));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Group settings'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Reopen group'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Reopen group'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Balances and history stay unchanged'),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Reopen group'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(repository.reopenCalls, 1);
+    expect(repository.groupsById[testGroup.id]!.isArchived, isFalse);
   });
 
   testWidgets('shows a loading group state', (tester) async {
@@ -227,9 +331,10 @@ void main() {
 
     await tester.scrollUntilVisible(find.text('Repayment suggestions'), 240);
     expect(find.text('Alex pays Taylor'), findsOneWidget);
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -180));
-    await tester.pumpAndSettle();
     final recordButton = find.widgetWithText(OutlinedButton, 'Record');
+    await tester.scrollUntilVisible(recordButton, 120);
+    await tester.ensureVisible(recordButton);
+    await tester.pumpAndSettle();
     await tester.tap(recordButton);
     await tester.pumpAndSettle();
 

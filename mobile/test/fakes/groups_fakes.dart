@@ -2,6 +2,33 @@ import 'package:oweloop/features/groups/data/groups_repository.dart';
 import 'package:oweloop/features/groups/domain/group_models.dart';
 
 class FakeGroupsRepository implements GroupsRepository {
+  int reopenCalls = 0;
+  @override
+  Future<List<Map<String, dynamic>>> loadLifecycleEvents(
+    String groupId,
+  ) async => [];
+  @override
+  Future<AppGroup> reopenGroup(String groupId) async {
+    if (managementError != null) throw managementError!;
+    reopenCalls++;
+    final previous = groupsById[groupId]!;
+    final reopened = AppGroup(
+      id: previous.id,
+      name: previous.name,
+      currencyCode: previous.currencyCode,
+      currentUserRole: previous.currentUserRole,
+      createdAt: previous.createdAt,
+    );
+    groupsById[groupId] = reopened;
+    return reopened;
+  }
+
+  @override
+  Future<void> leaveGroup(String groupId) async {
+    groups.removeWhere((group) => group.id == groupId);
+    groupsById.remove(groupId);
+  }
+
   FakeGroupsRepository({
     List<AppGroup>? groups,
     Map<String, AppGroup>? groupsById,

@@ -8,6 +8,7 @@ class SettlementHistoryState {
     this.settlements = const [],
     this.errorMessage,
     this.isRefreshing = false,
+    this.hasMore = false,
     this.voidingSettlementId,
   });
 
@@ -18,6 +19,7 @@ class SettlementHistoryState {
   final List<SettlementRecord> settlements;
   final String? errorMessage;
   final bool isRefreshing;
+  final bool hasMore;
   final String? voidingSettlementId;
 
   SettlementHistoryState copyWith({
@@ -25,6 +27,7 @@ class SettlementHistoryState {
     List<SettlementRecord>? settlements,
     String? errorMessage,
     bool? isRefreshing,
+    bool? hasMore,
     String? voidingSettlementId,
     bool clearErrorMessage = false,
     bool clearVoidingSettlementId = false,
@@ -33,6 +36,7 @@ class SettlementHistoryState {
     settlements: settlements ?? this.settlements,
     errorMessage: clearErrorMessage ? null : errorMessage ?? this.errorMessage,
     isRefreshing: isRefreshing ?? this.isRefreshing,
+    hasMore: hasMore ?? this.hasMore,
     voidingSettlementId: clearVoidingSettlementId
         ? null
         : voidingSettlementId ?? this.voidingSettlementId,
