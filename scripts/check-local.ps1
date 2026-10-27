@@ -57,7 +57,7 @@ try {
     Set-Content -LiteralPath (Join-Path $validationSupabase 'config.toml') -Value $config
     Write-Host "Disposable validation project: $projectId (API $($PortBase + 1), DB $($PortBase + 2))"
     $start = Invoke-NativeCapture $npxCommand @('supabase','start','--workdir',$validationRoot)
-    $start.Output | Where-Object { $_.ToString() -notmatch '(?i)ANON_KEY|SERVICE_ROLE_KEY|SECRET_KEY|JWT_SECRET|PUBLISHABLE_KEY|DB_URL|postgresql://' } | ForEach-Object { Write-Host $_ }
+    $start.Output | Where-Object { $_.ToString() -notmatch '(?i)key|token|secret|password|credential|DB_URL|postgresql://|Bearer |eyJ[A-Za-z0-9_-]+\.' } | ForEach-Object { Write-Host $_ }
     if ($start.ExitCode -ne 0) { throw 'Disposable Supabase startup failed; check port availability.' }
     Invoke-Checked $npxCommand @('supabase','db','reset','--local','--workdir',$validationRoot)
     Invoke-Checked $npxCommand @('supabase','test','db','--workdir',$validationRoot)

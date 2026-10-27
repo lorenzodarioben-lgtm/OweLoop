@@ -48,7 +48,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Start local Supabase stack
-        run: npx supabase start
+        run: node scripts/start-local-ci.mjs
       - name: Apply migrations
         run: npx supabase db reset
       - name: Run pgTAP tests

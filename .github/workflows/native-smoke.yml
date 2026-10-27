@@ -7,6 +7,7 @@ on:
       - 'mobile/integration_test/**'
       - 'scripts/test-android-recovery.mjs'
       - 'scripts/native-checkpoint*'
+      - 'scripts/start-local-ci.mjs'
       - 'mobile/lib/core/operations/**'
       - 'mobile/lib/features/expenses/data/expense_draft_store.dart'
       - 'mobile/lib/features/expenses/domain/expense_draft_review.dart'
@@ -42,7 +43,7 @@ jobs:
         run: |
           npm ci
           node --test scripts/native-checkpoint.test.mjs
-          npx supabase start
+          node scripts/start-local-ci.mjs
           npx supabase status -o json | jq -r '"OWELOOP_TEST_ANON_KEY=" + .ANON_KEY' >> "$GITHUB_ENV"
           echo "::add-mask::$(npx supabase status -o json | jq -r .ANON_KEY)"
           cp mobile/.env.example mobile/.env

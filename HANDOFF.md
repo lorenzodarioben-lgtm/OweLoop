@@ -74,6 +74,13 @@ records privacy, retry, deletion and bounded local orphan cleanup. Hosted receip
 deployment remains unauthorized/unperformed. Next action: finish measured balance
 validation optimization and verify the staged native durability result.
 
+Native durability checkpoint `43700d6` passed [API35 native integration](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40532675974)
+including the real schedule create/review/explicit-post journey and all six
+process checkpoints; [Mobile CI](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40532682283)
+also passed. Database startup hit external registry limits on one run; local
+full checks remain green. Startup log handling now suppresses all key/token/S3
+credential fields; CI's normal startup no longer prints the CLI credential table.
+
 Updated 2026-10-25, Australia/Sydney. New developers first open
 [START_HERE.md](START_HERE.md); this is the authoritative continuity record.
 
