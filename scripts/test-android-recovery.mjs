@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {existsSync} from 'node:fs';
 import {resolve} from 'node:path';
+import {waitForCheckpoint} from './native-checkpoint.mjs';
 const [serial,apkArgument]=process.argv.slice(2);
 assert.match(serial||'',/^emulator-\d+$/,'Select a disposable Android emulator serial.');
 const apk=resolve(apkArgument||'mobile/build/app/outputs/flutter-apk/app-debug.apk');
@@ -17,20 +18,15 @@ async function runPhase(phase,expected){
   adb(['shell','run-as',packageId,'sh','-c',`"mkdir -p files; printf '%s' '${phase}' > files/oweloop-probe-phase"`]);
   adb(['logcat','-c']);
   adb(['shell','am','start','-n',`${packageId}/.MainActivity`]);
-  const deadline=Date.now()+90000;
-  while(Date.now()<deadline){
-    const log=adb(['logcat','-d','-s','flutter']);
-    const failure=log.match(/OWELOOP_PROBE:FAIL:[A-Za-z0-9_:]+/);
-    assert.ok(!failure,`Native probe rejected phase ${phase}: ${failure?.[0]||''}`);
-    if(log.includes(`OWELOOP_PROBE:${expected}`)){console.log(`PASS: ${phase}`);return;}
-    await new Promise(resolve=>setTimeout(resolve,1000));
-  }
-  throw Error(`Native checkpoint timed out: ${phase}`);
+  await waitForCheckpoint(()=>adb(['logcat','-d','-s','flutter']),phase,expected);
+  console.log(`PASS: ${phase}`);
 }
 try {
   await runPhase('before','WAIT:before');
   await runPhase('resume-before','PASS:resume-before');
   await runPhase('after','WAIT:after');
   await runPhase('resume-after','PASS:resume-after');
+  await runPhase('draft','WAIT:draft');
+  await runPhase('resume-draft','PASS:resume-draft');
   console.log('PASS: real Android process termination, secure-store reload and same-ID before/after-commit recovery.');
 } finally {adb(['shell','am','force-stop',packageId]);}

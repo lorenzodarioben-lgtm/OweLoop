@@ -1,5 +1,27 @@
 # OweLoop engineering handoff
 
+## Sprint III active checkpoint — 2026-10-28
+
+Started from clean remote/local `8c3a1af06033f47c0e5f163e3870ec731956685b`
+on `codex/functional-completion`; PR #8 remains draft/unmerged. The operator's
+configured Git identity is preserved. See [Sprint III](docs/SPRINT_III_REPORT.md)
+for current evidence rather than relabeling historical results below.
+
+Recovery now holds the account lock before every read/modify/write cycle;
+retry explicitly carries the original operation ID. Delayed-store concurrency
+regressions cover both previously reproduced races. The existing Android probe
+adds draft/resume-draft checkpoints using real secure storage and Auth restoration,
+field equality, inactive-payer filtering without reallocation, account B isolation,
+zero ledger writes and draft cleanup preserving an unresolved operation. Shared
+draft review also drives the normal form. The bounded marker protocol has a
+deliberately withheld-marker failure test. Native CI now watches recovery source
+and migrations as well as its harness.
+
+Local Docker engine and ADB/emulator are unavailable; starting Docker Desktop
+did not establish its Linux-engine pipe. Native and backend results require CI.
+Single next action at this checkpoint: execute the new native checkpoints in CI,
+then implement bounded review-only recurrence against the guarded template API.
+
 Updated 2026-10-25, Australia/Sydney. New developers first open
 [START_HERE.md](START_HERE.md); this is the authoritative continuity record.
 

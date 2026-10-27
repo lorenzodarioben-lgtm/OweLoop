@@ -111,6 +111,20 @@ class PendingFinancialOperations {
   final Duration requestTimeout;
   final Set<String> _busy = {};
 
+  Future<T> _locked<T>(String accountId, Future<T> Function() action) async {
+    _check(accountId);
+    if (!_busy.add(accountId)) {
+      throw const FinancialOperationException(
+        'Another submission is being checked. Please wait.',
+      );
+    }
+    try {
+      return await action();
+    } finally {
+      _busy.remove(accountId);
+    }
+  }
+
   void _check(String accountId) {
     if (currentAccountId() != accountId) {
       throw const FinancialOperationException(
@@ -142,106 +156,116 @@ class PendingFinancialOperations {
     if (accountId == null) {
       throw const FinancialOperationException('Sign in before submitting.');
     }
-    if (!_busy.add(accountId)) {
+    return _locked(
+      accountId,
+      () => _execute(
+        accountId: accountId,
+        type: type,
+        groupId: groupId,
+        payload: payload,
+        requestedOperationId: requestedOperationId,
+      ),
+    );
+  }
+
+  // Caller holds the account lock across the entire read/modify/write cycle.
+  Future<Map<String, dynamic>> _execute({
+    required String accountId,
+    required String type,
+    required String groupId,
+    required Map<String, dynamic> payload,
+    String? requestedOperationId,
+  }) async {
+    _check(accountId);
+    final operations = await load();
+    _check(accountId);
+    final canonical = _normalize(payload);
+    final matching = operations
+        .where((operation) => operation.id == requestedOperationId)
+        .toList();
+    if (matching.isNotEmpty &&
+        matching.single.status == FinancialOperationStatus.confirmed) {
+      final previous = matching.single;
+      if (previous.type != type ||
+          previous.groupId != groupId ||
+          jsonEncode(_normalize(previous.payload)) != jsonEncode(canonical)) {
+        throw const FinancialOperationException(
+          'This operation identity was already confirmed with a different request.',
+        );
+      }
+      if (previous.result?['id'] != null) return previous.result!;
       throw const FinancialOperationException(
-        'Another submission is being checked. Please wait.',
+        'This request is already confirmed. Refresh the group to view the record.',
       );
     }
+    final pending = operations
+        .where(
+          (operation) =>
+              operation.unresolved &&
+              operation.groupId == groupId &&
+              operation.type == type,
+        )
+        .toList();
+    if (pending.length > 1) {
+      throw const FinancialOperationException(
+        'Recover pending submissions before creating another record.',
+      );
+    }
+    late PendingFinancialOperation operation;
+    if (pending.isNotEmpty) {
+      operation = pending.single;
+      if (jsonEncode(_normalize(operation.payload)) != jsonEncode(canonical)) {
+        throw const FinancialOperationException(
+          'A previous submission has an unknown outcome. Open Pending submissions and resolve it before changing this request.',
+        );
+      }
+    } else {
+      operations.removeWhere(
+        (entry) =>
+            entry.id == requestedOperationId &&
+            entry.status == FinancialOperationStatus.rejected,
+      );
+      operation = PendingFinancialOperation(
+        id: requestedOperationId ?? ClientOperationId.generate().value,
+        accountId: accountId,
+        type: type,
+        groupId: groupId,
+        payload: canonical,
+        status: FinancialOperationStatus.pending,
+        createdAt: DateTime.now().toUtc(),
+      );
+      operations.add(operation);
+      // If storage fails, do not send anything. No in-memory-only fallback.
+      await store.write(accountId, operations);
+    }
+    _check(accountId);
     try {
+      final result = await transport
+          .submit(type, operation.payload, operation.id)
+          .timeout(requestTimeout);
+      await _save(
+        operations,
+        operation.transition(
+          FinancialOperationStatus.confirmed,
+          result: result,
+        ),
+      );
       _check(accountId);
-      final operations = await load();
-      _check(accountId);
-      final canonical = _normalize(payload);
-      final matching = operations
-          .where((operation) => operation.id == requestedOperationId)
-          .toList();
-      if (matching.isNotEmpty &&
-          matching.single.status == FinancialOperationStatus.confirmed) {
-        final previous = matching.single;
-        if (previous.type != type ||
-            previous.groupId != groupId ||
-            jsonEncode(_normalize(previous.payload)) != jsonEncode(canonical)) {
-          throw const FinancialOperationException(
-            'This operation identity was already confirmed with a different request.',
-          );
-        }
-        if (previous.result?['id'] != null) return previous.result!;
-        throw const FinancialOperationException(
-          'This request is already confirmed. Refresh the group to view the record.',
-        );
-      }
-      final pending = operations
-          .where(
-            (operation) =>
-                operation.unresolved &&
-                operation.groupId == groupId &&
-                operation.type == type,
-          )
-          .toList();
-      if (pending.length > 1) {
-        throw const FinancialOperationException(
-          'Recover pending submissions before creating another record.',
-        );
-      }
-      late PendingFinancialOperation operation;
-      if (pending.isNotEmpty) {
-        operation = pending.single;
-        if (jsonEncode(_normalize(operation.payload)) !=
-            jsonEncode(canonical)) {
-          throw const FinancialOperationException(
-            'A previous submission has an unknown outcome. Open Pending submissions and resolve it before changing this request.',
-          );
-        }
-      } else {
-        operations.removeWhere(
-          (entry) =>
-              entry.id == requestedOperationId &&
-              entry.status == FinancialOperationStatus.rejected,
-        );
-        operation = PendingFinancialOperation(
-          id: requestedOperationId ?? ClientOperationId.generate().value,
-          accountId: accountId,
-          type: type,
-          groupId: groupId,
-          payload: canonical,
-          status: FinancialOperationStatus.pending,
-          createdAt: DateTime.now().toUtc(),
-        );
-        operations.add(operation);
-        // If storage fails, do not send anything. No in-memory-only fallback.
-        await store.write(accountId, operations);
-      }
-      _check(accountId);
-      try {
-        final result = await transport
-            .submit(type, operation.payload, operation.id)
-            .timeout(requestTimeout);
-        await _save(
-          operations,
-          operation.transition(
-            FinancialOperationStatus.confirmed,
-            result: result,
-          ),
-        );
-        _check(accountId);
-        return result;
-      } catch (error) {
-        // A successful database commit followed by local-storage failure also
-        // remains recoverable through the original persisted operation ID.
-        // A rejected retry proves nothing about an earlier uncertain attempt.
-        // For example, the first call may have committed before membership was
-        // revoked. Keep its identity recoverable through caller-only lookup.
-        final next = pending.isEmpty && transport.isDefinitiveRejection(error)
-            ? FinancialOperationStatus.rejected
-            : FinancialOperationStatus.unknown;
-        await _save(operations, operation.transition(next));
-        if (next == FinancialOperationStatus.rejected) rethrow;
-        throw const FinancialOperationException(
-          'The outcome is not confirmed. Your request is saved. Open Pending submissions to check or retry the same request safely.',
-        );
-      }
-    } finally {
-      _busy.remove(accountId);
+      return result;
+    } catch (error) {
+      // A successful database commit followed by local-storage failure also
+      // remains recoverable through the original persisted operation ID.
+      // A rejected retry proves nothing about an earlier uncertain attempt.
+      // For example, the first call may have committed before membership was
+      // revoked. Keep its identity recoverable through caller-only lookup.
+      final next = pending.isEmpty && transport.isDefinitiveRejection(error)
+          ? FinancialOperationStatus.rejected
+          : FinancialOperationStatus.unknown;
+      await _save(operations, operation.transition(next));
+      if (next == FinancialOperationStatus.rejected) rethrow;
+      throw const FinancialOperationException(
+        'The outcome is not confirmed. Your request is saved. Open Pending submissions to check or retry the same request safely.',
+      );
     }
   }
 
@@ -266,17 +290,16 @@ class PendingFinancialOperations {
   }
 
   Future<bool> reconcile(String operationId) async {
-    final operations = await load();
-    final operation = operations.singleWhere(
-      (entry) => entry.id == operationId,
-    );
-    _check(operation.accountId);
-    if (!_busy.add(operation.accountId)) {
-      throw const FinancialOperationException(
-        'A submission is still in progress. Please wait.',
-      );
+    final accountId = currentAccountId();
+    if (accountId == null) {
+      throw const FinancialOperationException('Sign in before recovering.');
     }
-    try {
+    return _locked(accountId, () async {
+      final operations = await load();
+      final operation = operations.singleWhere(
+        (entry) => entry.id == operationId,
+      );
+      _check(operation.accountId);
       final result = await transport
           .lookup(operation.id)
           .timeout(requestTimeout);
@@ -296,25 +319,31 @@ class PendingFinancialOperations {
         ),
       );
       return true;
-    } finally {
-      _busy.remove(operation.accountId);
-    }
+    });
   }
 
   Future<void> retry(String operationId) async {
-    final operation = (await load()).singleWhere(
-      (entry) => entry.id == operationId,
-    );
-    if (!operation.unresolved) {
-      throw const FinancialOperationException(
-        'This submission already has a confirmed outcome.',
-      );
+    final accountId = currentAccountId();
+    if (accountId == null) {
+      throw const FinancialOperationException('Sign in before recovering.');
     }
-    await execute(
-      type: operation.type,
-      groupId: operation.groupId,
-      payload: operation.payload,
-    );
+    await _locked(accountId, () async {
+      final operation = (await load()).singleWhere(
+        (entry) => entry.id == operationId,
+      );
+      if (!operation.unresolved) {
+        throw const FinancialOperationException(
+          'This submission already has a confirmed outcome.',
+        );
+      }
+      await _execute(
+        accountId: accountId,
+        requestedOperationId: operation.id,
+        type: operation.type,
+        groupId: operation.groupId,
+        payload: operation.payload,
+      );
+    });
   }
 
   static Map<String, dynamic> _normalize(Map<String, dynamic> payload) {

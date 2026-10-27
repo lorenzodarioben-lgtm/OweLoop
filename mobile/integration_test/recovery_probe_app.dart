@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:oweloop/core/operations/client_operation_id.dart';
 import 'package:oweloop/core/operations/financial_operations_providers.dart';
 import 'package:oweloop/core/operations/pending_financial_operations.dart';
+import 'draft_recovery_probe.dart';
 
 const _url = String.fromEnvironment('OWELOOP_TEST_SUPABASE_URL');
 const _key = String.fromEnvironment('OWELOOP_TEST_ANON_KEY');
@@ -42,6 +43,11 @@ Future<void> main() async {
     stage = 'session';
     if (resume && client.auth.currentUser == null) {
       throw StateError('Session did not restore');
+    }
+    if (phase == 'draft' || phase == 'resume-draft') {
+      stage = 'draft';
+      await runDraftRecoveryProbe(client, phase, marker);
+      return;
     }
     final store = SecureFinancialOperationStore(const FlutterSecureStorage());
     final transport = SupabaseFinancialOperationTransport(client);

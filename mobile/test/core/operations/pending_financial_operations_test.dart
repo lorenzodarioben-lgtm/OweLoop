@@ -29,6 +29,21 @@ class MemoryStore implements FinancialOperationStore {
   }
 }
 
+class DelayedReadStore extends MemoryStore {
+  Completer<void>? readStarted, releaseRead;
+  @override
+  Future<List<PendingFinancialOperation>> read(String accountId) async {
+    final snapshot = await super.read(accountId);
+    final release = releaseRead;
+    if (release != null) {
+      releaseRead = null;
+      readStarted!.complete();
+      await release.future;
+    }
+    return snapshot;
+  }
+}
+
 class TestTransport implements FinancialOperationTransport {
   final List<String> ids = [];
   final Map<String, Map<String, dynamic>> committed = {};
@@ -82,6 +97,76 @@ void main() {
     transport = TestTransport();
     account = 'account-a';
   });
+  for (final recover in ['reconcile', 'retry']) {
+    test(
+      '$recover locks before storage read and preserves other requests',
+      () async {
+        final delayed = DelayedReadStore();
+        store = delayed;
+        transport.loseResponse = true;
+        final operations = service();
+        await expectLater(
+          operations.execute(
+            type: 'expense',
+            groupId: 'group',
+            payload: payload,
+          ),
+          throwsA(isA<FinancialOperationException>()),
+        );
+        final original = (await operations.load()).single;
+        final release = Completer<void>();
+        delayed.readStarted = Completer<void>();
+        delayed.releaseRead = release;
+        transport.loseResponse = false;
+        final recovery = recover == 'reconcile'
+            ? operations.reconcile(original.id)
+            : operations.retry(original.id);
+        await delayed.readStarted!.future;
+        await expectLater(
+          operations.execute(
+            type: 'expense',
+            groupId: 'other',
+            payload: {...payload, 'p_group_id': 'other'},
+          ),
+          throwsA(isA<FinancialOperationException>()),
+        );
+        await expectLater(
+          operations.reconcile(original.id),
+          throwsA(isA<FinancialOperationException>()),
+        );
+        release.complete();
+        await recovery;
+        expect(transport.ids.toSet(), {original.id});
+        expect(transport.committed, hasLength(1));
+        expect(
+          (await operations.load()).single.status,
+          FinancialOperationStatus.confirmed,
+        );
+        // The lock is released after completion, so a later independent request works.
+        await operations.execute(
+          type: 'expense',
+          groupId: 'other',
+          payload: {...payload, 'p_group_id': 'other'},
+        );
+        expect(await operations.load(), hasLength(2));
+      },
+    );
+  }
+  test(
+    'storage read failure releases the account lock without sending',
+    () async {
+      final operations = service();
+      store.data['account-a'] = 'corrupt';
+      await expectLater(operations.reconcile('missing'), throwsFormatException);
+      store.data.clear();
+      await operations.execute(
+        type: 'expense',
+        groupId: 'group',
+        payload: payload,
+      );
+      expect(transport.ids, hasLength(1));
+    },
+  );
   test('proxy and malformed success responses remain uncertain', () {
     final client = SupabaseClient('http://localhost:60421', 'public-test-key');
     addTearDown(client.dispose);

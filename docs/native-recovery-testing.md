@@ -47,8 +47,19 @@ not remove unrelated apps or reset a shared backend.
 
 ## CI and limits
 
+Sprint III adds `draft` / `resume-draft` after the four financial checkpoints.
+The first saves exact/date/category/payer/participant configuration in the real
+secure store; ADB preserves data and terminates the process. Resume checks all
+fields and session reload, removes a zero-balance guest, applies the same review
+logic as the form, verifies account B cannot read A's draft, and checks that
+draft cleanup preserves an unresolved operation and creates zero expenses.
+This debug probe exercises storage/domain actions; widget tests cover form actions.
+`node --test scripts/native-checkpoint.test.mjs` deliberately withholds a marker
+to prove bounded timeout and sanitized failure output.
+
 `native-smoke.yml` runs on manual dispatch and pushes that change only the
-native-test/harness paths. Ordinary presentation/source changes do not trigger
+native-test/harness paths, recovery operations/draft review source or migrations.
+Ordinary presentation/source changes do not trigger
 this heavier job. It uses a fresh local backend and API35 emulator on a pinned
 Ubuntu runner, then stops the backend. Executed results are recorded in Sprint II;
 adding this workflow does not itself establish a pass. It covers

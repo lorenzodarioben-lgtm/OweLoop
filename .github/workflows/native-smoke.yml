@@ -6,6 +6,11 @@ on:
     paths:
       - 'mobile/integration_test/**'
       - 'scripts/test-android-recovery.mjs'
+      - 'scripts/native-checkpoint*'
+      - 'mobile/lib/core/operations/**'
+      - 'mobile/lib/features/expenses/data/expense_draft_store.dart'
+      - 'mobile/lib/features/expenses/domain/expense_draft_review.dart'
+      - 'supabase/migrations/**'
       - 'scripts/run-native-smoke.sh'
       - '.github/workflows/native-smoke.yml'
 
@@ -33,6 +38,7 @@ jobs:
       - name: Prepare local-only backend
         run: |
           npm ci
+          node --test scripts/native-checkpoint.test.mjs
           npx supabase start
           npx supabase status -o json | jq -r '"OWELOOP_TEST_ANON_KEY=" + .ANON_KEY' >> "$GITHUB_ENV"
           echo "::add-mask::$(npx supabase status -o json | jq -r .ANON_KEY)"

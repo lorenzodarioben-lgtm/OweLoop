@@ -17,6 +17,7 @@ import '../state/expenses_providers.dart';
 import '../validation/expense_validators.dart';
 import 'expense_feedback.dart';
 import '../domain/expense_template.dart';
+import '../domain/expense_draft_review.dart';
 import '../data/expense_templates_repository.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
@@ -155,6 +156,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         .where((member) => !member.isRemoved)
         .map((member) => member.id)
         .toSet();
+    fields = ExpenseDraftReview(fields, active).fields;
 
     _descriptionController.text = fields['description'] as String? ?? '';
     _category = ExpenseCategory.fromKey(fields['category_key']);
