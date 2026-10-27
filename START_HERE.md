@@ -94,10 +94,12 @@ reviewed templates, filtered history, consistent exports/private sharing,
 activity inbox and device settings. UI uses plain Material controls intentionally;
 visual design is a separate phase.
 
-The functional checkpoint has 26 migrations, 186 passing unit/widget tests,
-two separately passing live SDK tests, 404 pgTAP assertions, 44 real API assertions
-and six handler tests. Android debug compilation and emulator UI/process-death
-recovery passed. Dates, revisions and latest onboarding rehearsal are in
+Sprint III has 29 migrations, 205 passing ordinary Flutter tests (four live skips),
+four separately passing live SDK tests, 483 pgTAP assertions, 58 financial API,
+nine deletion gateway, fourteen private Storage/gateway checks and thirteen Node
+tests. Android emulator UI/process-death recovery passed with the native disk
+fence; final exact-head CI evidence is in draft PR #8. Dates, revisions and the
+latest onboarding rehearsal are in
 [HANDOFF.md](HANDOFF.md); [historical reports](docs/SPRINT_II_REPORT.md) retain the
 original evidence. These results do not establish production readiness.
 

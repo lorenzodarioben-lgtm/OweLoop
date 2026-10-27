@@ -118,8 +118,9 @@ use `AccountRepository`; service-role credentials never enter Flutter.
 Categories are stable optional keys; correcting a posted category uses
 void/duplicate. Templates are shared configuration with optimistic edits;
 review resets the date, removes inactive participants and clears an inactive
-payer so the user must choose. No recurrence scheduler or automatic posting
-exists. Device currency defaults cannot override a user's manual selection.
+payer so the user must choose. Recurrence pins a template snapshot and discovers
+bounded due proposals on group open; posting always requires explicit review.
+Device currency defaults cannot override a user's manual selection.
 
 ExportSharing owns UTF-8 private files, MIME, cancellation, cleanup and account
 switch checks. A successful share sheet is not evidence of destination import.

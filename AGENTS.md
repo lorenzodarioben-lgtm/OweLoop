@@ -102,6 +102,8 @@ also supports this helper on macOS/Linux). See [testing](docs/testing.md).
 - Posted financial rows/audit history and group-member UUIDs are durable;
   void/duplicate corrects an expense. Claim/removal/deletion never replaces IDs.
 - Persist financial requests before send, with account-scoped secure storage.
+  Android secure-store completion includes the native disk fence; a failed or
+  timed-out fence cannot authorize a network send, including an explicit retry.
   Unknown outcome or missing lookup is not failure. Retry only the original ID
   and payload; a rejected retry cannot erase previous uncertainty.
 - Drafts/templates are separate from financial operations and never auto-post.
@@ -110,6 +112,9 @@ also supports this helper on macOS/Linux). See [testing](docs/testing.md).
   pending request identities; schedules never post without explicit review.
 - Account deletion requires zero membership balances and no active ownership;
   trusted server validation/de-identification preserves shared history.
+- Receipts use private authenticated downloads and the trusted upload gateway.
+  Preserve digest-bound intents, service-only completion/cleanup and restrictive
+  Storage policies; uncertain completion never authorizes deleting a ready file.
 - Keep export files/private read state account-scoped; cleanup must preserve
   pending/unknown operations. Never log credentials or raw recovery payloads.
 - Preserve Auth/provider generation guards across account changes and sign-out.

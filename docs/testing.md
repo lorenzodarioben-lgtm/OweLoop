@@ -10,9 +10,11 @@ gateway byte validation and failure handling independently. Picker cancellation,
 same-ID retry, account switching and large text have widget coverage; actual
 native picker interaction and physical iOS remain separate gates.
 
-Sprint III current checkpoint: 194 ordinary Flutter tests, two configured live
-SDK tests, 448 pgTAP assertions across 15 files, 58 real HTTP assertions and six
-handler tests. The isolated helper verifies both populated 20+forward and
+Sprint III current checkpoint: 205 ordinary Flutter tests (four live skips), four
+separately configured live SDK tests, 483 pgTAP assertions across 17 files,
+58 financial/recurrence HTTP assertions, nine actual deletion gateway checks,
+fourteen private Storage/gateway assertions and thirteen Node tests (six deletion,
+five receipt, two marker). The isolated helper verifies populated 20+forward and
 26+forward upgrades; the latter retains Sprint II template configuration.
 `node --test scripts/native-checkpoint.test.mjs` tests marker failure/timeout.
 Actual API35 draft restart evidence is linked in [Sprint III](SPRINT_III_REPORT.md).
@@ -60,7 +62,7 @@ macOS/Linux: `./scripts/check.sh`. Both install Flutter dependencies, check
 formatting, analyze and run `flutter test` in `mobile/`. Formatting may rewrite
 nonconforming files before returning failure; review the diff and format
 intentionally before committing. The suite includes Auth/domain/controller/widget
-coverage. The two `test/live/financial_transport_test.dart` tests skip without
+coverage. The four `test/live/financial_transport_test.dart` tests skip without
 explicit loopback URL/anon environment; a skip is not a live pass.
 
 A fresh checkout needs `mobile/.env` because it is a bundled Flutter asset. Use
@@ -77,16 +79,19 @@ Docker Linux running; from root:
 ```
 
 It runs `npm ci`, starts its own unique temporary project (API 60421/DB 60422),
-initializes all 26 migrations, runs 404 pgTAP assertions/schema lint, six handler
-tests, the non-empty 20+6 upgrade preserving nine table snapshots/balances, and 44
-real Auth/PostgREST assertions with three accounts and actual Admin deletion.
-`-DartIntegration` then runs two real Dart SDK adapter tests. Public/local service
+initializes all 29 migrations, runs 483 pgTAP assertions/schema lint and thirteen
+Node tests, the populated 20+9 and 26+3 upgrades preserving snapshots/balances,
+and 58 real Auth/PostgREST assertions with three accounts and actual Admin deletion.
+`-DartIntegration` runs four live SDK tests, including loopback TCP loss before
+send and after commit. `-StorageAndFunctions` additionally tests actual local
+deletion/receipt gateways and Storage. Public/local service
 keys remain test-process-only; no service role is written into Flutter config.
 The helper restores environment and stops/discards only its own stack in `finally`.
 Its temporary configuration/log folders may remain for diagnosis.
 
 After locked dependencies are installed, `-SkipInstall` saves time. Optional
-`-Benchmark` runs bounded rollback-only scale fixtures; [measurements](performance.md)
+`-Benchmark` runs rollback SQL comparisons and HTTP fixtures confined to the
+helper-owned stack; [measurements](performance.md)
 are not production/device guarantees. Override occupied ports with `-PortBase 63420`.
 Run one helper at a time. Do not repurpose common environment variables.
 

@@ -9,7 +9,9 @@ and [HANDOFF](../HANDOFF.md). Code availability is separate from release readine
 ## P1 — First independent contribution: recurrence editor session races
 
 Add delayed-repository widget tests for signing out or switching accounts while
-schedule create/edit/skip dialogs or refresh are pending. Files:
+schedule create/edit dialogs are pending, including A→B→A session changes. Late
+refresh and skip-dialog sign-out regressions already pass; extend rather than
+duplicate them. Files:
 `mobile/test/features/expenses/expense_schedules_test.dart`,
 `mobile/lib/features/expenses/presentation/expense_schedules_screen.dart` and
 `expense_templates_screen.dart`. Assert no action authorized by A is submitted
@@ -22,8 +24,8 @@ Completed in Sprint III: the actual API35 emulator run passed the new draft and
 resume-draft checkpoints plus all four financial checkpoints. See
 [Sprint III](SPRINT_III_REPORT.md). The original acceptance contract follows.
 
-- **Motivation/current:** real-process tests cover pending financial operations;
-  unsent draft save/restore has unit/widget coverage but no actual restart probe.
+- **Former gap:** unsent draft save/restore previously lacked an actual restart
+  probe. Six real process checkpoints now pass with the Android disk fence.
 - **Expected:** save an unsent expense draft through the real secure store,
   terminate/relaunch the emulator app, explicitly restore it and retain fields,
   category and active participants. Never post merely by saving/restoring.
@@ -57,8 +59,9 @@ suite does not complete any of these gates. No public beta/store readiness claim
 
 ## P1 — Large-group resource validation
 
-**Local engineering plus later device checks.** SQL fixtures pass up to 1,000
-members/2,000 expenses/1,000 settlements; canonical balances take about 1.7 s locally.
+**Device checks remain.** SQL and HTTP fixtures pass up to 1,000
+members/2,000 expenses/1,000 settlements. Two local comparisons retained exact
+rows and reduced balance medians by 13–38%; [samples](performance.md) include variance.
 Whole memberships, balances and exports still materialize in memory. Expected:
 measure network payload, memory, scrolling and reconciliation latency before
 setting supported limits or optimizing. Files: `scripts/benchmark-local.mjs`,
@@ -72,8 +75,8 @@ actual device measurements. No timing target should be invented from one SQL run
 
 | Task | Current → expected / motivation | Relevant files / dependencies | Acceptance |
 | --- | --- | --- | --- |
-| Secure receipts | No attachment feature; Storage disabled → private authorized image/PDF workflow | New ordered migration and storage tests; `supabase/config.toml`, expense feature; reviewed local Storage/retention model before hosted setup | Unauthorized/cross-group/removed access denied, bounded MIME/size/path, orphan cleanup, archive/void/delete/export behavior tested; no public URLs or service role in app |
-| Scheduled recurring drafts | Reviewed reusable templates only → deterministic due drafts that never auto-post | Expense template domain/repository, new schedule migration if needed; explicit timezone/member/archive policy | Month end, DST/timezone, missed periods, edits/pause/cancel, concurrent/open-repeat dedupe and explicit financial confirmation |
+| Receipt extensions | Private PNG/JPEG, actual Storage/security tests and local setup delivered; PDF/WebP and durable selected bytes omitted | Receipt repository/viewer, trusted gateway, ADR 0016; native file lifecycle and explicit format/privacy review | Preserve private access, bounded content, same-ID retry and ready-file retention; profile actual Android/iOS picker before distribution |
+| Recurrence extensions | Four review-only cadences, bounded discovery, calendar/concurrency tests delivered; no end-date control | Schedule domain/RPC/UI, ADR 0015 | Future end dates must preserve stable occurrences, revision boundaries and explicit financial confirmation |
 | Localization | English labels only → reviewed locale/currency/date presentation | `mobile/lib/` presentation and supported currencies; product locale decisions | Exact parsing/formatting unchanged, long text/layout, semantics and locale tests |
 | Broader offline support | Secure unsent drafts/manual uncertain-operation recovery → clear stale/offline reads and controlled unposted intentions | Auth/session controllers, repositories, operations/draft stores; scope/retention decision | Account isolation, reconnect revalidation, no silent loss or automatic financial posting; never replace authoritative balance with speculative success |
 | Notification delivery | Manual-refresh private inbox only → explicitly opted-in delivery | Notification feature/current authorization RPCs; delivery provider/credentials and owner approval | No unknown-email enumeration, removed-user details or duplicate delivery; current source authorization, opt-out/privacy tested |

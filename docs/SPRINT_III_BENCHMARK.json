@@ -1,0 +1,294 @@
+{
+  "date": "2026-10-28",
+  "timezone": "Australia/Sydney",
+  "database": "PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit",
+  "methodology": "Two independent disposable PostgreSQL stacks. SQL fixtures roll back; three alternating warm reads compare the released function to the optimized function and require identical rows. First read is not a cold OS-cache measurement. HTTP fixture commits fictional data only into its disposable stack; counts and exact balance sum are checked. Node memory is not Flutter/device memory.",
+  "sql_runs": [
+    [
+      {
+        "members": 2,
+        "expenses": 20,
+        "settlements": 10,
+        "timings": {
+          "members_ms": 0.764,
+          "activity_ms": 3.111,
+          "balances_ms": 6.892,
+          "history_first_ms": 2.354,
+          "expense_export_ms": 2.911,
+          "filtered_history_ms": 1.189,
+          "notification_page_ms": 6.263,
+          "settlement_export_ms": 2.07,
+          "expense_snapshot_bytes": 23431,
+          "legacy_balance_warm_ms": [
+            11.88,
+            4.43,
+            5.807
+          ],
+          "current_balance_warm_ms": [
+            3.628,
+            3,
+            6.176
+          ],
+          "settlement_snapshot_bytes": 4310,
+          "account_export_cumulative_ms": 8.73
+        }
+      },
+      {
+        "members": 20,
+        "expenses": 300,
+        "settlements": 100,
+        "timings": {
+          "members_ms": 0.18,
+          "activity_ms": 0.408,
+          "balances_ms": 69.097,
+          "history_next_ms": 0.637,
+          "history_first_ms": 0.82,
+          "expense_export_ms": 17.813,
+          "filtered_history_ms": 0.657,
+          "notification_page_ms": 3.117,
+          "settlement_export_ms": 1.486,
+          "expense_snapshot_bytes": 351792,
+          "legacy_balance_warm_ms": [
+            103.447,
+            96.183,
+            104.181
+          ],
+          "current_balance_warm_ms": [
+            64.611,
+            82.822,
+            68.194
+          ],
+          "settlement_snapshot_bytes": 43100,
+          "account_export_cumulative_ms": 5.692
+        }
+      },
+      {
+        "members": 100,
+        "expenses": 1000,
+        "settlements": 500,
+        "timings": {
+          "members_ms": 0.502,
+          "activity_ms": 0.52,
+          "balances_ms": 438.157,
+          "history_next_ms": 0.585,
+          "history_first_ms": 0.791,
+          "expense_export_ms": 61.224,
+          "filtered_history_ms": 0.798,
+          "notification_page_ms": 11.402,
+          "settlement_export_ms": 393.19,
+          "expense_snapshot_bytes": 1173893,
+          "legacy_balance_warm_ms": [
+            497.13,
+            536.105,
+            464.522
+          ],
+          "current_balance_warm_ms": [
+            425.059,
+            375.721,
+            401.85
+          ],
+          "settlement_snapshot_bytes": 216000,
+          "account_export_cumulative_ms": 28.719
+        }
+      },
+      {
+        "members": 1000,
+        "expenses": 2000,
+        "settlements": 1000,
+        "timings": {
+          "members_ms": 3.097,
+          "activity_ms": 0.856,
+          "balances_ms": 1582.685,
+          "history_next_ms": 0.539,
+          "history_first_ms": 1.241,
+          "expense_export_ms": 332.294,
+          "filtered_history_ms": 0.778,
+          "notification_page_ms": 21.488,
+          "settlement_export_ms": 31.938,
+          "expense_snapshot_bytes": 2350893,
+          "legacy_balance_warm_ms": [
+            2393.883,
+            1893.192,
+            1899.726
+          ],
+          "current_balance_warm_ms": [
+            1614.612,
+            1606.96,
+            2307.225
+          ],
+          "settlement_snapshot_bytes": 433000,
+          "account_export_cumulative_ms": 86.631
+        }
+      }
+    ],
+    [
+      {
+        "members": 2,
+        "expenses": 20,
+        "settlements": 10,
+        "timings": {
+          "members_ms": 0.328,
+          "activity_ms": 1.98,
+          "balances_ms": 4.315,
+          "history_first_ms": 1.658,
+          "expense_export_ms": 1.729,
+          "filtered_history_ms": 0.609,
+          "notification_page_ms": 5.088,
+          "settlement_export_ms": 0.764,
+          "expense_snapshot_bytes": 23431,
+          "legacy_balance_warm_ms": [
+            3.202,
+            2.22,
+            3.315
+          ],
+          "current_balance_warm_ms": [
+            2.203,
+            1.644,
+            2.048
+          ],
+          "settlement_snapshot_bytes": 4310,
+          "account_export_cumulative_ms": 3.099
+        }
+      },
+      {
+        "members": 20,
+        "expenses": 300,
+        "settlements": 100,
+        "timings": {
+          "members_ms": 0.166,
+          "activity_ms": 0.398,
+          "balances_ms": 77.451,
+          "history_next_ms": 0.653,
+          "history_first_ms": 0.76,
+          "expense_export_ms": 14.437,
+          "filtered_history_ms": 0.647,
+          "notification_page_ms": 3.095,
+          "settlement_export_ms": 1.63,
+          "expense_snapshot_bytes": 352092,
+          "legacy_balance_warm_ms": [
+            94.013,
+            112.462,
+            92.052
+          ],
+          "current_balance_warm_ms": [
+            70.533,
+            72.163,
+            67.001
+          ],
+          "settlement_snapshot_bytes": 43200,
+          "account_export_cumulative_ms": 6.976
+        }
+      },
+      {
+        "members": 100,
+        "expenses": 1000,
+        "settlements": 500,
+        "timings": {
+          "members_ms": 0.798,
+          "activity_ms": 0.692,
+          "balances_ms": 511.168,
+          "history_next_ms": 0.585,
+          "history_first_ms": 0.782,
+          "expense_export_ms": 57.673,
+          "filtered_history_ms": 0.887,
+          "notification_page_ms": 11.662,
+          "settlement_export_ms": 421.856,
+          "expense_snapshot_bytes": 1173893,
+          "legacy_balance_warm_ms": [
+            952.554,
+            505.447,
+            453.487
+          ],
+          "current_balance_warm_ms": [
+            428.909,
+            434.461,
+            430.482
+          ],
+          "settlement_snapshot_bytes": 216000,
+          "account_export_cumulative_ms": 30.199
+        }
+      },
+      {
+        "members": 1000,
+        "expenses": 2000,
+        "settlements": 1000,
+        "timings": {
+          "members_ms": 2.984,
+          "activity_ms": 0.684,
+          "balances_ms": 1689.597,
+          "history_next_ms": 0.552,
+          "history_first_ms": 1.004,
+          "expense_export_ms": 313.04,
+          "filtered_history_ms": 0.649,
+          "notification_page_ms": 22.578,
+          "settlement_export_ms": 25.017,
+          "expense_snapshot_bytes": 2350893,
+          "legacy_balance_warm_ms": [
+            1962.991,
+            2165.722,
+            1975.233
+          ],
+          "current_balance_warm_ms": [
+            1799.396,
+            1719.795,
+            1652.001
+          ],
+          "settlement_snapshot_bytes": 433000,
+          "account_export_cumulative_ms": 75.228
+        }
+      }
+    ]
+  ],
+  "http": [
+    {
+      "scope": "local real HTTP; fictional 1000/2000/1000 fixture; includes serialization and Node parse",
+      "rpc": "get_group_balance_snapshot",
+      "rows": 1000,
+      "utf8_bytes": 203910,
+      "elapsed_ms": [
+        1290.115,
+        1202.489,
+        1155.403
+      ]
+    },
+    {
+      "scope": "local real HTTP; fictional 1000/2000/1000 fixture; includes serialization and Node parse",
+      "rpc": "get_group_member_snapshot",
+      "rows": 1000,
+      "utf8_bytes": 138937,
+      "elapsed_ms": [
+        15.139,
+        12.768,
+        13.974
+      ]
+    },
+    {
+      "scope": "local real HTTP; fictional 1000/2000/1000 fixture; includes serialization and Node parse",
+      "rpc": "get_group_expense_export_snapshot",
+      "rows": 2000,
+      "utf8_bytes": 2350000,
+      "elapsed_ms": [
+        362.949,
+        362.254,
+        381.756
+      ]
+    },
+    {
+      "scope": "local real HTTP; fictional 1000/2000/1000 fixture; includes serialization and Node parse",
+      "rpc": "get_group_settlement_export_snapshot",
+      "rows": 1000,
+      "utf8_bytes": 436000,
+      "elapsed_ms": [
+        125.942,
+        26.538,
+        27.716
+      ]
+    }
+  ],
+  "node_memory": {
+    "scope": "Node client only; includes startup/GC/response materialization, not Flutter memory",
+    "rss_before_bytes": 40079360,
+    "rss_after_bytes": 63639552,
+    "max_rss_bytes": 74358784
+  }
+}

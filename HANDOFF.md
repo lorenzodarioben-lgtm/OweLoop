@@ -1,85 +1,61 @@
 # OweLoop engineering handoff
 
-## Sprint III active checkpoint — 2026-10-28
+## Sprint III completed checkpoint — 2026-10-28
 
-Started from clean remote/local `8c3a1af06033f47c0e5f163e3870ec731956685b`
-on `codex/functional-completion`; PR #8 remains draft/unmerged. The operator's
-configured Git identity is preserved. See [Sprint III](docs/SPRINT_III_REPORT.md)
-for current evidence rather than relabeling historical results below.
+Started from clean/synchronized `8c3a1af06033f47c0e5f163e3870ec731956685b`
+on `codex/functional-completion`. Continue through draft, unmerged
+[PR #8](https://github.com/lorenzodarioben-lgtm/OweLoop/pull/8). No merge,
+deployment, release or hosted/production data operation occurred. Existing human
+Git identity is preserved. A tracked document cannot contain its own final SHA;
+resolve `git rev-parse HEAD`, `git rev-parse origin/codex/functional-completion`
+and PR #8's head/checks after fetching. See [Sprint III](docs/SPRINT_III_REPORT.md)
+and the [Git-generated changed-file manifest](docs/SPRINT_III_FILES.txt).
 
-Recovery now holds the account lock before every read/modify/write cycle;
-retry explicitly carries the original operation ID. Delayed-store concurrency
-regressions cover both previously reproduced races. The existing Android probe
-adds draft/resume-draft checkpoints using real secure storage and Auth restoration,
-field equality, inactive-payer filtering without reallocation, account B isolation,
-zero ledger writes and draft cleanup preserving an unresolved operation. Shared
-draft review also drives the normal form. The bounded marker protocol has a
-deliberately withheld-marker failure test. Native CI now watches recovery source
-and migrations as well as its harness.
+Delivered: serialized account recovery and original-ID retry; actual unsent-draft
+process restart/isolation; an Android worker-thread secure-store disk fence before
+send/save confirmation; four calendar cadences of review-only recurring proposals;
+private bounded PNG/JPEG receipts with trusted upload/delete/cleanup; actual TCP
+loss before send/after commit; actual local deletion gateway checks; aggregated
+balance validation with unchanged financial results. Plain Material UI remains.
+ADRs [0015](docs/decisions/0015-bounded-review-only-recurrence.md),
+[0016](docs/decisions/0016-private-receipt-gateway.md),
+[0017](docs/decisions/0017-android-secure-storage-durability.md) and
+[0018](docs/decisions/0018-aggregate-balance-validation.md) own these contracts.
 
-Local Docker engine and ADB/emulator are unavailable; starting Docker Desktop
-did not establish its Linux-engine pipe. Native and backend results require CI.
-The engine subsequently became available without global configuration changes.
-The actual [API35 run](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40523228599)
-at `57f13f7` passed the UI journey and all six financial/draft checkpoints.
-Mobile CI passed; the initial Database CI image pulls hit registry rate limits,
-and a single rerun passed. Local isolated checks now pass: fresh 27 migrations,
-448 pgTAP assertions, lint, 20+7 populated upgrade, six handler tests, 58 HTTP
-assertions including recurrence and two separately configured live Dart tests.
+Final local checks: formatting/analysis; 205 ordinary Flutter tests with four
+configured live skips; 29 migrations, 483 pgTAP assertions/17 files and lint;
+populated 20+9 and 26+3 upgrades; 58 financial/recurrence HTTP assertions; nine
+actual deletion gateway checks; fourteen real private Storage/gateway assertions;
+four separately configured live SDK tests; thirteen Node tests. Disposable stack
+cleanup stops only its own project. Two independent warm SQL comparisons require
+identical ordered rows and show 13–38% lower medians; actual HTTP response sizes
+and Node RSS are in [performance](docs/performance.md), not device-memory evidence.
 
-Sprint III recurrence adds pinned template schedules with daily/weekly/fortnightly/
-monthly server-calendar dates, month-end clamping, explicit IANA zones, 90-day
-bounded due discovery, upcoming dates, paged history, pause/edit/cancel/skip and
-the ordinary explicit expense form. SQL serializes posting and completion so
-concurrent reviewers cannot duplicate an occurrence. Pending requests keep the
-original operation ID and occurrence reference. No cron or automatic posting.
-[ADR 0015](docs/decisions/0015-bounded-review-only-recurrence.md) owns the contract.
-Full Flutter suite: 194 passing, two live skips; new form tests cover explicit
-posting identity, skip confirmation, stale errors and large text on 375px width.
-Single next action at this checkpoint: validate optional private local Storage
-and a secure receipt lifecycle before exposing any attachment control.
+`43700d6` passed [API35 native integration](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40532675974):
+the schedule create/review/explicit-post journey and all six process checkpoints
+with the real disk fence. Earlier native failures exposed test setup and a draft
+resume type error; source inspection independently found asynchronous Android
+storage acknowledgment. The fence addresses durability; it is not proof of the
+type error's sole cause. Final exact-head Mobile/Database/native results and URLs
+are recorded in PR #8 and the delivery report. Earlier registry rate-limit
+failures happened before database tests; they are not passing test evidence.
 
-Local `-StorageAndFunctions` now enables only the isolated stack's Storage/Edge
-services. Nine actual deletion-gateway assertions pass (invalid bearer/method,
-wrong password, ownership, verified-user deletion, retained ledger, old-token
-denial). Four live Dart tests pass: two existing cases plus actual loopback TCP
-cuts before send and after upstream SQL success, followed by same-ID recovery.
-No platform airplane-mode result is claimed. `00ef923` Database CI passed; its
-Mobile/native CI found a duplicate test-local variable in the newly added native
-schedule journey. The variable is corrected and requires a fresh exact-head run.
+Optional fresh local receipt setup: `npm run dev:start -- --storage --configure-mobile`,
+then `flutter run --dart-define=OWELOOP_RECEIPTS_ENABLED=true` from mobile.
+Existing config/env are preserved; ordinary builds hide receipt controls.
+A temporary source-folder rehearsal reused installed CLI dependencies and passed
+initial/repeated start, env preservation and own-stack stop; it was not a cold
+clone/package-cache rehearsal. See [START_HERE](START_HERE.md).
 
-At `c440f11`, Mobile/Database (including actual local Edge gateway) CI passed.
-The native draft resume intermittently failed with a sanitized type error.
-Its probe now reports the failing stage and explicitly checks fixture presence.
-Source inspection of locked secure-storage 11.2.0 also found Android writes use
-asynchronous `apply()`. A small native worker-thread commit fence now completes
-data/config/wrapped-key persistence before financial sends and draft save/delete
-confirmation. Every explicit retry reaffirms persistence, including after a failed
-fence left a cached intent. Fifteen focused durability/recovery tests pass; native
-execution must verify the Android bridge. See [ADR 0017](docs/decisions/0017-android-secure-storage-durability.md).
+Release gates remain physical Android/iOS, native picker/share destinations,
+TalkBack/VoiceOver, actual platform network transitions/callbacks, signing,
+hosted gateways/SMTP, backup/restore and staffed privacy/support processes.
+Mailpit callback instructions are documented, not an executed native result.
+PDF/WebP, schedule end dates, persistent selected receipt bytes, notifications,
+localization, OCR/payments and full offline sync are deliberately omitted.
 
-Receipt milestone: migration 28 adds private images, metadata/events, server byte
-validation and guarded lifecycle. The optional real Storage/Edge suite passed
-476 pgTAP, both populated upgrades, 58 financial API, nine deletion gateway,
-thirteen receipt/Storage assertions (including actual orphan cleanup preserving
-ready files) and four live SDK tests. Full Flutter suite passes 201 with four
-live skips; five Node receipt-handler tests pass. The native picker uses pinned
-file_selector 1.1.0; PDF/WebP and physical picker/iOS behavior are not claimed.
-Fresh optional setup in a temporary source folder passed initial/repeated start,
-public env preservation and own-stack stop. From a fresh local config use
-`dev:start -- --storage --configure-mobile`, then
-`flutter run --dart-define=OWELOOP_RECEIPTS_ENABLED=true` in mobile. Existing config
-and env are never overwritten. [ADR 0016](docs/decisions/0016-private-receipt-gateway.md)
-records privacy, retry, deletion and bounded local orphan cleanup. Hosted receipt
-deployment remains unauthorized/unperformed. Next action: finish measured balance
-validation optimization and verify the staged native durability result.
-
-Native durability checkpoint `43700d6` passed [API35 native integration](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40532675974)
-including the real schedule create/review/explicit-post journey and all six
-process checkpoints; [Mobile CI](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40532682283)
-also passed. Database startup hit external registry limits on one run; local
-full checks remain green. Startup log handling now suppresses all key/token/S3
-credential fields; CI's normal startup no longer prints the CLI credential table.
+The historical checkpoints below remain evidence from their original revisions.
+The current single next action at the end supersedes their former task queues.
 
 Updated 2026-10-25, Australia/Sydney. New developers first open
 [START_HERE.md](START_HERE.md); this is the authoritative continuity record.
@@ -347,12 +323,12 @@ transitive; no runtime package upgrade is implied.
 4. Staff ownerless recovery/support, publish privacy/retention/consent notices,
    establish incident ownership and crash-reporting decision, then complete the
    private-beta checklist before distribution. Keep PR #8 draft until reviewed.
-5. Profile large-group UI/network/memory and balance validation; whole exports,
-   memberships, balances and personal JSON still materialize in memory.
-6. Optional scope: receipt attachments require a reviewed private Storage bucket,
-   object policies, deletion/export integration and native file lifecycle; none
-   exists. Recurrence uses the robust-template fallback only. No scheduled jobs,
-   localization, full offline sync, push/email, analytics or payment integrations.
+5. Profile large-group Flutter UI/memory on actual devices; local SQL/HTTP
+   measurements are complete, but exports/memberships/balances/personal JSON still
+   materialize whole responses. Do not infer a supported size from local fixtures.
+6. Private PNG/JPEG receipts and review-only recurrence are delivered locally.
+   Native picker validation, optional formats/end dates/localization/reminders
+   remain separately scoped. No automatic financial jobs or payment integrations.
 
 Unknown-email invitations/claims remain unbound: revoke/resend after signup.
 There is no identity directory. Template removal/edit permissions remain SQL
@@ -361,9 +337,12 @@ No placeholder is counted as a finished feature.
 
 ## Single next action
 
-After the fresh setup and `git fetch origin`, create the independent branch for
-the [P1 native unsent-draft restart task](docs/roadmap.md) from a clean checkout:
-
-```sh
-git switch -c test/native-draft-restart origin/codex/functional-completion
-```
+After fetching and verifying the clean synchronized branch/PR checks, create
+`codex/test-recurrence-editor-session` from `origin/codex/functional-completion`.
+Add delayed create/edit-dialog A→B and A→B→A session regressions in
+`mobile/test/features/expenses/expense_schedules_test.dart` and template tests.
+Review `expense_schedules_screen.dart` / `expense_templates_screen.dart`; prove
+that a stale dialog never submits as the new session, restores private content
+or leaves busy state stuck. Refresh/skip sign-out tests already pass. Change
+production only for a reproduced defect; run formatting, analyze, full Flutter
+and relevant native CI. See the bounded [first task](docs/roadmap.md).

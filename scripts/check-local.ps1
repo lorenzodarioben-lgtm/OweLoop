@@ -87,7 +87,10 @@ try {
             } else { Invoke-Checked $flutterCommand @('test','test/live/financial_transport_test.dart') }
         } finally { Pop-Location }
     }
-    if ($Benchmark) { Invoke-Checked 'node' @('scripts/benchmark-local.mjs') }
+    if ($Benchmark) {
+        Invoke-Checked 'node' @('scripts/benchmark-local.mjs')
+        Invoke-Checked 'node' @('scripts/benchmark-http-local.mjs')
+    }
     Write-Host 'PASS: isolated database, security, upgrade, and real-service checks.'
 }
 finally {

@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
+import {readFileSync} from 'node:fs';
 const context=spawnSync('docker',['context','inspect'],{encoding:'utf8'});
 assert.equal(context.status,0,'Local Docker is required.');
 const endpoint=process.env.DOCKER_HOST||JSON.parse(context.stdout)[0].Endpoints.docker.Host;
@@ -9,13 +10,19 @@ assert.match(endpoint,/^(npipe:|unix:|tcp:\/\/(127\.0\.0\.1|localhost)(:|\/|$))/
 const container=process.env.OWELOOP_DB_CONTAINER||'supabase_db_oweloop-local';
 assert.match(container,/^supabase_db_[a-zA-Z0-9_-]+$/,'Use a disposable local Supabase DB.');
 const owner=randomUUID();
+// A test-only copy of the released read function is the same-fixture oracle.
+// It retains all current private helpers and is never exposed to API clients.
+const released=readFileSync(new URL('../supabase/migrations/20260731000000_transparent_group_balances.sql',import.meta.url),'utf8');
+const legacyFunction=released.slice(released.indexOf('create function public.get_group_balances(')).split('revoke all on function')[0]
+  .replace('create function public.get_group_balances(','create function pg_temp.legacy_group_balances(');
 const source=`begin;
+${legacyFunction}
 insert into auth.users(id,email) values('${owner}','benchmark-${owner}@example.test');
 select set_config('request.jwt.claim.sub','${owner}',true);
 select public.complete_profile('Disposable benchmark');
 create function pg_temp.measure_reads(member_count integer,expense_count integer,settlement_count integer) returns jsonb
 language plpgsql as $$
-declare g public.groups; own uuid; other uuid; started timestamptz; metrics jsonb:='{}'; data jsonb; last_expense uuid; plan jsonb; cursor_row public.expenses;
+declare g public.groups; own uuid; other uuid; started timestamptz; metrics jsonb:='{}'; data jsonb; last_expense uuid; plan jsonb; cursor_row public.expenses; legacy jsonb; new_rows jsonb; legacy_times jsonb:='[]'; current_times jsonb:='[]';
 begin
   select * into g from public.create_group('Benchmark '||member_count,'AUD');
   select id into own from public.group_members where group_id=g.id and user_id=auth.uid();
@@ -29,6 +36,16 @@ begin
   started:=clock_timestamp();data:=public.get_group_balance_snapshot(g.id);
   if jsonb_array_length(data)<>member_count or (select sum((value->>'net_balance_minor')::numeric) from jsonb_array_elements(data))<>0 then raise exception 'Benchmark reconciliation failed';end if;
   metrics:=metrics||jsonb_build_object('balances_ms',extract(epoch from clock_timestamp()-started)*1000);
+  select jsonb_agg(value order by value->>'group_member_id') into new_rows from jsonb_array_elements(data);
+  for repetition in 1..3 loop
+    started:=clock_timestamp();
+    select jsonb_agg(to_jsonb(b) order by b.group_member_id) into legacy from pg_temp.legacy_group_balances(g.id) b;
+    legacy_times:=legacy_times||jsonb_build_array(extract(epoch from clock_timestamp()-started)*1000);
+    if legacy is distinct from new_rows then raise exception 'Optimized balances differ from released oracle';end if;
+    started:=clock_timestamp();perform public.get_group_balance_snapshot(g.id);
+    current_times:=current_times||jsonb_build_array(extract(epoch from clock_timestamp()-started)*1000);
+  end loop;
+  metrics:=metrics||jsonb_build_object('legacy_balance_warm_ms',legacy_times,'current_balance_warm_ms',current_times);
   started:=clock_timestamp();perform public.get_categorized_expense_page(g.id,p_limit=>50);
   metrics:=metrics||jsonb_build_object('history_first_ms',extract(epoch from clock_timestamp()-started)*1000);
   if expense_count>50 then
@@ -40,9 +57,11 @@ begin
   metrics:=metrics||jsonb_build_object('filtered_history_ms',extract(epoch from clock_timestamp()-started)*1000);
   started:=clock_timestamp();data:=public.get_group_expense_export_snapshot(g.id);
   if jsonb_array_length(data)<>expense_count then raise exception 'Expense export truncated';end if;
+  metrics:=metrics||jsonb_build_object('expense_snapshot_bytes',octet_length(data::text));
   metrics:=metrics||jsonb_build_object('expense_export_ms',extract(epoch from clock_timestamp()-started)*1000);
   started:=clock_timestamp();data:=public.get_group_settlement_export_snapshot(g.id);
   if jsonb_array_length(data)<>settlement_count then raise exception 'Settlement export truncated';end if;
+  metrics:=metrics||jsonb_build_object('settlement_snapshot_bytes',octet_length(data::text));
   metrics:=metrics||jsonb_build_object('settlement_export_ms',extract(epoch from clock_timestamp()-started)*1000);
   started:=clock_timestamp();data:=public.get_group_member_snapshot(g.id);
   if jsonb_array_length(data)<>member_count then raise exception 'Membership snapshot truncated';end if;

@@ -58,10 +58,11 @@ This debug probe exercises storage/domain actions; widget tests cover form actio
 to prove bounded timeout and sanitized failure output.
 
 `native-smoke.yml` runs on manual dispatch and pushes that change only the
-native-test/harness paths, recovery operations/draft review source or migrations.
+native-test/harness paths, recovery operations/draft review source, Kotlin,
+pubspec or migrations.
 Ordinary presentation/source changes do not trigger
 this heavier job. It uses a fresh local backend and API35 emulator on a pinned
-Ubuntu runner, then stops the backend. Executed results are recorded in Sprint II;
+Ubuntu runner, then stops the backend. Executed results are recorded in Sprint III;
 adding this workflow does not itself establish a pass. It covers
 Android emulator process termination, not physical Keystore hardware, backup/
 restore, iOS, SMTP callback or hosted Edge deployment.
@@ -74,4 +75,8 @@ and the real Dart SDK absent-lookup mismatch, now covered by regressions.
 
 The Windows host still has no configured AVD/device and its JDK21 Gradle attempt
 failed at loopback initialization. No global firewall or security settings were
-changed. Native run status and exact CI links belong in the Sprint II report.
+changed. Sprint III `43700d6` passed the schedule UI journey and all six process
+checkpoints with the worker-thread native disk fence:
+[API35 run](https://github.com/lorenzodarioben-lgtm/OweLoop/actions/runs/40532675974).
+See [ADR 0017](decisions/0017-android-secure-storage-durability.md).
+The final exact-head status/URLs belong in PR #8 and the delivery report.

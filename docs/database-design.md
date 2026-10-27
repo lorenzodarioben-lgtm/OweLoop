@@ -1,5 +1,12 @@
 # Database design
 
+Migration 29, `20261028020000_aggregate_balance_validation`, replaces only the
+canonical read implementation: grouped allocation validation and one materialized
+member-row calculation retain current authorization, exact totals, bigint bounds,
+inconsistency rejection and zero sum. Same-fixture released-function oracle
+comparisons and corruption tests verify equivalence. See [ADR 0018](decisions/0018-aggregate-balance-validation.md)
+and [performance](performance.md).
+
 Migration 28, `20261028010000_private_receipt_lifecycle`, adds `expense_receipts`
 and append-only `receipt_events`. Upload UUID/content binding, caller/admin
 deletion, trusted completion and timestamp-guarded stale cleanup do not mutate
@@ -18,7 +25,7 @@ Personal export now includes currently readable schedules/occurrences.
 PostgreSQL owns authorization, transaction boundaries and financial consistency.
 The original twelve migrations remain unchanged. Eight forward migrations dated
 `20261024` extend that baseline; six `20261025` migrations add Sprint II.
-New environments apply all twenty-six in order. Released files are unchanged.
+New environments apply all twenty-nine in order. The original twenty-six are unchanged.
 
 ## Authoritative records
 
