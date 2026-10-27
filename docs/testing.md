@@ -1,5 +1,15 @@
 # Reproducible testing
 
+For actual private Storage and the real local Edge gateway use
+`./scripts/check-local.ps1 -SkipInstall -DartIntegration -StorageAndFunctions`.
+It creates its own Storage/Edge-enabled config; default checks keep the smaller
+stack. Receipt tests cover three accounts, direct Storage/API bypasses, concurrent
+and interrupted uploads, archive/void/removal/account deletion and stale-orphan
+cleanup preserving ready files. `node --test scripts/receipts.test.mjs` verifies
+gateway byte validation and failure handling independently. Picker cancellation,
+same-ID retry, account switching and large text have widget coverage; actual
+native picker interaction and physical iOS remain separate gates.
+
 Sprint III current checkpoint: 194 ordinary Flutter tests, two configured live
 SDK tests, 448 pgTAP assertions across 15 files, 58 real HTTP assertions and six
 handler tests. The isolated helper verifies both populated 20+forward and

@@ -63,6 +63,40 @@ Local Docker later started successfully; isolated stacks were individually stopp
 
 ## Remaining assignment
 
+## Private receipt milestone
+
+Migration 28 adds private metadata/events and restrictive Storage policies, with
+RPC-only caller intents and service-only completion/cleanup. The trusted Edge
+gateway validates bounded PNG/JPEG structure/type/dimensions and binds each upload
+UUID to its caller/expense/digest/type/size. An unknown finalize response never
+deletes a possibly ready object. Authenticated downloads recheck membership;
+archive/void/removal/account deletion retain the documented privacy/audit policy.
+Only uploader/admin may explicitly delete in active groups. No public URL exists.
+
+Actual isolated validation passed 28 migrations, 476 pgTAP assertions, lint,
+20+8 and 26+2 populated upgrades, 58 financial/recurrence API assertions, nine
+actual deletion gateway checks, thirteen Storage/gateway assertions and four live
+SDK checks. Stale orphan cleanup removed an actual file and preserved an old ready
+attachment. Five Node handler tests pass, including lost completion/deletion
+failures. Full Flutter tests pass 201 with four configured live skips; five new
+receipt tests verify picker cancellation, explicit same-ID retry, account change,
+bounded file selection and 375px large text. Native picker/device/iOS behavior
+remains unrun; Android compilation is checked separately by CI.
+
+`file_selector` 1.1.0 is the only new direct runtime dependency; Flutter renders
+images. PDF/WebP and durable selected bytes across process death are omitted.
+After restart refresh server state and explicitly delete an unfinished upload
+intent before reselecting; financial operation recovery is separate and preserved.
+
+`dev:start -- --storage` enables only the generated local Storage/Edge config and
+copies functions. A fresh temporary source-folder rehearsal used the existing
+installed CLI via a dependency junction: initial start/env creation, repeated
+start/env preservation and status passed, then its own backend stopped. This was
+not a cold package-cache install or a complete clone rehearsal. Normal app builds
+hide controls until `--dart-define=OWELOOP_RECEIPTS_ENABLED=true`.
+`receipts:cleanup` accepts process-only local service credentials, never reads the
+mobile env and refuses hosted URLs; batches are limited to fifty with a cursor.
+
 ## Wire resilience and actual local gateway
 
 `check-local.ps1 -SkipInstall -StorageAndFunctions -DartIntegration` passed on

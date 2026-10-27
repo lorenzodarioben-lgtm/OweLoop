@@ -1,5 +1,14 @@
 # Functional reference for the design phase
 
+When the receipt capability is enabled, expense detail includes Private receipts
+after the financial details/audit: explicit PNG/JPEG selection, ready/pending/
+deleting/deleted state, same-selection upload retry, authenticated in-app image
+view/close and confirmed authorized deletion. Cancellation sends nothing. Errors
+distinguish uncertain file outcomes from financial confirmation. Receipt limits
+and shared-member visibility are stated. Account changes clear selected/preview
+bytes and discard stale async results. This capability needs configured Storage
+and gateway; its enable flag is separate from ordinary builds.
+
 Sprint III adds `/groups/:groupId/schedules`, reachable as Recurring drafts from
 group details. Create schedule from a template; set name, cadence, calendar anchor
 and IANA zone. The list shows next dates, pinned template, enabled/cancelled state,

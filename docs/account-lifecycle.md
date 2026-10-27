@@ -1,5 +1,13 @@
 # Account lifecycle and data portability
 
+Receipts are shared financial documents: account deletion removes creator/actor
+Auth links but retains ready files and receipt audit. Removed/deleted memberships
+lose future Storage reads. Voiding retains receipts; archived groups permit reads
+and deny uploads/deletions. In active groups uploader/admin can explicitly delete
+an attachment while its metadata/audit remains. Personal export includes currently
+readable metadata/events, without image bytes or access URLs. These technical
+retention rules require the operator's reviewed privacy notice before distribution.
+
 The Account screen edits the private display name, exports personal JSON, and
 requests password-confirmed account deletion. Existing group display names are
 historical membership snapshots. Group ledger exports provide complete expense

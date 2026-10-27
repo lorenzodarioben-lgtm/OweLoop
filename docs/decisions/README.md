@@ -1,6 +1,7 @@
 # Architecture Decision Records
 
 Sprint III: [0015 — bounded review-only recurrence](0015-bounded-review-only-recurrence.md).
+Receipts: [0016 — private receipt gateway](0016-private-receipt-gateway.md).
 
 Architecture Decision Records (ADRs) preserve decisions that affect the project's direction and would be costly or confusing to rediscover later.
 

@@ -9,6 +9,8 @@
     "test:integration": "node scripts/test-local-integration.mjs",
     "test:upgrade": "node scripts/test-migration-upgrade.mjs",
     "test:account-function": "node --test scripts/delete-account.test.mjs",
+    "test:receipts-handler": "node --test scripts/receipts.test.mjs",
+    "receipts:cleanup": "node scripts/cleanup-local-receipts.mjs",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",

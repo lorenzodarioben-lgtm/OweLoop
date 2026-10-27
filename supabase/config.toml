@@ -9,6 +9,10 @@ project_id = "oweloop-local"
 [functions.delete-account]
 verify_jwt = false
 
+# The trusted receipt gateway verifies the caller online before any file action.
+[functions.receipts]
+verify_jwt = false
+
 [api]
 enabled = true
 # Port to use for the API URL.

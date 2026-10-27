@@ -1,5 +1,12 @@
 # Database design
 
+Migration 28, `20261028010000_private_receipt_lifecycle`, adds `expense_receipts`
+and append-only `receipt_events`. Upload UUID/content binding, caller/admin
+deletion, trusted completion and timestamp-guarded stale cleanup do not mutate
+the financial ledger. Receipt bucket setup is conditional on the Storage schema
+in minimal SQL-only upgrade databases; real Storage/gateway checks use the full
+isolated stack. Shared receipt metadata/events are included in personal export.
+
 Sprint III adds the 27th forward migration, `20261028000000_review_only_recurrence`.
 `expense_schedules` pins template configuration and calendar/zone/revision;
 `expense_occurrences` uniquely identifies schedule/calendar dates and links only

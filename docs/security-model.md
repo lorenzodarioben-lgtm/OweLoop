@@ -1,5 +1,13 @@
 # Security model
 
+Receipt images live in a private Storage bucket. Only the trusted gateway can
+upload/confirm/delete bytes; current-member RLS controls every fresh download.
+Restrictive policies deny direct client Storage writes. Pending objects are not
+shared. Metadata/events have RLS and no client DML; completion/stale cleanup are
+service-only. SHA-256 binds retry identity to caller/expense/type/size/content.
+PNG/JPEG structure/dimensions and body size are checked before storage. No public
+or signed URL is generated. See [ADR 0016](decisions/0016-private-receipt-gateway.md).
+
 Sprint III schedules/occurrences have current-membership RLS and guarded RPC-only
 mutations. Creator/admin versioned edits, bounded server-calendar discovery and
 atomic occurrence/expense posting retain ordinary persist-before-send recovery.

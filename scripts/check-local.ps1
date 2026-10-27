@@ -70,10 +70,14 @@ try {
     $env:SUPABASE_SERVICE_ROLE_KEY = $status.SERVICE_ROLE_KEY
     $env:OWELOOP_DB_CONTAINER = "supabase_db_$projectId"
     Invoke-Checked 'node' @('--test','scripts/delete-account.test.mjs')
+    Invoke-Checked 'node' @('--test','scripts/receipts.test.mjs','scripts/native-checkpoint.test.mjs')
     Invoke-Checked 'node' @('scripts/test-migration-upgrade.mjs')
     Invoke-Checked 'node' @('scripts/test-migration-upgrade.mjs','--sprint-ii')
     Invoke-Checked 'node' @('scripts/test-local-integration.mjs')
-    if ($StorageAndFunctions) { Invoke-Checked 'node' @('scripts/test-edge-gateway.mjs') }
+    if ($StorageAndFunctions) {
+        Invoke-Checked 'node' @('scripts/test-edge-gateway.mjs')
+        Invoke-Checked 'node' @('scripts/test-receipt-journey.mjs')
+    }
     if ($DartIntegration) {
         Push-Location (Join-Path $repositoryRoot 'mobile')
         try {

@@ -58,6 +58,22 @@ confirmation. Every explicit retry reaffirms persistence, including after a fail
 fence left a cached intent. Fifteen focused durability/recovery tests pass; native
 execution must verify the Android bridge. See [ADR 0017](docs/decisions/0017-android-secure-storage-durability.md).
 
+Receipt milestone: migration 28 adds private images, metadata/events, server byte
+validation and guarded lifecycle. The optional real Storage/Edge suite passed
+476 pgTAP, both populated upgrades, 58 financial API, nine deletion gateway,
+thirteen receipt/Storage assertions (including actual orphan cleanup preserving
+ready files) and four live SDK tests. Full Flutter suite passes 201 with four
+live skips; five Node receipt-handler tests pass. The native picker uses pinned
+file_selector 1.1.0; PDF/WebP and physical picker/iOS behavior are not claimed.
+Fresh optional setup in a temporary source folder passed initial/repeated start,
+public env preservation and own-stack stop. From a fresh local config use
+`dev:start -- --storage --configure-mobile`, then
+`flutter run --dart-define=OWELOOP_RECEIPTS_ENABLED=true` in mobile. Existing config
+and env are never overwritten. [ADR 0016](docs/decisions/0016-private-receipt-gateway.md)
+records privacy, retry, deletion and bounded local orphan cleanup. Hosted receipt
+deployment remains unauthorized/unperformed. Next action: finish measured balance
+validation optimization and verify the staged native durability result.
+
 Updated 2026-10-25, Australia/Sydney. New developers first open
 [START_HERE.md](START_HERE.md); this is the authoritative continuity record.
 

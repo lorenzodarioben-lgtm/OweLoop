@@ -1,6 +1,6 @@
 // Explicit local app setup. No hosted commands, global installs or env overwrite.
 import {createHash} from 'node:crypto';
-import {existsSync, readFileSync, mkdirSync, readdirSync, copyFileSync, writeFileSync, realpathSync} from 'node:fs';
+import {existsSync, readFileSync, mkdirSync, readdirSync, copyFileSync, writeFileSync, realpathSync, cpSync} from 'node:fs';
 import {delimiter, dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
@@ -43,8 +43,8 @@ function onPath(name) {
 }
 function main() {
   const [action = 'check', ...flags] = process.argv.slice(2);
-  if (!['check', 'start', 'status', 'stop'].includes(action)) throw Error('Usage: node scripts/dev-local.mjs check|start|status|stop [--configure-mobile] [--client-host=127.0.0.1] [--port-base=61420]');
-  const allowed = flags.every(flag => flag === '--configure-mobile' || /^--client-host=(127\.0\.0\.1|localhost|10\.0\.2\.2)$/.test(flag) || /^--port-base=\d+$/.test(flag));
+  if (!['check', 'start', 'status', 'stop'].includes(action)) throw Error('Usage: node scripts/dev-local.mjs check|start|status|stop [--storage] [--configure-mobile] [--client-host=127.0.0.1] [--port-base=61420]');
+  const allowed = flags.every(flag => flag === '--configure-mobile' || flag === '--storage' || /^--client-host=(127\.0\.0\.1|localhost|10\.0\.2\.2)$/.test(flag) || /^--port-base=\d+$/.test(flag));
   if (!allowed || (action !== 'start' && flags.length)) throw Error('Unsupported setup option; configuration flags are start-only.');
   if (Number(process.versions.node.split('.')[0]) < 22) throw Error('Use Node 22 (CI version) or newer.');
   if (action === 'check') {
@@ -70,6 +70,11 @@ function main() {
     let config = readFileSync(join(root, 'supabase', 'config.toml'), 'utf8').replace('project_id = "oweloop-local"', `project_id = "${project}"`);
     for (let i = 0; i <= 9; i++) config = config.replaceAll(String(55420 + i), String(port + i));
     config = config.replace('sql_paths = ["./seed.sql"]', 'sql_paths = []');
+    if(flags.includes('--storage')) {
+      config=config.replace(/(\[storage\]\s*\r?\n)enabled = false/,'$1enabled = true')
+        .replace(/(\[edge_runtime\]\s*\r?\n)enabled = false/,'$1enabled = true')
+        .replace('inspector_port = 8083',`inspector_port = ${port+10}`);
+    }
     if (existsSync(configPath) && readFileSync(configPath, 'utf8') !== config) throw Error('Existing generated project has different settings. Keep its port/configuration or use a separate checkout; no files were replaced.');
     mkdirSync(dirname(configPath), {recursive: true});
     writeFileSync(configPath, config);
@@ -78,6 +83,7 @@ function main() {
       mkdirSync(target, {recursive: true});
       for (const file of readdirSync(source).filter(name => name.endsWith('.sql'))) copyFileSync(join(source, file), join(target, file));
     }
+    cpSync(join(root,'supabase','functions'),join(workdir,'supabase','functions'),{recursive:true});
     console.log(`Starting only ${project}; API ${port + 1}, DB ${port + 2}. First image download can take several minutes.`);
     supabase(['start']);
     const status = configuredStatus();

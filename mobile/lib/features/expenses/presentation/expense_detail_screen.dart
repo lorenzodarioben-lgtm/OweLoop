@@ -9,6 +9,8 @@ import '../domain/expense_models.dart';
 import '../state/expenses_providers.dart';
 import '../state/expenses_state.dart';
 import 'expense_feedback.dart';
+import 'expense_receipts_section.dart';
+import '../data/receipts_repository.dart';
 
 class ExpenseDetailScreen extends ConsumerWidget {
   const ExpenseDetailScreen({
@@ -49,6 +51,7 @@ class ExpenseDetailScreen extends ConsumerWidget {
             expense: state.expense!,
             isVoiding: state.isVoiding,
             errorMessage: state.errorMessage,
+            showReceipts: ref.watch(receiptsEnabledProvider),
             onVoid: () async {
               final wasVoided = await controller.voidExpense();
               if (wasVoided) {
@@ -78,12 +81,14 @@ class _ExpenseDetailContent extends StatelessWidget {
     required this.isVoiding,
     required this.errorMessage,
     required this.onVoid,
+    required this.showReceipts,
   });
 
   final ExpenseRecord expense;
   final bool isVoiding;
   final String? errorMessage;
   final Future<void> Function() onVoid;
+  final bool showReceipts;
 
   @override
   Widget build(BuildContext context) {
@@ -183,6 +188,11 @@ class _ExpenseDetailContent extends StatelessWidget {
           expenseId: expense.id,
           currencyCode: expense.total.currencyCode,
         ),
+        if (showReceipts)
+          ExpenseReceiptsSection(
+            key: ValueKey(expense.id),
+            expenseId: expense.id,
+          ),
       ],
     );
   }

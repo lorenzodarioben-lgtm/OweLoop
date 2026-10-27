@@ -71,6 +71,14 @@ Physical phones need a deliberately configured reachable development endpoint;
 
 ## What you inherit
 
+For optional receipt development on a **fresh checkout/configuration**, run
+`npm.cmd run dev:start -- --storage --configure-mobile`, then from `mobile/`
+`flutter run --dart-define=OWELOOP_RECEIPTS_ENABLED=true`. This enables only the
+generated local Storage/Edge services; existing config/env files are preserved.
+Use a separate checkout/port block if an existing local backend has other settings.
+PNG/JPEG receipt controls stay hidden in ordinary builds until that capability
+is deliberately enabled. [Receipt contract](docs/decisions/0016-private-receipt-gateway.md).
+
 Sprint III extends this baseline with serialized financial recovery, actual
 Android draft restart/isolation evidence and review-only recurring drafts.
 Create a schedule from Expense templates, then open Recurring drafts from group
@@ -95,7 +103,7 @@ original evidence. These results do not establish production readiness.
 
 Physical Android, iOS/Keychain, destination sharing, callbacks/accessibility,
 hosted deletion/SMTP, signing, backup/restore and staffed privacy/support processes
-remain release gates. Receipts, localization, full
+remain release gates. PDF/WebP receipts, localization, full
 offline sync and push/email delivery are missing. Templates never post by
 themselves. [Roadmap](docs/roadmap.md) separates local tasks from owner/hardware gates.
 
