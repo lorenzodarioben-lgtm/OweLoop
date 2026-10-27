@@ -12,7 +12,7 @@ A narrow `oweloop/secure_storage` channel accepts only `flush` and no arguments.
 The Android activity uses the pinned plugin's public default-configuration APIs
 to identify wrapped-key, algorithm and data preferences. Empty `commit()` calls
 on a dedicated worker wait for prior applies; only a true result confirms the
-barrier. No keys or financial payloads cross the channel or enter logs. Failures
+barrier, with a fifteen-second client deadline. No keys or financial payloads cross the channel or enter logs. Failures
 block the network send. Future secure-storage upgrades/custom namespaces must
 revalidate this coupling and rerun native process recovery.
 

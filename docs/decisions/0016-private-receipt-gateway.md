@@ -36,6 +36,10 @@ financial-operation store. After process death refresh server state; a retained
 uncompleted intent can be explicitly deleted before reselecting a file. No
 financial outcome or operation ID changes as part of this workflow.
 
+Metadata/download reads have thirty-second client deadlines; gateway writes have
+sixty seconds. A timed-out write remains uncertain and retains its selected ID.
+No timeout is interpreted as proof that the server did not store or delete a file.
+
 The [private bucket](https://supabase.com/docs/guides/storage/buckets/fundamentals)
 uses current membership RLS for authenticated downloads. No public/signed URL is
 created. Restrictive write policies prevent direct client upload/update/delete,

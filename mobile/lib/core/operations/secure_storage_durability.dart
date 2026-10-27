@@ -7,9 +7,10 @@ import 'package:flutter/services.dart';
 Future<void> flushSecureStorage({
   bool? android,
   MethodChannel channel = const MethodChannel('oweloop/secure_storage'),
+  Duration timeout = const Duration(seconds: 15),
 }) async {
   if (!(android ?? Platform.isAndroid)) return;
-  if (await channel.invokeMethod<bool>('flush') != true) {
+  if (await channel.invokeMethod<bool>('flush').timeout(timeout) != true) {
     throw StateError('Secure storage persistence was not confirmed.');
   }
 }

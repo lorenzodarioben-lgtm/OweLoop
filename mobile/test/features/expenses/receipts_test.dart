@@ -20,6 +20,7 @@ class ReceiptFake implements ReceiptsRepository {
   final ids = <String>[];
   bool fail = false, ready = false;
   int deleted = 0;
+  Completer<Uint8List>? downloading;
   @override
   Future<ReceiptSnapshot> load(String expenseId) async => ReceiptSnapshot([
     if (ready)
@@ -39,7 +40,8 @@ class ReceiptFake implements ReceiptsRepository {
   }
 
   @override
-  Future<Uint8List> download(ExpenseReceipt receipt) async => png;
+  Future<Uint8List> download(ExpenseReceipt receipt) async =>
+      downloading == null ? png : await downloading!.future;
   @override
   Future<void> delete(String receiptId) async {
     deleted++;
@@ -166,4 +168,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(repo.deleted, 1);
   });
+  testWidgets(
+    'a receipt download completing after sign-out cannot show private pixels',
+    (tester) async {
+      final repo = ReceiptFake()
+        ..ready = true
+        ..downloading = Completer<Uint8List>();
+      final auth = await open(tester, repo, () async => null);
+      await tester.tap(find.text('View receipt 1'));
+      await tester.pump();
+      await auth.signOut();
+      await tester.pumpAndSettle();
+      repo.downloading!.complete(png);
+      await tester.pumpAndSettle();
+      expect(find.byType(Image), findsNothing);
+      expect(find.text('Close receipt image'), findsNothing);
+    },
+  );
 }

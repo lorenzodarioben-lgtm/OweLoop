@@ -79,10 +79,12 @@ class SupabaseReceiptsRepository implements ReceiptsRepository {
   @override
   Future<ReceiptSnapshot> load(String expenseId) async {
     final result =
-        await client.rpc(
-              'get_expense_receipts',
-              params: {'p_expense_id': expenseId},
-            )
+        await client
+                .rpc(
+                  'get_expense_receipts',
+                  params: {'p_expense_id': expenseId},
+                )
+                .timeout(const Duration(seconds: 30))
             as Map;
     return ReceiptSnapshot(
       (result['receipts'] as List)
@@ -96,7 +98,9 @@ class SupabaseReceiptsRepository implements ReceiptsRepository {
   }
 
   Future<void> _gateway(Map<String, dynamic> body, String state) async {
-    final response = await client.functions.invoke('receipts', body: body);
+    final response = await client.functions
+        .invoke('receipts', body: body)
+        .timeout(const Duration(seconds: 60));
     if (response.status != 200 ||
         response.data is! Map ||
         response.data['state'] != state) {
@@ -113,8 +117,10 @@ class SupabaseReceiptsRepository implements ReceiptsRepository {
     'data_base64': base64Encode(upload.bytes),
   }, 'ready');
   @override
-  Future<Uint8List> download(ExpenseReceipt receipt) =>
-      client.storage.from('oweloop-receipts').download(receipt.path);
+  Future<Uint8List> download(ExpenseReceipt receipt) => client.storage
+      .from('oweloop-receipts')
+      .download(receipt.path)
+      .timeout(const Duration(seconds: 30));
   @override
   Future<void> delete(String receiptId) =>
       _gateway({'action': 'delete', 'receipt_id': receiptId}, 'deleted');

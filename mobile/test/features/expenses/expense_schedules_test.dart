@@ -8,6 +8,7 @@ import 'package:oweloop/features/balances/state/balances_providers.dart';
 import 'package:oweloop/features/expenses/data/expense_schedules_repository.dart';
 import 'package:oweloop/features/expenses/domain/expense_schedule.dart';
 import 'package:oweloop/features/expenses/state/expenses_providers.dart';
+import 'package:oweloop/features/expenses/presentation/expense_schedules_screen.dart';
 import 'package:oweloop/features/groups/state/groups_providers.dart';
 import 'package:oweloop/features/settlements/state/settlements_providers.dart';
 import '../../fakes/authentication_fakes.dart';
@@ -212,4 +213,46 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets(
+    'a delayed schedule refresh cannot restore private state after sign-out',
+    (tester) async {
+      final repo = ScheduleFake();
+      await open(tester, repo, FakeExpensesRepository());
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(ExpenseSchedulesScreen)),
+        listen: false,
+      );
+      repo.delayed = Completer<ExpenseSchedulePage>();
+      await tester.tap(find.byTooltip('Refresh recurring drafts'));
+      await tester.pump();
+      await container.read(authenticationControllerProvider).signOut();
+      await tester.pumpAndSettle();
+      repo.delayed!.complete(const ExpenseSchedulePage([], []));
+      await tester.pumpAndSettle();
+      expect(find.text('Recurring drafts'), findsNothing);
+      expect(find.text('Sign in'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets('sign-out during skip confirmation prevents a stale mutation', (
+    tester,
+  ) async {
+    final repo = ScheduleFake();
+    await open(tester, repo, FakeExpensesRepository());
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(ExpenseSchedulesScreen)),
+      listen: false,
+    );
+    await tester.tap(find.text('Skip occurrence'));
+    await tester.pumpAndSettle();
+    await container.read(authenticationControllerProvider).signOut();
+    await tester.pumpAndSettle();
+    final confirm = find.widgetWithText(FilledButton, 'Skip occurrence');
+    if (confirm.evaluate().isNotEmpty) {
+      await tester.tap(confirm);
+      await tester.pumpAndSettle();
+    }
+    expect(repo.skips, 0);
+    expect(tester.takeException(), isNull);
+  });
 }

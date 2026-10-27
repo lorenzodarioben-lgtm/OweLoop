@@ -84,4 +84,20 @@ void main() {
       expect(transport.ids, ['original']);
     },
   );
+  test(
+    'an unresponsive native fence ends with uncertainty rather than sending',
+    () async {
+      final response = Completer<bool>();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (_) async => response.future);
+      await expectLater(
+        flushSecureStorage(
+          android: true,
+          timeout: const Duration(milliseconds: 5),
+        ),
+        throwsA(isA<TimeoutException>()),
+      );
+      response.complete(true);
+    },
+  );
 }
