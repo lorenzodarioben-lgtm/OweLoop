@@ -5,10 +5,13 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'pending_financial_operations.dart';
+import 'secure_storage_durability.dart';
 
 class SecureFinancialOperationStore implements FinancialOperationStore {
-  SecureFinancialOperationStore(this.storage);
+  SecureFinancialOperationStore(this.storage, {Future<void> Function()? flush})
+    : flush = flush ?? flushSecureStorage;
   final FlutterSecureStorage storage;
+  final Future<void> Function() flush;
   String _key(String accountId) => 'oweloop.financial_operations.v1.$accountId';
   @override
   Future<List<PendingFinancialOperation>> read(String accountId) async {
@@ -27,12 +30,15 @@ class SecureFinancialOperationStore implements FinancialOperationStore {
   Future<void> write(
     String accountId,
     List<PendingFinancialOperation> operations,
-  ) => storage.write(
-    key: _key(accountId),
-    value: jsonEncode(
-      operations.map((operation) => operation.toJson()).toList(),
-    ),
-  );
+  ) async {
+    await storage.write(
+      key: _key(accountId),
+      value: jsonEncode(
+        operations.map((operation) => operation.toJson()).toList(),
+      ),
+    );
+    await flush();
+  }
 }
 
 class SupabaseFinancialOperationTransport

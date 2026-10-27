@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../../core/operations/secure_storage_durability.dart';
 
 abstract interface class ExpenseDraftStore {
   Future<Map<String, dynamic>?> read(String accountId, String groupId);
@@ -14,8 +15,10 @@ abstract interface class ExpenseDraftStore {
 }
 
 class SecureExpenseDraftStore implements ExpenseDraftStore {
-  SecureExpenseDraftStore(this.storage);
+  SecureExpenseDraftStore(this.storage, {Future<void> Function()? flush})
+    : flush = flush ?? flushSecureStorage;
   final FlutterSecureStorage storage;
+  final Future<void> Function() flush;
   String _key(String account, String group) =>
       'oweloop.unsent_expense.v1.$account.$group';
   @override
@@ -36,18 +39,25 @@ class SecureExpenseDraftStore implements ExpenseDraftStore {
     String accountId,
     String groupId,
     Map<String, dynamic> fields,
-  ) => storage.write(
-    key: _key(accountId, groupId),
-    value: jsonEncode({
-      'version': 1,
-      'account_id': accountId,
-      'group_id': groupId,
-      'fields': fields,
-    }),
-  );
+  ) async {
+    await storage.write(
+      key: _key(accountId, groupId),
+      value: jsonEncode({
+        'version': 1,
+        'account_id': accountId,
+        'group_id': groupId,
+        'fields': fields,
+      }),
+    );
+    await flush();
+  }
+
   @override
-  Future<void> delete(String accountId, String groupId) =>
-      storage.delete(key: _key(accountId, groupId));
+  Future<void> delete(String accountId, String groupId) async {
+    await storage.delete(key: _key(accountId, groupId));
+    await flush();
+  }
+
   @override
   Future<void> deleteAccount(String accountId) async {
     final keys = await storage.readAll();
@@ -59,6 +69,7 @@ class SecureExpenseDraftStore implements ExpenseDraftStore {
             .toList()) {
       await storage.delete(key: key);
     }
+    await flush();
   }
 }
 

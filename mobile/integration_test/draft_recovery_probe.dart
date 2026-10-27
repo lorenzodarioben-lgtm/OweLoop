@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:oweloop/core/operations/client_operation_id.dart';
 import 'package:oweloop/core/operations/financial_operations_providers.dart';
 import 'package:oweloop/core/operations/pending_financial_operations.dart';
+import 'package:oweloop/core/operations/secure_storage_durability.dart';
 import 'package:oweloop/features/expenses/data/expense_draft_store.dart';
 import 'package:oweloop/features/expenses/domain/expense_draft_review.dart';
 
@@ -19,6 +20,7 @@ Future<void> runDraftRecoveryProbe(
   SupabaseClient client,
   String phase,
   void Function(String) marker,
+  void Function(String) stage,
 ) async {
   const storage = FlutterSecureStorage();
   final drafts = SecureExpenseDraftStore(storage);
@@ -100,6 +102,7 @@ Future<void> runDraftRecoveryProbe(
         'pending': pending.toJson(),
       }),
     );
+    await flushSecureStorage();
     _require(
       (await client.from('expenses').select('id').eq('group_id', groupId))
           .isEmpty,
@@ -108,19 +111,24 @@ Future<void> runDraftRecoveryProbe(
     await Completer<void>().future;
     return;
   }
-  final fixture =
-      jsonDecode((await storage.read(key: probeKey))!) as Map<String, dynamic>;
+  stage('fixture');
+  final encodedFixture = await storage.read(key: probeKey);
+  if (encodedFixture == null) throw StateError('Probe fixture did not survive');
+  final fixture = jsonDecode(encodedFixture) as Map<String, dynamic>;
   final account = fixture['account'] as String;
   final group = fixture['group'] as String;
   _require(client.auth.currentUser?.id == account);
+  stage('restore');
   final restored = await drafts.read(account, group);
   _require(jsonEncode(restored) == jsonEncode(fixture['fields']));
   _require(!restored!.containsKey('operation_id'));
   // Removal happens after the real restart, before the explicit form review.
+  stage('remove');
   await client.rpc(
     'remove_group_member',
     params: {'p_group_id': group, 'p_member_id': fixture['removed']},
   );
+  stage('members');
   final members =
       await client.rpc(
             'get_group_member_snapshot',
@@ -131,11 +139,13 @@ Future<void> runDraftRecoveryProbe(
       .where((dynamic m) => m['removed_at'] == null)
       .map((dynamic m) => m['id'] as String)
       .toSet();
+  stage('review');
   final reviewed = ExpenseDraftReview(restored, active);
   _require(reviewed.fields['single_payer'] == null);
   _require((reviewed.fields['participant_ids'] as List).length == 1);
   _require(reviewed.removedIds.contains(fixture['removed']));
   _require((reviewed.fields['split_values'] as Map).values.single == '4.00');
+  stage('switch_b');
   await client.auth.signOut();
   _require(client.auth.currentUser == null);
   await client.auth.signInWithPassword(
@@ -144,6 +154,7 @@ Future<void> runDraftRecoveryProbe(
   );
   _require(await drafts.read(fixture['b_id'] as String, group) == null);
   await drafts.deleteAccount(fixture['b_id'] as String);
+  stage('switch_a');
   await client.auth.signOut();
   await client.auth.signInWithPassword(
     email: fixture['a'] as String,
@@ -154,6 +165,7 @@ Future<void> runDraftRecoveryProbe(
         jsonEncode(fixture['fields']),
   );
   await drafts.deleteAccount(account);
+  stage('cleanup');
   _require(await drafts.read(account, group) == null);
   _require(
     jsonEncode((await operations.read(account)).single.toJson()) ==
@@ -163,5 +175,6 @@ Future<void> runDraftRecoveryProbe(
     (await client.from('expenses').select('id').eq('group_id', group)).isEmpty,
   );
   await storage.delete(key: probeKey);
+  await flushSecureStorage();
   marker('PASS:resume-draft');
 }

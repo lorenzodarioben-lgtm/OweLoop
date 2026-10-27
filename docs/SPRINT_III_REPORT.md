@@ -83,6 +83,13 @@ At `00ef923`, Database CI passed. Mobile/native CI exposed a duplicated `post`
 test variable in the native recurrence journey, corrected before the next push.
 No failed native result is represented as a recurrence runtime pass.
 
+`c440f11` passed Mobile/Database CI, including the actual local Edge job. Its
+native probe passed four financial checkpoints but failed draft resume with a
+type error. Sanitized stage reporting now identifies the location. Independent
+source inspection found the Android secure-store write uses asynchronous apply;
+ADR 0017 adds a worker-thread disk fence and reaffirms persistence on every retry.
+Fifteen focused durability/recovery tests pass. Native bridge execution follows.
+
 Private receipts, actual network-fault resilience, scale
 measurements, local Edge gateway and practical accessibility remain to be evaluated
 in successive milestones. A configured test is not evidence of execution.

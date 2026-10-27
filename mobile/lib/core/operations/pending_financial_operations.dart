@@ -235,9 +235,10 @@ class PendingFinancialOperations {
         createdAt: DateTime.now().toUtc(),
       );
       operations.add(operation);
-      // If storage fails, do not send anything. No in-memory-only fallback.
-      await store.write(accountId, operations);
     }
+    // Reaffirm persistence before every send, including an explicit retry after
+    // a previous storage/disk-fence failure left only an in-memory cached value.
+    await store.write(accountId, operations);
     _check(accountId);
     try {
       final result = await transport

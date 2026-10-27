@@ -46,7 +46,12 @@ Future<void> main() async {
     }
     if (phase == 'draft' || phase == 'resume-draft') {
       stage = 'draft';
-      await runDraftRecoveryProbe(client, phase, marker);
+      await runDraftRecoveryProbe(
+        client,
+        phase,
+        marker,
+        (name) => stage = 'draft_$name',
+      );
       return;
     }
     final store = SecureFinancialOperationStore(const FlutterSecureStorage());

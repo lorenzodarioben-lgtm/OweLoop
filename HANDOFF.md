@@ -48,6 +48,16 @@ No platform airplane-mode result is claimed. `00ef923` Database CI passed; its
 Mobile/native CI found a duplicate test-local variable in the newly added native
 schedule journey. The variable is corrected and requires a fresh exact-head run.
 
+At `c440f11`, Mobile/Database (including actual local Edge gateway) CI passed.
+The native draft resume intermittently failed with a sanitized type error.
+Its probe now reports the failing stage and explicitly checks fixture presence.
+Source inspection of locked secure-storage 11.2.0 also found Android writes use
+asynchronous `apply()`. A small native worker-thread commit fence now completes
+data/config/wrapped-key persistence before financial sends and draft save/delete
+confirmation. Every explicit retry reaffirms persistence, including after a failed
+fence left a cached intent. Fifteen focused durability/recovery tests pass; native
+execution must verify the Android bridge. See [ADR 0017](docs/decisions/0017-android-secure-storage-durability.md).
+
 Updated 2026-10-25, Australia/Sydney. New developers first open
 [START_HERE.md](START_HERE.md); this is the authoritative continuity record.
 
