@@ -19,7 +19,23 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
+  edge-storage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Local Edge gateway and optional Storage stack
+        shell: pwsh
+        run: ./scripts/check-local.ps1 -SkipInstall -StorageAndFunctions
   database:
     runs-on: ubuntu-24.04
     steps:

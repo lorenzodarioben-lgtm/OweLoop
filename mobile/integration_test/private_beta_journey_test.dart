@@ -404,9 +404,9 @@ void main() {
         2,
         reason: 'Schedule creation and form review never post automatically.',
       );
-      final post = find.widgetWithText(FilledButton, 'Post expense');
-      await tester.ensureVisible(post);
-      await tester.tap(post);
+      final schedulePost = find.widgetWithText(FilledButton, 'Post expense');
+      await tester.ensureVisible(schedulePost);
+      await tester.tap(schedulePost);
       await tester.pumpAndSettle();
       for (
         var attempt = 0;

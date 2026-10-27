@@ -63,6 +63,26 @@ Local Docker later started successfully; isolated stacks were individually stopp
 
 ## Remaining assignment
 
+## Wire resilience and actual local gateway
+
+`check-local.ps1 -SkipInstall -StorageAndFunctions -DartIntegration` passed on
+the disposable local Storage/Edge stack: 448 pgTAP, both populated upgrade paths,
+58 API assertions, nine actual Edge gateway assertions and four live SDK tests.
+The new SDK cases use a real loopback TCP proxy: before-send socket closure
+forwards no financial POST; after-commit closure drains real upstream success
+before dropping the response. Recovery retains original payload/ID and exactly
+one expense. This is HTTP/TCP evidence, not physical network-handoff testing.
+
+The gateway suite calls `/functions/v1/delete-account` rather than importing the
+handler. It verifies authentication, password/ownership blockers, exact caller
+deletion despite a forged other-user ID, retained history and deleted-token denial.
+The initial harness wrongly required HTTP 200 for a void RPC returning 204;
+the harness was corrected and the complete suite rerun successfully.
+
+At `00ef923`, Database CI passed. Mobile/native CI exposed a duplicated `post`
+test variable in the native recurrence journey, corrected before the next push.
+No failed native result is represented as a recurrence runtime pass.
+
 Private receipts, actual network-fault resilience, scale
 measurements, local Edge gateway and practical accessibility remain to be evaluated
 in successive milestones. A configured test is not evidence of execution.

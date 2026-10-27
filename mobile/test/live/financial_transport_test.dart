@@ -42,6 +42,72 @@ class _LoseResponse implements FinancialOperationTransport {
       delegate.isDefinitiveRejection(error);
 }
 
+/// Loopback TCP fault injection around the real Auth/PostgREST stack. The
+/// after-commit case drains the upstream success before severing the socket.
+class _WireFaultProxy {
+  _WireFaultProxy(this.upstream);
+  final Uri upstream;
+  final HttpClient http = HttpClient();
+  late HttpServer server;
+  String fault = 'none';
+  int forwardedPosts = 0;
+  Future<void> start() async {
+    server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    server.listen((request) async {
+      try {
+        final body = await request.fold<List<int>>(
+          [],
+          (all, chunk) => all..addAll(chunk),
+        );
+        final financial = request.uri.path == '/rest/v1/rpc/create_expense';
+        if (financial && fault == 'before') {
+          (await request.response.detachSocket(writeHeaders: false)).destroy();
+          return;
+        }
+        final target = await http.openUrl(
+          request.method,
+          upstream.replace(path: request.uri.path, query: request.uri.query),
+        );
+        request.headers.forEach((name, values) {
+          if (![
+            'host',
+            'content-length',
+            'transfer-encoding',
+            'accept-encoding',
+          ].contains(name)) {
+            target.headers.set(name, values);
+          }
+        });
+        target.add(body);
+        final response = await target.close();
+        final bytes = await response.fold<List<int>>(
+          [],
+          (all, chunk) => all..addAll(chunk),
+        );
+        if (financial) forwardedPosts++;
+        if (financial && fault == 'after' && response.statusCode == 200) {
+          (await request.response.detachSocket(writeHeaders: false)).destroy();
+          return;
+        }
+        request.response.statusCode = response.statusCode;
+        request.response.headers.contentType = ContentType.parse(
+          response.headers.value('content-type') ?? 'application/json',
+        );
+        request.response.add(bytes);
+        await request.response.close();
+      } catch (_) {
+        request.response.statusCode = 503;
+        await request.response.close();
+      }
+    });
+  }
+
+  Future<void> close() async {
+    http.close(force: true);
+    await server.close(force: true);
+  }
+}
+
 void main() {
   final url = Platform.environment['SUPABASE_URL'];
   final key = Platform.environment['SUPABASE_ANON_KEY'];
@@ -148,4 +214,78 @@ void main() {
     },
     skip: !configured,
   );
+  for (final fault in ['before', 'after']) {
+    test(
+      'real TCP interruption $fault send preserves same-ID recovery',
+      () async {
+        final proxy = _WireFaultProxy(Uri.parse(url!));
+        await proxy.start();
+        addTearDown(proxy.close);
+        final proxied = SupabaseClient(
+          'http://127.0.0.1:${proxy.server.port}',
+          key!,
+          authOptions: const AuthClientOptions(
+            autoRefreshToken: false,
+            authFlowType: AuthFlowType.implicit,
+          ),
+        );
+        addTearDown(proxied.dispose);
+        await proxied.auth.setSession(
+          client!.auth.currentSession!.refreshToken!,
+        );
+        proxy.fault = fault;
+        final store = _MemoryOperations();
+        final service = PendingFinancialOperations(
+          store: store,
+          transport: SupabaseFinancialOperationTransport(proxied),
+          currentAccountId: () => proxied.auth.currentUser?.id,
+          requestTimeout: const Duration(seconds: 10),
+        );
+        final id = ClientOperationId.generate().value;
+        final payload = {
+          'p_group_id': groupId,
+          'p_description': 'TCP interruption fixture',
+          'p_total_amount_minor': 101,
+          'p_occurred_at': DateTime.now().toUtc().toIso8601String(),
+          'p_payers': [
+            {'member_id': memberId, 'amount_minor': 101},
+          ],
+          'p_splits': [
+            {'member_id': memberId, 'amount_minor': 101},
+          ],
+        };
+        await expectLater(
+          service.execute(
+            type: 'expense',
+            groupId: groupId,
+            payload: payload,
+            requestedOperationId: id,
+          ),
+          throwsA(isA<FinancialOperationException>()),
+        );
+        expect(store.saved.single.id, id);
+        expect(store.saved.single.unresolved, isTrue);
+        expect(
+          (await client!.from('expenses').select('id').eq('group_id', groupId))
+              .length,
+          fault == 'before' ? 0 : 1,
+        );
+        proxy.fault = 'none';
+        final committed = await service.reconcile(id);
+        expect(committed, fault == 'after');
+        if (!committed) await service.retry(id);
+        expect(await service.reconcile(id), isTrue);
+        expect(store.saved.single.status, FinancialOperationStatus.confirmed);
+        expect(store.saved.single.id, id);
+        expect(store.saved.single.payload, payload);
+        expect(
+          (await client!.from('expenses').select('id').eq('group_id', groupId))
+              .length,
+          1,
+        );
+        expect(proxy.forwardedPosts, greaterThanOrEqualTo(1));
+      },
+      skip: !configured,
+    );
+  }
 }

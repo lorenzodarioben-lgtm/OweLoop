@@ -39,6 +39,15 @@ posting identity, skip confirmation, stale errors and large text on 375px width.
 Single next action at this checkpoint: validate optional private local Storage
 and a secure receipt lifecycle before exposing any attachment control.
 
+Local `-StorageAndFunctions` now enables only the isolated stack's Storage/Edge
+services. Nine actual deletion-gateway assertions pass (invalid bearer/method,
+wrong password, ownership, verified-user deletion, retained ledger, old-token
+denial). Four live Dart tests pass: two existing cases plus actual loopback TCP
+cuts before send and after upstream SQL success, followed by same-ID recovery.
+No platform airplane-mode result is claimed. `00ef923` Database CI passed; its
+Mobile/native CI found a duplicate test-local variable in the newly added native
+schedule journey. The variable is corrected and requires a fresh exact-head run.
+
 Updated 2026-10-25, Australia/Sydney. New developers first open
 [START_HERE.md](START_HERE.md); this is the authoritative continuity record.
 

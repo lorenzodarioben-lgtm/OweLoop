@@ -2,7 +2,8 @@ param(
     [ValidateRange(1024, 65520)][int]$PortBase = 60420,
     [switch]$SkipInstall,
     [switch]$Benchmark,
-    [switch]$DartIntegration
+    [switch]$DartIntegration,
+    [switch]$StorageAndFunctions
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -48,6 +49,11 @@ try {
     $config = $config.Replace('project_id = "oweloop-local"', "project_id = `"$projectId`"")
     for ($index = 0; $index -le 9; $index++) { $config = $config.Replace((55420 + $index).ToString(), ($PortBase + $index).ToString()) }
     $config = $config.Replace('sql_paths = ["./seed.sql"]', 'sql_paths = []')
+    if ($StorageAndFunctions) {
+        $config = $config -replace '(\[storage\]\s*\r?\n)enabled = false', '${1}enabled = true'
+        $config = $config -replace '(\[edge_runtime\]\s*\r?\n)enabled = false', '${1}enabled = true'
+        $config = $config.Replace('inspector_port = 8083', "inspector_port = $($PortBase + 10)")
+    }
     Set-Content -LiteralPath (Join-Path $validationSupabase 'config.toml') -Value $config
     Write-Host "Disposable validation project: $projectId (API $($PortBase + 1), DB $($PortBase + 2))"
     $start = Invoke-NativeCapture $npxCommand @('supabase','start','--workdir',$validationRoot)
@@ -67,6 +73,7 @@ try {
     Invoke-Checked 'node' @('scripts/test-migration-upgrade.mjs')
     Invoke-Checked 'node' @('scripts/test-migration-upgrade.mjs','--sprint-ii')
     Invoke-Checked 'node' @('scripts/test-local-integration.mjs')
+    if ($StorageAndFunctions) { Invoke-Checked 'node' @('scripts/test-edge-gateway.mjs') }
     if ($DartIntegration) {
         Push-Location (Join-Path $repositoryRoot 'mobile')
         try {
